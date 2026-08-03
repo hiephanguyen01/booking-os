@@ -1,10 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { StructuredLogger } from "@booking-os/observability";
+
 import { WorkerLifecycleService } from "./worker-lifecycle.service.js";
 
-test("worker lifecycle closes BullMQ before Redis", async () => {
+test("worker lifecycle logs shutdown around BullMQ and Redis close", async () => {
   const order: string[] = [];
+  const logger: StructuredLogger = {
+    child: () => logger,
+    debug: () => {},
+    info: (message) => {
+      order.push(message);
+    },
+    warn: () => {},
+    error: () => {},
+  };
   const service = new WorkerLifecycleService(
     {
       close: async () => {
@@ -17,9 +28,15 @@ test("worker lifecycle closes BullMQ before Redis", async () => {
         return "OK";
       },
     },
+    logger,
   );
 
   await service.onApplicationShutdown();
 
-  assert.deepEqual(order, ["worker", "redis"]);
+  assert.deepEqual(order, [
+    "service.shutdown_started",
+    "worker",
+    "redis",
+    "service.shutdown_completed",
+  ]);
 });
