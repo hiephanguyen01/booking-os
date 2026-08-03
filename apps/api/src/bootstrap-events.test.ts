@@ -12,11 +12,14 @@ import {
 } from "./bootstrap-events.js";
 
 function createLoggerSpy() {
-  const infoCalls: Array<{ message: string; context?: LogContext }> = [];
+  const infoCalls: Array<{
+    message: string;
+    context: LogContext | undefined;
+  }> = [];
   const errorCalls: Array<{
     message: string;
     error: unknown;
-    context?: LogContext;
+    context: LogContext | undefined;
   }> = [];
 
   const logger: StructuredLogger = {
