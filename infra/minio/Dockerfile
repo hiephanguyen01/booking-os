@@ -19,12 +19,14 @@ FROM alpine:${ALPINE_VERSION} AS runtime
 
 RUN apk add --no-cache ca-certificates curl \
   && addgroup -g 1000 -S minio \
-  && adduser -u 1000 -S -D -H -G minio minio \
-  && mkdir -p /data \
-  && chown minio:minio /data
+  && adduser -u 1000 -S -D -h /home/minio -G minio minio \
+  && mkdir -p /data /home/minio \
+  && chown -R minio:minio /data /home/minio
 
 COPY --from=builder /out/minio /usr/local/bin/minio
 COPY --from=builder /out/mc /usr/local/bin/mc
+
+ENV HOME=/home/minio
 
 USER minio:minio
 WORKDIR /data
