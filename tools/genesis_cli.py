@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Minimal Genesis knowledge CLI with no external dependencies."""
+from __future__ import annotations
+
 from pathlib import Path
 import argparse
 import re
 import sys
 from datetime import date
+from typing import Optional
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -27,7 +30,7 @@ def parse_frontmatter(text: str) -> dict[str, str]:
             data[key.strip()] = value.strip()
     return data
 
-def classify(path: Path) -> str | None:
+def classify(path: Path) -> Optional[str]:
     p = str(path).lower()
     if "/adr/" in p or path.name.startswith("ADR-"):
         return "ADR"
