@@ -17,6 +17,82 @@ python tools/genesis_cli.py validate
 python tools/genesis_cli.py new-adr "Tên quyết định"
 ```
 
+## Local infrastructure
+
+### Prerequisites
+
+- Docker Desktop or Docker Engine with Docker Compose v2.
+- Node.js and pnpm versions declared in the root `package.json`.
+
+### Initialize
+
+```bash
+cp .env.docker.example .env.docker
+pnpm infra:config
+pnpm infra:up
+```
+
+The first startup builds MinIO Community from pinned source revisions, so it takes longer than later startups.
+
+### Services
+
+| Service | Endpoint | Local credentials |
+| --- | --- | --- |
+| PostgreSQL | `localhost:5432/booking_os` | `booking` / `booking` |
+| Redis | `localhost:6379` | No password in local development |
+| MinIO S3 API | `http://localhost:9000` | `minio` / `minio123` |
+| MinIO Console | `http://localhost:9001` | `minio` / `minio123` |
+| Mailpit SMTP | `localhost:1025` | No authentication |
+| Mailpit UI | `http://localhost:8025` | No authentication |
+
+These credentials are local development defaults only. Do not reuse them outside local development.
+
+### Operations
+
+```bash
+pnpm infra:ps
+pnpm infra:logs
+pnpm infra:down
+```
+
+`pnpm infra:down` removes containers but preserves PostgreSQL, Redis, and MinIO named-volume data.
+
+To remove all local infrastructure data:
+
+```bash
+pnpm infra:reset
+```
+
+This command is destructive.
+
+### API environment
+
+When the API runs on the host, use:
+
+```dotenv
+DATABASE_URL=postgresql://booking:booking@localhost:5432/booking_os
+REDIS_URL=redis://localhost:6379/0
+```
+
+The MinIO API is available at `http://localhost:9000`, and Mailpit accepts SMTP on `localhost:1025`.
+
+### Troubleshooting
+
+Validate the rendered Compose model:
+
+```bash
+pnpm infra:config
+```
+
+Inspect status and logs:
+
+```bash
+pnpm infra:ps
+pnpm infra:logs
+```
+
+If a host port is already occupied, change only the corresponding host port in `.env.docker`; container ports remain unchanged.
+
 ## Cấu trúc
 
 - `docs/`: kiến trúc, ADR, backlog và kế hoạch delivery.
