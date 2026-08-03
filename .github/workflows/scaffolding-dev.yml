@@ -13,12 +13,12 @@ permissions:
 
 concurrency:
   group: scaffolding-dev-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,24 +39,6 @@ jobs:
       - name: Generate development lockfile
         run: pnpm install --no-frozen-lockfile
 
-      - name: Upload generated lockfile
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: scaffolding-lockfile-${{ github.sha }}
-          path: pnpm-lock.yaml
-          if-no-files-found: error
-          retention-days: 3
-
-      - name: Test
-        run: pnpm test
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Build
-        run: pnpm build
-
       - name: Persist generated lockfile
         if: github.event_name == 'push'
         run: |
@@ -68,3 +50,150 @@ jobs:
           git add pnpm-lock.yaml
           git commit -m "chore: refresh workspace lockfile"
           git push origin HEAD:${{ github.ref_name }}
+
+      - name: Verify frozen install
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting and repository rules
+        run: pnpm check:ci
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Validate Genesis knowledge
+        run: python tools/genesis_cli.py validate
+
+      - name: Validate Docker Compose configuration
+        run: |
+          cp .env.docker.example .env.docker
+          pnpm infra:config
+
+  smoke:
+    if: github.event_name == 'push'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install and build
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Start local infrastructure
+        run: |
+          cp .env.docker.example .env.docker
+          pnpm infra:up
+
+      - name: Smoke API, web applications, and workers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/booking-os-logs
+
+          cleanup() {
+            for pid in "${CRITICAL_PID:-}" "${BATCH_PID:-}" "${STOREFRONT_PID:-}" "${CONSOLE_PID:-}" "${API_PID:-}"; do
+              if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+                kill -TERM "$pid" 2>/dev/null || true
+                wait "$pid" 2>/dev/null || true
+              fi
+            done
+            pnpm infra:down >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          wait_for_url() {
+            local url="$1"
+            for attempt in $(seq 1 60); do
+              if curl --silent --fail "$url" >/dev/null; then
+                return 0
+              fi
+              sleep 1
+            done
+            echo "Timed out waiting for $url" >&2
+            return 1
+          }
+
+          wait_for_log() {
+            local file="$1"
+            local pattern="$2"
+            for attempt in $(seq 1 60); do
+              if grep --quiet "$pattern" "$file" 2>/dev/null; then
+                return 0
+              fi
+              sleep 1
+            done
+            echo "Timed out waiting for $pattern in $file" >&2
+            cat "$file" >&2 || true
+            return 1
+          }
+
+          pnpm --filter @booking-os/api start > /tmp/booking-os-logs/api.log 2>&1 &
+          API_PID=$!
+          pnpm --filter @booking-os/web-storefront start > /tmp/booking-os-logs/storefront.log 2>&1 &
+          STOREFRONT_PID=$!
+          pnpm --filter @booking-os/web-console start > /tmp/booking-os-logs/console.log 2>&1 &
+          CONSOLE_PID=$!
+          pnpm --filter @booking-os/worker-critical start > /tmp/booking-os-logs/critical.log 2>&1 &
+          CRITICAL_PID=$!
+          pnpm --filter @booking-os/worker-batch start > /tmp/booking-os-logs/batch.log 2>&1 &
+          BATCH_PID=$!
+
+          wait_for_url http://localhost:3001/api/health
+          wait_for_url http://localhost:3000
+          wait_for_url http://localhost:3002
+          wait_for_log /tmp/booking-os-logs/critical.log 'service.ready'
+          wait_for_log /tmp/booking-os-logs/batch.log 'service.ready'
+
+          curl --silent --fail http://localhost:3001/api/health | grep --quiet '"status":"ok"'
+          curl --silent --fail http://localhost:3000 | grep --quiet 'Booking OS'
+          curl --silent --fail http://localhost:3002 | grep --quiet 'Booking OS'
+
+          pnpm --filter @booking-os/worker-critical smoke:enqueue
+          pnpm --filter @booking-os/worker-batch smoke:enqueue
+          wait_for_log /tmp/booking-os-logs/critical.log 'job.completed'
+          wait_for_log /tmp/booking-os-logs/batch.log 'job.completed'
+
+          kill -TERM "$API_PID"
+          wait "$API_PID" || true
+          unset API_PID
+          curl --silent --fail http://localhost:3000 | grep --quiet 'degraded'
+          curl --silent --fail http://localhost:3002 | grep --quiet 'degraded'
+
+          kill -TERM "$CRITICAL_PID" "$BATCH_PID"
+          wait "$CRITICAL_PID"
+          wait "$BATCH_PID"
+          unset CRITICAL_PID BATCH_PID
+
+      - name: Upload smoke logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scaffolding-smoke-logs-${{ github.sha }}
+          path: /tmp/booking-os-logs
+          if-no-files-found: ignore
+          retention-days: 3
