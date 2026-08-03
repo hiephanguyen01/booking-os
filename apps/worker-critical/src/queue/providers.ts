@@ -67,8 +67,11 @@ export const workerProviders: Provider[] = [
   },
   {
     provide: WorkerLifecycleService,
-    inject: [BULLMQ_WORKER_TOKEN, REDIS_CONNECTION_TOKEN],
-    useFactory: (worker: Worker, connection: Redis): WorkerLifecycleService =>
-      new WorkerLifecycleService(worker, connection),
+    inject: [BULLMQ_WORKER_TOKEN, REDIS_CONNECTION_TOKEN, LOGGER_TOKEN],
+    useFactory: (
+      worker: Worker,
+      connection: Redis,
+      logger: StructuredLogger,
+    ): WorkerLifecycleService => new WorkerLifecycleService(worker, connection, logger),
   },
 ];
