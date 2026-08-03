@@ -94,9 +94,9 @@ Redis is supporting infrastructure for holds, cache, rate limiting, queues, and 
 MinIO Community is built from source in `infra/minio/Dockerfile`.
 
 - Builder image: `golang:${MINIO_GO_IMAGE_VERSION}`
-- Default builder version: `1.24.6-alpine3.22`
+- Default builder version: `1.24.13-alpine3.22`
 - Runtime image: `alpine:${MINIO_ALPINE_VERSION}`
-- Default runtime version: `3.22`
+- Default runtime version: `3.22.5`
 - Server source revision: `RELEASE.2025-10-15T17-29-55Z`
 - Client source revision: `RELEASE.2025-08-13T08-35-41Z`
 - Output image: `booking-os/minio:${MINIO_SERVER_VERSION}`
@@ -153,8 +153,8 @@ POSTGRES_PORT=5432
 REDIS_VERSION=8.8.1-alpine
 REDIS_PORT=6379
 
-MINIO_GO_IMAGE_VERSION=1.24.6-alpine3.22
-MINIO_ALPINE_VERSION=3.22
+MINIO_GO_IMAGE_VERSION=1.24.13-alpine3.22
+MINIO_ALPINE_VERSION=3.22.5
 MINIO_SERVER_VERSION=RELEASE.2025-10-15T17-29-55Z
 MINIO_CLIENT_VERSION=RELEASE.2025-08-13T08-35-41Z
 MINIO_ROOT_USER=minio
