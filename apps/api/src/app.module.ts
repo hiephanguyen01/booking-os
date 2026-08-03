@@ -1,8 +1,9 @@
 import { Module } from "@nestjs/common";
 
+import { EnvironmentModule } from "./config/environment.module.js";
 import { HealthModule } from "./health/health.module.js";
 
 @Module({
-  imports: [HealthModule],
+  imports: [EnvironmentModule, HealthModule],
 })
 export class AppModule {}

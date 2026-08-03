@@ -1,18 +1,26 @@
 import type { HealthResponse } from "@booking-os/contracts/health";
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
+
+import { EnvironmentService } from "../config/environment.service.js";
 
 @Injectable()
 export class HealthService {
   private readonly startedAt = process.hrtime.bigint();
 
+  constructor(
+    @Inject(EnvironmentService)
+    private readonly environment: EnvironmentService,
+  ) {}
+
   getHealth(): HealthResponse {
     const uptimeNanoseconds = process.hrtime.bigint() - this.startedAt;
+
     const uptimeSeconds = Number(uptimeNanoseconds) / 1_000_000_000;
 
     return {
       service: "api",
       status: "ok",
-      version: process.env.npm_package_version ?? "0.1.0",
+      version: this.environment.appVersion,
       timestamp: new Date().toISOString(),
       uptimeSeconds: Math.floor(uptimeSeconds),
     };

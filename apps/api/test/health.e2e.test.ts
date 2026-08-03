@@ -9,12 +9,46 @@ import { AppModule } from "../src/app.module.js";
 
 let app: INestApplication;
 
+const originalEnvironment = {
+  NODE_ENV: process.env.NODE_ENV,
+  HOST: process.env.HOST,
+  PORT: process.env.PORT,
+  API_PREFIX: process.env.API_PREFIX,
+  APP_VERSION: process.env.APP_VERSION,
+  LOG_LEVEL: process.env.LOG_LEVEL,
+  DATABASE_URL: process.env.DATABASE_URL,
+  REDIS_URL: process.env.REDIS_URL,
+};
+
+function restoreEnvironmentValue(key: keyof typeof originalEnvironment): void {
+  const originalValue = originalEnvironment[key];
+
+  if (originalValue === undefined) {
+    delete process.env[key];
+    return;
+  }
+
+  process.env[key] = originalValue;
+}
+
 before(async () => {
+  process.env.NODE_ENV = "test";
+  process.env.HOST = "127.0.0.1";
+  process.env.PORT = "3101";
+  process.env.API_PREFIX = "api";
+  process.env.APP_VERSION = "0.1.0-e2e";
+  process.env.LOG_LEVEL = "error";
+
+  process.env.DATABASE_URL = "postgresql://booking:booking@localhost:5432/booking_os_test";
+
+  process.env.REDIS_URL = "redis://localhost:6379/1";
+
   const testingModule = await Test.createTestingModule({
     imports: [AppModule],
   }).compile();
 
   app = testingModule.createNestApplication();
+
   app.setGlobalPrefix("api");
 
   await app.init();
@@ -22,6 +56,10 @@ before(async () => {
 
 after(async () => {
   await app.close();
+
+  for (const key of Object.keys(originalEnvironment) as Array<keyof typeof originalEnvironment>) {
+    restoreEnvironmentValue(key);
+  }
 });
 
 test("GET /api/health returns the liveness response", async () => {
@@ -31,6 +69,7 @@ test("GET /api/health returns the liveness response", async () => {
 
   assert.equal(body.service, "api");
   assert.equal(body.status, "ok");
+  assert.equal(body.version, "0.1.0-e2e");
   assert.equal(typeof body.timestamp, "string");
   assert.equal(typeof body.uptimeSeconds, "number");
 });
