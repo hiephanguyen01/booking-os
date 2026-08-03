@@ -19,7 +19,7 @@
     "@nestjs/core": "11.1.28",
     "bullmq": "5.79.3",
     "dotenv": "17.4.2",
-    "ioredis": "5.10.1",
+    "ioredis": "5.11.1",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "zod": "4.4.3"
