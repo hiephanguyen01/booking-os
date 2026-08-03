@@ -93,10 +93,40 @@ pnpm infra:logs
 
 If a host port is already occupied, change only the corresponding host port in `.env.docker`; container ports remain unchanged.
 
+## Continuous integration
+
+GitHub Actions runs the unified CI workflow for every pull request and every push to `main`.
+
+The workflow reports six independent checks:
+
+- `quality`: formatting, lint, and TypeScript validation.
+- `test`: unit tests.
+- `build`: workspace production builds.
+- `security`: dependency audit and committed-secret scanning.
+- `knowledge`: Genesis artifact validation.
+- `docker-config`: Docker Compose interpolation and schema validation.
+
+The dependency audit blocks `high` and `critical` advisories. Gitleaks scans committed history without posting pull-request comments or uploading SARIF artifacts.
+
+Run the equivalent checks locally:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm check:ci
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm audit --audit-level high
+python tools/genesis_cli.py validate
+cp .env.docker.example .env.docker
+pnpm infra:config
+```
+
 ## Cấu trúc
 
 - `docs/`: kiến trúc, ADR, backlog và kế hoạch delivery.
 - `genesis/`: workflow, role, review checklist, template và business skills.
 - `schemas/`: schema kiểm tra artifact.
 - `tools/`: CLI tối thiểu.
-- `.github/workflows/`: knowledge CI.
+- `.github/workflows/`: unified quality, test, build, security, knowledge, and Docker configuration CI.
