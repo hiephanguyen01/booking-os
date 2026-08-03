@@ -12,7 +12,7 @@ export interface ApiClientErrorOptions {
 
 export class ApiClientError extends Error {
   readonly code: ApiClientErrorCode;
-  readonly status?: number;
+  declare readonly status?: number;
 
   constructor(
     code: ApiClientErrorCode,
