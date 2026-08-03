@@ -53,3 +53,7 @@ Thumbs.db
 tmp/
 temp/
 .cache/
+
+.env.docker
+!.env.docker.example
+compose.override.yaml
