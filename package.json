@@ -17,6 +17,13 @@
     "format": "biome format --write .",
     "check": "biome check .",
     "check:ci": "biome ci .",
+    "infra:config": "docker compose --env-file .env.docker config --quiet",
+    "infra:build": "docker compose --env-file .env.docker build",
+    "infra:up": "docker compose --env-file .env.docker up -d --build",
+    "infra:ps": "docker compose --env-file .env.docker ps",
+    "infra:logs": "docker compose --env-file .env.docker logs -f",
+    "infra:down": "docker compose --env-file .env.docker down",
+    "infra:reset": "docker compose --env-file .env.docker down --volumes --remove-orphans",
     "clean": "turbo run clean && rimraf node_modules .turbo"
   },
   "devDependencies": {
