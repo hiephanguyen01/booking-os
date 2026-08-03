@@ -1,0 +1,30 @@
+{
+  "name": "@booking-os/i18n",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "lint": "biome check src tests",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test --import tsx tests/**/*.test.ts",
+    "clean": "rimraf dist tsconfig.tsbuildinfo"
+  },
+  "devDependencies": {
+    "@booking-os/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "rimraf": "6.0.1",
+    "tsx": "4.20.5",
+    "typescript": "catalog:"
+  }
+}
