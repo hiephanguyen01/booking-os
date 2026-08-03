@@ -646,18 +646,7 @@ Do not add a temporary branch-push trigger or `workflow_dispatch` solely for ver
 
 - [ ] **Step 3: Confirm the six GitHub checks complete successfully**
 
-Verify these exact job IDs or displayed job names:
-
-```text
-quality
- test
-build
-security
-knowledge
-docker-config
-```
-
-Normalize the expected list as:
+Verify this exact job list:
 
 ```text
 quality
