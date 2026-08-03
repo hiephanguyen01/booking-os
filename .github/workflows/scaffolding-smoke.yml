@@ -4,12 +4,15 @@ on:
   push:
     branches:
       - chore/monorepo-scaffolding
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
 
 concurrency:
-  group: scaffolding-runtime-smoke-${{ github.ref }}
+  group: scaffolding-runtime-smoke-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
