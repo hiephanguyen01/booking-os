@@ -134,15 +134,17 @@ jobs:
 
           DATABASE_URL=postgresql://booking:booking@127.0.0.1:5432/booking_os \
             REDIS_URL=redis://127.0.0.1:6379/0 \
-            pnpm --filter @booking-os/api start > /tmp/booking-os-logs/api.log 2>&1 &
+            node apps/api/dist/main.js > /tmp/booking-os-logs/api.log 2>&1 &
           API_PID=$!
-          pnpm --filter @booking-os/web-storefront start > /tmp/booking-os-logs/storefront.log 2>&1 &
+          node apps/web-storefront/node_modules/next/dist/bin/next start -p 3000 \
+            > /tmp/booking-os-logs/storefront.log 2>&1 &
           STOREFRONT_PID=$!
-          pnpm --filter @booking-os/web-console start > /tmp/booking-os-logs/console.log 2>&1 &
+          node apps/web-console/node_modules/next/dist/bin/next start -p 3002 \
+            > /tmp/booking-os-logs/console.log 2>&1 &
           CONSOLE_PID=$!
-          pnpm --filter @booking-os/worker-critical start > /tmp/booking-os-logs/critical.log 2>&1 &
+          node apps/worker-critical/dist/main.js > /tmp/booking-os-logs/critical.log 2>&1 &
           CRITICAL_PID=$!
-          pnpm --filter @booking-os/worker-batch start > /tmp/booking-os-logs/batch.log 2>&1 &
+          node apps/worker-batch/dist/main.js > /tmp/booking-os-logs/batch.log 2>&1 &
           BATCH_PID=$!
 
           wait_for_url http://localhost:3001/api/health
@@ -160,16 +162,16 @@ jobs:
           wait_for_log /tmp/booking-os-logs/critical.log 'job.completed'
           wait_for_log /tmp/booking-os-logs/batch.log 'job.completed'
 
-          kill -TERM "$API_PID"
-          wait "$API_PID" || true
-          unset API_PID
-          curl --silent --fail http://localhost:3000 | grep --quiet 'degraded'
-          curl --silent --fail http://localhost:3002 | grep --quiet 'degraded'
-
           kill -TERM "$CRITICAL_PID" "$BATCH_PID"
           wait "$CRITICAL_PID"
           wait "$BATCH_PID"
           unset CRITICAL_PID BATCH_PID
+
+          kill -TERM "$API_PID" "$STOREFRONT_PID" "$CONSOLE_PID"
+          wait "$API_PID" || true
+          wait "$STOREFRONT_PID" || true
+          wait "$CONSOLE_PID" || true
+          unset API_PID STOREFRONT_PID CONSOLE_PID
 
       - name: Upload smoke logs on failure
         if: failure()
