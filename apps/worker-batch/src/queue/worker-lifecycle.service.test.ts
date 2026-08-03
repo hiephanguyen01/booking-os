@@ -6,7 +6,11 @@ import { WorkerLifecycleService } from "./worker-lifecycle.service.js";
 test("worker lifecycle closes BullMQ before Redis", async () => {
   const order: string[] = [];
   const service = new WorkerLifecycleService(
-    { close: async () => order.push("worker") },
+    {
+      close: async () => {
+        order.push("worker");
+      },
+    },
     {
       quit: async () => {
         order.push("redis");
