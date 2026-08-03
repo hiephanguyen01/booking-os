@@ -2,11 +2,11 @@ import { createApiClient } from "@booking-os/api-client";
 import { getMessage } from "@booking-os/i18n";
 import { StatusCard } from "@booking-os/ui";
 
-import { resolveAppConfig } from "../src/app-config.js";
+import { resolveAppConfig } from "../src/app-config";
 import {
   resolveApiServiceStatus,
   type ApiServiceStatus,
-} from "../src/service-status.js";
+} from "../src/service-status";
 
 export const dynamic = "force-dynamic";
 
