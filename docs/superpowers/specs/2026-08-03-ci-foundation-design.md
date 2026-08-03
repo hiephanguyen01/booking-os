@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved for implementation.
+Approved design; pending written-spec review.
 
 ## Context
 
@@ -138,7 +138,14 @@ Secret scanning uses:
 gitleaks/gitleaks-action@v3
 ```
 
-Configuration:
+The security checkout uses full history:
+
+```yaml
+with:
+  fetch-depth: 0
+```
+
+Gitleaks configuration:
 
 ```yaml
 env:
@@ -225,17 +232,6 @@ Also inspect the workflow to confirm:
 ## Completion criteria
 
 Implementation is complete when these checks pass in GitHub Actions:
-
-```text
-quality
- test
-build
-security
-knowledge
-docker-config
-```
-
-The intended normalized list is:
 
 ```text
 quality
