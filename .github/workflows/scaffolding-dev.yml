@@ -13,7 +13,7 @@ permissions:
 
 concurrency:
   group: scaffolding-dev-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   verify:
@@ -63,7 +63,7 @@ jobs:
   smoke:
     needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -84,10 +84,10 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm build
 
-      - name: Start local infrastructure
+      - name: Start Redis
         run: |
           cp .env.docker.example .env.docker
-          pnpm infra:up
+          docker compose --env-file .env.docker up -d --wait redis
 
       - name: Smoke API, web applications, and workers
         shell: bash
