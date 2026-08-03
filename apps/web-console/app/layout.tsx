@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-import { resolveAppConfig } from "../src/app-config.js";
+import { resolveAppConfig } from "../src/app-config";
 import "./globals.css";
 
 export const metadata: Metadata = {
