@@ -95,9 +95,9 @@ Rules:
 
 All new packages are private ESM workspace packages and use the existing strict TypeScript baseline.
 
-Runtime libraries (`api-client`, `auth`, `i18n`, `observability`, and `testing`) compile JavaScript and declarations to `dist` and expose explicit package exports. Their tests execute against source through the repository test runner, while consumers resolve the compiled package contract during build and typecheck.
+Framework-independent packages (`api-client`, `auth`, `i18n`, `observability`, and `testing`) compile JavaScript and declarations to `dist` and expose explicit package exports. A package's own tests may execute its source through the repository test runner. Other workspaces consume the compiled export contract; Turborepo builds upstream packages first.
 
-`@booking-os/ui` is an internal React source package because Next.js must process its TSX and CSS Modules. It exposes source for runtime consumption, emits declarations for type consumers, and is listed in each Next.js app's `transpilePackages`. Its unit test runner must support React rendering and CSS Module imports.
+`@booking-os/ui` is an internal React source package because Next.js must process its TSX and CSS Modules. Its export map points runtime imports to source and type imports to generated declarations. Each Next.js app lists it in `transpilePackages`. Its unit-test runner must support React rendering and CSS Module imports.
 
 Every package provides the standard scripts applicable to it:
 
@@ -124,12 +124,14 @@ app/
   layout.tsx
   page.tsx
   globals.css
+src/
+  service-status.ts
 next.config.ts
 package.json
 tsconfig.json
 ```
 
-The initial pages are operational shells rather than product UI.
+The initial pages are operational shells rather than product UI. Pure mapping and configuration logic stays outside the page module so it can be unit tested without starting Next.js.
 
 ### Shared package usage
 
@@ -212,7 +214,8 @@ Each worker contains:
 - a BullMQ connection provider;
 - one queue worker provider;
 - a typed sample processor;
-- shutdown lifecycle handling.
+- shutdown lifecycle handling;
+- a local smoke producer for the scaffold job.
 
 Queue names are fixed in the deployment unit:
 
@@ -228,6 +231,8 @@ Each worker accepts a scaffold-only `health-check` job.
 The payload is validated before processing and includes a correlation identifier. A valid job returns a small acknowledgement containing the service and job identity. Invalid payloads fail with a typed validation error.
 
 No domain queue names or handlers are added yet.
+
+Each worker exposes a `smoke:enqueue` script that adds one valid `health-check` job to its queue. The producer is a local verification aid, not a long-running deployment unit.
 
 ### Redis configuration
 
@@ -266,7 +271,9 @@ stop accepting jobs
   -> close Nest application context
 ```
 
-`SIGINT` and `SIGTERM` trigger graceful shutdown. Bootstrap failure sets a non-zero process exit code.
+`SIGINT` and `SIGTERM` trigger graceful shutdown. Bootstrap failure or a fatal Redis/runtime connection failure sets a non-zero process exit code.
+
+A normal job-handler error, including invalid job input, fails that BullMQ job and is logged; it does not terminate the worker process.
 
 Worker unit tests instantiate processors and lifecycle units with test doubles; they do not connect to Redis.
 
@@ -290,7 +297,9 @@ Initial public operation:
 client.health.get(): Promise<HealthResponse>
 ```
 
-The client uses the existing health contract and validates runtime JSON before returning it. Injectable `fetchImplementation` keeps tests deterministic.
+The client uses the existing `HealthResponse` type from `@booking-os/contracts`. Because that package currently exposes types rather than a runtime schema, `api-client` owns a narrow runtime schema for the health response and verifies at compile time that its parsed result is assignable to `HealthResponse`. This avoids silently trusting network JSON without expanding the contract package into the separate OpenAPI work.
+
+Injectable `fetchImplementation` keeps tests deterministic.
 
 OpenAPI generation is deferred to the separate P1 contract-package work.
 
@@ -391,7 +400,7 @@ BullMQ receives health-check job
   -> log job.completed
 ```
 
-Invalid payloads produce `job.failed` logging and a failed BullMQ job.
+Invalid payloads produce `job.failed` logging and a failed BullMQ job while the worker continues processing later jobs.
 
 ## Logging contract
 
@@ -421,6 +430,10 @@ Optional fields are omitted rather than written as `null` or `undefined`. Secret
 - `ui`: render the component with content and representative states; verify accessible output while processing CSS Modules.
 - `testing`: fixture freshness and assertion-helper behavior.
 
+### Web application tests
+
+Each web app tests its pure service-status mapping and local configuration defaults without starting Next.js or making network requests. Shared component rendering remains covered by `@booking-os/ui`.
+
 ### Worker tests
 
 - valid `health-check` payload returns the expected acknowledgement;
@@ -435,6 +448,7 @@ No worker unit test opens a Redis connection.
 Both Next.js applications must:
 
 - pass strict typecheck;
+- pass their pure unit tests;
 - build production output;
 - resolve all workspace imports from a clean checkout;
 - avoid live API calls during build;
@@ -442,7 +456,7 @@ Both Next.js applications must:
 
 Both workers must:
 
-- pass strict typecheck;
+- pass strict typecheck and unit tests;
 - compile to `dist`;
 - bootstrap as Nest standalone contexts;
 - expose testable processors independent of Redis;
@@ -507,7 +521,8 @@ Additional runtime smoke checks:
 
 - start the API and confirm its health endpoint responds;
 - start each web app and confirm its shell renders healthy or degraded status;
-- start Redis and each worker, enqueue a scaffold `health-check` job, and confirm completion;
+- start Redis and each worker;
+- run each worker's `smoke:enqueue` script and confirm the scaffold job completes;
 - send `SIGTERM` to each worker and confirm graceful shutdown logs.
 
 Runtime smoke checks are required before declaring the implementation complete but are not added as CI integration tests in this scope.
@@ -518,7 +533,7 @@ The change is complete when:
 
 - all four new applications run as designed;
 - every new shared package has a real consumer;
-- all shared packages and deployment units pass their unit tests;
+- all shared packages, web apps, and workers pass their specified unit tests;
 - clean-checkout install, formatting, lint, typecheck, test, build, Genesis validation, and Compose validation pass;
 - the lockfile and repository documentation match the final implementation;
 - only the four explicitly delivered Sprint 0 foundation items are marked complete;
