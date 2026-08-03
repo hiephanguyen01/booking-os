@@ -2,13 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Genesis Feature metadata",
   "type": "object",
-  "required": [
-    "id",
-    "title",
-    "domain",
-    "owner",
-    "status"
-  ],
+  "required": ["id", "title", "domain", "owner", "status"],
   "properties": {
     "id": {
       "type": "string",
@@ -27,15 +21,7 @@
       "minLength": 1
     },
     "status": {
-      "enum": [
-        "draft",
-        "review",
-        "approved",
-        "implementing",
-        "verified",
-        "released",
-        "deprecated"
-      ]
+      "enum": ["draft", "review", "approved", "implementing", "verified", "released", "deprecated"]
     }
   },
   "additionalProperties": true

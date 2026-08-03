@@ -2,13 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Genesis ADR metadata",
   "type": "object",
-  "required": [
-    "id",
-    "title",
-    "status",
-    "owner",
-    "date"
-  ],
+  "required": ["id", "title", "status", "owner", "date"],
   "properties": {
     "id": {
       "type": "string",
@@ -19,13 +13,7 @@
       "minLength": 3
     },
     "status": {
-      "enum": [
-        "proposed",
-        "accepted",
-        "superseded",
-        "deprecated",
-        "rejected"
-      ]
+      "enum": ["proposed", "accepted", "superseded", "deprecated", "rejected"]
     },
     "owner": {
       "type": "string",
