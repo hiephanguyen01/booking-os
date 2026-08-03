@@ -27,6 +27,10 @@ test-results/
 !.env.example
 !.env.*.example
 
+# Docker Compose local overrides
+.env.docker
+compose.override.yaml
+
 # Local databases and storage
 *.sqlite
 *.sqlite3
@@ -53,7 +57,3 @@ Thumbs.db
 tmp/
 temp/
 .cache/
-
-.env.docker
-!.env.docker.example
-compose.override.yaml
