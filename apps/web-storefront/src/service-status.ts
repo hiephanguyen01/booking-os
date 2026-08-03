@@ -1,8 +1,11 @@
-import type { HealthResponse } from "@booking-os/contracts/health";
-
 export type ApiServiceStatus =
   | { readonly state: "healthy"; readonly version: string }
   | { readonly state: "degraded"; readonly reason: string };
+
+export interface HealthSnapshot {
+  readonly status: "ok" | "degraded" | "unavailable";
+  readonly version: string;
+}
 
 const DEGRADED_STATUS: ApiServiceStatus = {
   state: "degraded",
@@ -10,7 +13,7 @@ const DEGRADED_STATUS: ApiServiceStatus = {
 };
 
 export async function resolveApiServiceStatus(
-  getHealth: () => Promise<HealthResponse>,
+  getHealth: () => Promise<HealthSnapshot>,
 ): Promise<ApiServiceStatus> {
   try {
     const health = await getHealth();
