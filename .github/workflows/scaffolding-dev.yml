@@ -132,6 +132,18 @@ jobs:
             return 1
           }
 
+          wait_for_expected_shutdown() {
+            local pid="$1"
+            local name="$2"
+            local status=0
+
+            wait "$pid" || status=$?
+            if [ "$status" -ne 0 ] && [ "$status" -ne 143 ]; then
+              echo "$name exited with unexpected status $status" >&2
+              return "$status"
+            fi
+          }
+
           DATABASE_URL=postgresql://booking:booking@127.0.0.1:5432/booking_os \
             REDIS_URL=redis://127.0.0.1:6379/0 \
             node apps/api/dist/main.js > /tmp/booking-os-logs/api.log 2>&1 &
@@ -167,14 +179,14 @@ jobs:
           wait_for_log /tmp/booking-os-logs/batch.log 'job.completed'
 
           kill -TERM "$CRITICAL_PID" "$BATCH_PID"
-          wait "$CRITICAL_PID"
-          wait "$BATCH_PID"
+          wait_for_expected_shutdown "$CRITICAL_PID" worker-critical
+          wait_for_expected_shutdown "$BATCH_PID" worker-batch
           unset CRITICAL_PID BATCH_PID
 
           kill -TERM "$API_PID" "$STOREFRONT_PID" "$CONSOLE_PID"
-          wait "$API_PID" || true
-          wait "$STOREFRONT_PID" || true
-          wait "$CONSOLE_PID" || true
+          wait_for_expected_shutdown "$API_PID" api
+          wait_for_expected_shutdown "$STOREFRONT_PID" web-storefront
+          wait_for_expected_shutdown "$CONSOLE_PID" web-console
           unset API_PID STOREFRONT_PID CONSOLE_PID
 
       - name: Upload smoke logs on failure
