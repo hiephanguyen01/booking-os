@@ -136,11 +136,15 @@ jobs:
             REDIS_URL=redis://127.0.0.1:6379/0 \
             node apps/api/dist/main.js > /tmp/booking-os-logs/api.log 2>&1 &
           API_PID=$!
-          node apps/web-storefront/node_modules/next/dist/bin/next start -p 3000 \
-            > /tmp/booking-os-logs/storefront.log 2>&1 &
+          (
+            cd apps/web-storefront
+            exec node node_modules/next/dist/bin/next start -p 3000
+          ) > /tmp/booking-os-logs/storefront.log 2>&1 &
           STOREFRONT_PID=$!
-          node apps/web-console/node_modules/next/dist/bin/next start -p 3002 \
-            > /tmp/booking-os-logs/console.log 2>&1 &
+          (
+            cd apps/web-console
+            exec node node_modules/next/dist/bin/next start -p 3002
+          ) > /tmp/booking-os-logs/console.log 2>&1 &
           CONSOLE_PID=$!
           node apps/worker-critical/dist/main.js > /tmp/booking-os-logs/critical.log 2>&1 &
           CRITICAL_PID=$!
