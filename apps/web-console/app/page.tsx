@@ -1,17 +1,14 @@
 import { createApiClient } from "@booking-os/api-client";
-import {
-  PERMISSIONS,
-  hasPermission,
-} from "@booking-os/auth";
+import { PERMISSIONS, hasPermission } from "@booking-os/auth";
 import { getMessage } from "@booking-os/i18n";
 import { StatusCard } from "@booking-os/ui";
 
-import { resolveAppConfig } from "../src/app-config.js";
-import { samplePartnerSession } from "../src/sample-session.js";
+import { resolveAppConfig } from "../src/app-config";
+import { samplePartnerSession } from "../src/sample-session";
 import {
   resolveApiServiceStatus,
   type ApiServiceStatus,
-} from "../src/service-status.js";
+} from "../src/service-status";
 
 export const dynamic = "force-dynamic";
 
