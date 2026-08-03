@@ -1,6 +1,9 @@
-import type { StructuredLogger } from "@booking-os/observability";
+import type {
+  LogContext,
+  StructuredLogger,
+} from "@booking-os/observability";
 
-export interface ApiReadyContext {
+export interface ApiReadyContext extends LogContext {
   readonly environment: string;
   readonly address: string;
 }
