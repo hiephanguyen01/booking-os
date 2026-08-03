@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PERMISSIONS, ROLES, hasPermission } from "@booking-os/auth";
+import { hasPermission, PERMISSIONS, ROLES } from "@booking-os/auth";
 
 import { samplePartnerSession } from "./sample-session.js";
 
@@ -11,15 +11,9 @@ test("sample console session uses the partner role", () => {
 });
 
 test("sample partner can manage listings", () => {
-  assert.equal(
-    hasPermission(samplePartnerSession, PERMISSIONS.listingManage),
-    true,
-  );
+  assert.equal(hasPermission(samplePartnerSession, PERMISSIONS.listingManage), true);
 });
 
 test("sample partner cannot manage the platform", () => {
-  assert.equal(
-    hasPermission(samplePartnerSession, PERMISSIONS.platformManage),
-    false,
-  );
+  assert.equal(hasPermission(samplePartnerSession, PERMISSIONS.platformManage), false);
 });

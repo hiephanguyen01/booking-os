@@ -1,16 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type {
-  LogContext,
-  StructuredLogger,
-} from "@booking-os/observability";
+import type { LogContext, StructuredLogger } from "@booking-os/observability";
 import { createHealthCheckJobFixture } from "@booking-os/testing";
 
-import {
-  createHealthCheckProcessor,
-  type HealthCheckJobLike,
-} from "./health-check.js";
+import { createHealthCheckProcessor, type HealthCheckJobLike } from "./health-check.js";
 
 function createLoggerSpy() {
   const childContexts: LogContext[] = [];
@@ -32,8 +26,7 @@ function createLoggerSpy() {
     debug: () => undefined,
     info: (message, context) => infoCalls.push({ message, context }),
     warn: () => undefined,
-    error: (message, error, context) =>
-      errorCalls.push({ message, error, context }),
+    error: (message, error, context) => errorCalls.push({ message, error, context }),
   };
 
   return { logger, childContexts, infoCalls, errorCalls };
@@ -43,18 +36,14 @@ test("health-check processor returns a typed critical worker result", async () =
   const { logger, childContexts, infoCalls } = createLoggerSpy();
   const processor = createHealthCheckProcessor(logger);
 
-  const result = await processor(
-    createHealthCheckJobFixture({ correlationId: "corr-1" }),
-  );
+  const result = await processor(createHealthCheckJobFixture({ correlationId: "corr-1" }));
 
   assert.deepEqual(result, {
     service: "worker-critical",
     jobId: "job-1",
     correlationId: "corr-1",
   });
-  assert.deepEqual(childContexts, [
-    { jobId: "job-1", jobName: "health-check" },
-  ]);
+  assert.deepEqual(childContexts, [{ jobId: "job-1", jobName: "health-check" }]);
   assert.deepEqual(
     infoCalls.map(({ message }) => message),
     ["job.started", "job.completed"],

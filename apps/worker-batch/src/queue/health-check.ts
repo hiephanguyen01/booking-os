@@ -3,9 +3,7 @@ import { z } from "zod";
 
 import { HEALTH_CHECK_JOB_NAME, SERVICE_NAME } from "../config/worker-config.js";
 
-const healthCheckPayloadSchema = z
-  .object({ correlationId: z.string().trim().min(1) })
-  .strict();
+const healthCheckPayloadSchema = z.object({ correlationId: z.string().trim().min(1) }).strict();
 
 export interface HealthCheckJobLike {
   readonly id?: string;

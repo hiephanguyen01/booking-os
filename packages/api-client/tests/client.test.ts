@@ -3,10 +3,7 @@ import test from "node:test";
 
 import { createHealthResponseFixture } from "@booking-os/testing";
 
-import {
-  ApiClientError,
-  createApiClient,
-} from "../src/index.js";
+import { ApiClientError, createApiClient } from "../src/index.js";
 
 async function expectApiClientError(
   operation: () => Promise<unknown>,
@@ -74,18 +71,15 @@ test("rejects invalid health response shapes", async () => {
 test("rejects invalid configuration before fetching", () => {
   assert.throws(
     () => createApiClient({ baseUrl: "ftp://api.example.com" }),
-    (error: unknown) =>
-      error instanceof ApiClientError && error.code === "invalid_config",
+    (error: unknown) => error instanceof ApiClientError && error.code === "invalid_config",
   );
   assert.throws(
     () => createApiClient({ baseUrl: "not a url" }),
-    (error: unknown) =>
-      error instanceof ApiClientError && error.code === "invalid_config",
+    (error: unknown) => error instanceof ApiClientError && error.code === "invalid_config",
   );
   assert.throws(
     () => createApiClient({ baseUrl: "https://api.example.com", timeoutMs: 0 }),
-    (error: unknown) =>
-      error instanceof ApiClientError && error.code === "invalid_config",
+    (error: unknown) => error instanceof ApiClientError && error.code === "invalid_config",
   );
 });
 

@@ -1,7 +1,4 @@
-import {
-  normalizeLocale,
-  type Locale,
-} from "@booking-os/i18n";
+import { type Locale, normalizeLocale } from "@booking-os/i18n";
 
 const DEFAULT_API_BASE_URL = "http://localhost:3001/api";
 

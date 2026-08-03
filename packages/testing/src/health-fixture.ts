@@ -1,7 +1,4 @@
-import type {
-  HealthDependencyStatus,
-  HealthResponse,
-} from "@booking-os/contracts/health";
+import type { HealthDependencyStatus, HealthResponse } from "@booking-os/contracts/health";
 
 export interface HealthResponseFixtureOverrides {
   readonly service?: string;
@@ -16,10 +13,7 @@ function cloneDependencies(
   dependencies: Readonly<Record<string, HealthDependencyStatus>>,
 ): Record<string, HealthDependencyStatus> {
   return Object.fromEntries(
-    Object.entries(dependencies).map(([name, dependency]) => [
-      name,
-      { ...dependency },
-    ]),
+    Object.entries(dependencies).map(([name, dependency]) => [name, { ...dependency }]),
   );
 }
 

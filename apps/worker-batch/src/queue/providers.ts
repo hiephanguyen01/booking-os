@@ -1,6 +1,6 @@
 import { createStructuredLogger, type StructuredLogger } from "@booking-os/observability";
 import type { Provider } from "@nestjs/common";
-import { Worker, type Job } from "bullmq";
+import { type Job, Worker } from "bullmq";
 import { Redis } from "ioredis";
 
 import { parseWorkerConfig, type WorkerConfig } from "../config/worker-config.js";

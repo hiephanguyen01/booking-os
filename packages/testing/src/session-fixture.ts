@@ -1,8 +1,4 @@
-import {
-  ROLES,
-  type Role,
-  type Session,
-} from "@booking-os/auth";
+import { ROLES, type Role, type Session } from "@booking-os/auth";
 
 export interface SessionFixtureOverrides {
   readonly id?: string;
@@ -12,9 +8,7 @@ export interface SessionFixtureOverrides {
   readonly expiresAt?: string;
 }
 
-export function createSessionFixture(
-  overrides: SessionFixtureOverrides = {},
-): Session {
+export function createSessionFixture(overrides: SessionFixtureOverrides = {}): Session {
   return {
     user: {
       id: overrides.id ?? "user-1",

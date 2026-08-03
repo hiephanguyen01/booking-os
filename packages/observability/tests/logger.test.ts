@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  createStructuredLogger,
-  type StructuredLogRecord,
-} from "../src/index.js";
+import { createStructuredLogger, type StructuredLogRecord } from "../src/index.js";
 
 test("writes a structured record with merged child context", () => {
   const records: StructuredLogRecord[] = [];

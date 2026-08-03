@@ -15,12 +15,8 @@ async function enqueueHealthCheck(): Promise<void> {
     port: config.redis.port,
     lazyConnect: true,
     maxRetriesPerRequest: null,
-    ...(config.redis.username === undefined
-      ? {}
-      : { username: config.redis.username }),
-    ...(config.redis.password === undefined
-      ? {}
-      : { password: config.redis.password }),
+    ...(config.redis.username === undefined ? {} : { username: config.redis.username }),
+    ...(config.redis.password === undefined ? {} : { password: config.redis.password }),
   });
   let queue: Queue | undefined;
 

@@ -1,13 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  PERMISSIONS,
-  ROLES,
-  getPermissions,
-  hasPermission,
-  type Session,
-} from "../src/index.js";
+import { getPermissions, hasPermission, PERMISSIONS, ROLES, type Session } from "../src/index.js";
 
 const platformSession: Session = {
   user: {

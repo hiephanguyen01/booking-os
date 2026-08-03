@@ -18,9 +18,7 @@ export async function resolveApiServiceStatus(
   try {
     const health = await getHealth();
 
-    return health.status === "ok"
-      ? { state: "healthy", version: health.version }
-      : DEGRADED_STATUS;
+    return health.status === "ok" ? { state: "healthy", version: health.version } : DEGRADED_STATUS;
   } catch {
     return DEGRADED_STATUS;
   }

@@ -31,11 +31,9 @@ function parseBaseUrl(value: string): URL {
 
     return url;
   } catch (cause) {
-    throw new ApiClientError(
-      "invalid_config",
-      "API base URL must be a valid HTTP(S) URL",
-      { cause },
-    );
+    throw new ApiClientError("invalid_config", "API base URL must be a valid HTTP(S) URL", {
+      cause,
+    });
   }
 }
 
@@ -43,10 +41,7 @@ function parseTimeout(value: number | undefined): number {
   const timeoutMs = value ?? DEFAULT_TIMEOUT_MS;
 
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
-    throw new ApiClientError(
-      "invalid_config",
-      "API timeout must be a positive finite number",
-    );
+    throw new ApiClientError("invalid_config", "API timeout must be a positive finite number");
   }
 
   return timeoutMs;
@@ -54,12 +49,8 @@ function parseTimeout(value: number | undefined): number {
 
 function isAbortError(error: unknown): boolean {
   return (
-    error instanceof DOMException && error.name === "AbortError"
-  ) || (
-    typeof error === "object" &&
-    error !== null &&
-    "name" in error &&
-    error.name === "AbortError"
+    (error instanceof DOMException && error.name === "AbortError") ||
+    (typeof error === "object" && error !== null && "name" in error && error.name === "AbortError")
   );
 }
 
@@ -80,22 +71,18 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       });
 
       if (!response.ok) {
-        throw new ApiClientError(
-          "http",
-          `Health request failed with HTTP ${response.status}`,
-          { status: response.status },
-        );
+        throw new ApiClientError("http", `Health request failed with HTTP ${response.status}`, {
+          status: response.status,
+        });
       }
 
       let payload: unknown;
       try {
         payload = await response.json();
       } catch (cause) {
-        throw new ApiClientError(
-          "invalid_response",
-          "Health response is not valid JSON",
-          { cause },
-        );
+        throw new ApiClientError("invalid_response", "Health response is not valid JSON", {
+          cause,
+        });
       }
 
       const result = healthResponseSchema.safeParse(payload);
@@ -114,18 +101,14 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       }
 
       if (controller.signal.aborted || isAbortError(error)) {
-        throw new ApiClientError(
-          "timeout",
-          `Health request timed out after ${timeoutMs}ms`,
-          { cause: error },
-        );
+        throw new ApiClientError("timeout", `Health request timed out after ${timeoutMs}ms`, {
+          cause: error,
+        });
       }
 
-      throw new ApiClientError(
-        "network",
-        "Health request failed before receiving a response",
-        { cause: error },
-      );
+      throw new ApiClientError("network", "Health request failed before receiving a response", {
+        cause: error,
+      });
     } finally {
       clearTimeout(timeout);
     }

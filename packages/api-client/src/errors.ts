@@ -14,11 +14,7 @@ export class ApiClientError extends Error {
   readonly code: ApiClientErrorCode;
   declare readonly status?: number;
 
-  constructor(
-    code: ApiClientErrorCode,
-    message: string,
-    options: ApiClientErrorOptions = {},
-  ) {
+  constructor(code: ApiClientErrorCode, message: string, options: ApiClientErrorOptions = {}) {
     super(message, { cause: options.cause });
     this.name = "ApiClientError";
     this.code = code;

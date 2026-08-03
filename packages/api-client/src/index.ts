@@ -1,7 +1,7 @@
 export {
-  createApiClient,
   type ApiClient,
   type ApiClientOptions,
+  createApiClient,
 } from "./client.js";
 export {
   ApiClientError,

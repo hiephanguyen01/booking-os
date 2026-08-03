@@ -20,7 +20,8 @@ export const enMessages = {
   "console.description": "Manage booking operations from one unified place.",
   "api.status.title": "API status",
   "api.status.healthy": "The API is operating normally.",
-  "api.status.degraded": "The API is unavailable; the interface remains available in degraded mode.",
+  "api.status.degraded":
+    "The API is unavailable; the interface remains available in degraded mode.",
   "console.session.title": "Demonstration session",
   "console.permission.allowed": "Access is allowed.",
   "console.permission.denied": "Access is denied.",

@@ -3,10 +3,7 @@ import { getMessage } from "@booking-os/i18n";
 import { StatusCard } from "@booking-os/ui";
 
 import { resolveAppConfig } from "../src/app-config";
-import {
-  resolveApiServiceStatus,
-  type ApiServiceStatus,
-} from "../src/service-status";
+import { type ApiServiceStatus, resolveApiServiceStatus } from "../src/service-status";
 
 export const dynamic = "force-dynamic";
 
@@ -34,12 +31,8 @@ export default async function StorefrontPage() {
     <main className="page-shell">
       <section className="hero" aria-labelledby="storefront-title">
         <p className="product-label">Booking OS</p>
-        <h1 id="storefront-title">
-          {getMessage(config.locale, "storefront.title")}
-        </h1>
-        <p className="hero-description">
-          {getMessage(config.locale, "storefront.description")}
-        </p>
+        <h1 id="storefront-title">{getMessage(config.locale, "storefront.title")}</h1>
+        <p className="hero-description">{getMessage(config.locale, "storefront.description")}</p>
       </section>
 
       <StatusCard

@@ -23,11 +23,7 @@ describe("StatusCard", () => {
 
   it("omits the optional eyebrow and supports degraded state", () => {
     const html = renderToStaticMarkup(
-      <StatusCard
-        title="API status"
-        state="degraded"
-        description="API is unavailable"
-      />,
+      <StatusCard title="API status" state="degraded" description="API is unavailable" />,
     );
 
     expect(html).toContain('data-state="degraded"');

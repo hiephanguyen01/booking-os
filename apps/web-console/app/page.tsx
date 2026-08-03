@@ -1,14 +1,11 @@
 import { createApiClient } from "@booking-os/api-client";
-import { PERMISSIONS, hasPermission } from "@booking-os/auth";
+import { hasPermission, PERMISSIONS } from "@booking-os/auth";
 import { getMessage } from "@booking-os/i18n";
 import { StatusCard } from "@booking-os/ui";
 
 import { resolveAppConfig } from "../src/app-config";
 import { samplePartnerSession } from "../src/sample-session";
-import {
-  resolveApiServiceStatus,
-  type ApiServiceStatus,
-} from "../src/service-status";
+import { type ApiServiceStatus, resolveApiServiceStatus } from "../src/service-status";
 
 export const dynamic = "force-dynamic";
 
@@ -27,10 +24,7 @@ async function loadApiStatus(apiBaseUrl: string): Promise<ApiServiceStatus> {
 export default async function ConsolePage() {
   const config = resolveAppConfig();
   const apiStatus = await loadApiStatus(config.apiBaseUrl);
-  const canManageListings = hasPermission(
-    samplePartnerSession,
-    PERMISSIONS.listingManage,
-  );
+  const canManageListings = hasPermission(samplePartnerSession, PERMISSIONS.listingManage);
   const statusDescription =
     apiStatus.state === "healthy"
       ? `${getMessage(config.locale, "api.status.healthy")} API ${apiStatus.version}`
@@ -41,9 +35,7 @@ export default async function ConsolePage() {
       <header className="console-header">
         <p className="product-label">Booking OS</p>
         <h1>{getMessage(config.locale, "console.title")}</h1>
-        <p className="header-description">
-          {getMessage(config.locale, "console.description")}
-        </p>
+        <p className="header-description">{getMessage(config.locale, "console.description")}</p>
       </header>
 
       <section className="console-grid" aria-label="Console overview">
@@ -55,9 +47,7 @@ export default async function ConsolePage() {
         />
 
         <article className="session-card" aria-labelledby="session-title">
-          <p className="card-eyebrow">
-            {getMessage(config.locale, "console.session.title")}
-          </p>
+          <p className="card-eyebrow">{getMessage(config.locale, "console.session.title")}</p>
           <h2 id="session-title">{samplePartnerSession.user.displayName}</h2>
           <dl>
             <div>
@@ -69,9 +59,7 @@ export default async function ConsolePage() {
               <dd>
                 {getMessage(
                   config.locale,
-                  canManageListings
-                    ? "console.permission.allowed"
-                    : "console.permission.denied",
+                  canManageListings ? "console.permission.allowed" : "console.permission.denied",
                 )}
               </dd>
             </div>

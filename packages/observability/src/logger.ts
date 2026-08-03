@@ -5,8 +5,8 @@ import type {
   LogSink,
   LogValue,
   SerializedError,
-  StructuredLogRecord,
   StructuredLogger,
+  StructuredLogRecord,
 } from "./types.js";
 
 const PROTECTED_FIELDS = new Set(["level", "message", "timestamp", "error"]);
@@ -93,9 +93,7 @@ function createBoundLogger(
   };
 }
 
-export function createStructuredLogger(
-  options: CreateStructuredLoggerOptions,
-): StructuredLogger {
+export function createStructuredLogger(options: CreateStructuredLoggerOptions): StructuredLogger {
   return createBoundLogger(
     {
       ...sanitizeContext(options.context),

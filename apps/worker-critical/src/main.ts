@@ -1,23 +1,13 @@
 import "reflect-metadata";
 
-import {
-  createStructuredLogger,
-  type StructuredLogger,
-} from "@booking-os/observability";
+import { createStructuredLogger, type StructuredLogger } from "@booking-os/observability";
 import { NestFactory } from "@nestjs/core";
 import type { Worker } from "bullmq";
 import { config as loadDotenv } from "dotenv";
 
 import { AppModule } from "./app.module.js";
-import {
-  SERVICE_NAME,
-  type WorkerConfig,
-} from "./config/worker-config.js";
-import {
-  BULLMQ_WORKER_TOKEN,
-  LOGGER_TOKEN,
-  WORKER_CONFIG_TOKEN,
-} from "./queue/tokens.js";
+import { SERVICE_NAME, type WorkerConfig } from "./config/worker-config.js";
+import { BULLMQ_WORKER_TOKEN, LOGGER_TOKEN, WORKER_CONFIG_TOKEN } from "./queue/tokens.js";
 
 loadDotenv({
   path: process.env.ENV_FILE ?? ".env",

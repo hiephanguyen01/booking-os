@@ -29,9 +29,7 @@ export const healthResponseSchema: z.ZodType<HealthResponse> = z
     version: z.string().min(1),
     timestamp: z.string().datetime({ offset: true }),
     uptimeSeconds: z.number().finite().nonnegative(),
-    dependencies: z
-      .record(z.string().min(1), healthDependencyStatusSchema)
-      .optional(),
+    dependencies: z.record(z.string().min(1), healthDependencyStatusSchema).optional(),
   })
   .strict()
   .transform(
@@ -41,8 +39,6 @@ export const healthResponseSchema: z.ZodType<HealthResponse> = z
       version: value.version,
       timestamp: value.timestamp,
       uptimeSeconds: value.uptimeSeconds,
-      ...(value.dependencies !== undefined
-        ? { dependencies: value.dependencies }
-        : {}),
+      ...(value.dependencies !== undefined ? { dependencies: value.dependencies } : {}),
     }),
   );

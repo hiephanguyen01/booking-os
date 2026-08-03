@@ -5,10 +5,7 @@ import { NestFactory } from "@nestjs/core";
 import { config as loadDotenv } from "dotenv";
 
 import { AppModule } from "./app.module.js";
-import {
-  logApiBootstrapFailure,
-  logApiReady,
-} from "./bootstrap-events.js";
+import { logApiBootstrapFailure, logApiReady } from "./bootstrap-events.js";
 import { EnvironmentService } from "./config/environment.service.js";
 
 loadDotenv({

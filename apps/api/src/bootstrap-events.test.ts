@@ -1,15 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type {
-  LogContext,
-  StructuredLogger,
-} from "@booking-os/observability";
+import type { LogContext, StructuredLogger } from "@booking-os/observability";
 
-import {
-  logApiBootstrapFailure,
-  logApiReady,
-} from "./bootstrap-events.js";
+import { logApiBootstrapFailure, logApiReady } from "./bootstrap-events.js";
 
 function createLoggerSpy() {
   const infoCalls: Array<{
@@ -27,8 +21,7 @@ function createLoggerSpy() {
     debug: () => undefined,
     info: (message, context) => infoCalls.push({ message, context }),
     warn: () => undefined,
-    error: (message, error, context) =>
-      errorCalls.push({ message, error, context }),
+    error: (message, error, context) => errorCalls.push({ message, error, context }),
   };
 
   return { logger, infoCalls, errorCalls };

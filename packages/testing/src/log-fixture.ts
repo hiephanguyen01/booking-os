@@ -1,8 +1,4 @@
-import type {
-  LogContext,
-  LogLevel,
-  StructuredLogRecord,
-} from "@booking-os/observability";
+import type { LogContext, LogLevel, StructuredLogRecord } from "@booking-os/observability";
 
 export interface LogRecordFixtureOverrides extends LogContext {
   readonly level?: LogLevel;

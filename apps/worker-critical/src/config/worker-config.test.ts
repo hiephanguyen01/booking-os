@@ -3,9 +3,9 @@ import test from "node:test";
 
 import {
   HEALTH_CHECK_JOB_NAME,
+  parseWorkerConfig,
   QUEUE_NAME,
   SERVICE_NAME,
-  parseWorkerConfig,
 } from "./worker-config.js";
 
 test("parseWorkerConfig applies stable worker and Redis defaults", () => {

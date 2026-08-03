@@ -21,13 +21,9 @@ export interface HealthCheckResult {
   readonly correlationId: string;
 }
 
-export type HealthCheckProcessor = (
-  job: HealthCheckJobLike,
-) => Promise<HealthCheckResult>;
+export type HealthCheckProcessor = (job: HealthCheckJobLike) => Promise<HealthCheckResult>;
 
-export function createHealthCheckProcessor(
-  logger: StructuredLogger,
-): HealthCheckProcessor {
+export function createHealthCheckProcessor(logger: StructuredLogger): HealthCheckProcessor {
   return async (job) => {
     const jobId = job.id ?? "unknown";
     const jobLogger = logger.child({ jobId, jobName: job.name });
