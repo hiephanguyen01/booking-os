@@ -1,6 +1,6 @@
 import { Queue } from "bullmq";
 import { config as loadDotenv } from "dotenv";
-import Redis from "ioredis";
+import { Redis } from "ioredis";
 
 import { parseWorkerConfig } from "../config/worker-config.js";
 
