@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved design; pending written-spec review.
+Approved for implementation.
 
 ## Context
 
@@ -17,7 +17,7 @@ The repository is private and GitHub Advanced Security is not assumed to be enab
 - Run CI for every pull request and every push to `main`.
 - Provide independent, parallel feedback for quality, tests, builds, security, knowledge validation, and Docker Compose configuration.
 - Block merges when dependency advisories are `high` or `critical`.
-- Detect committed secrets without granting write permissions or requiring repository secrets.
+- Detect committed secrets without granting write permissions or requiring repository-defined secrets.
 - Consolidate the existing knowledge workflow into one primary CI workflow.
 - Keep the workflow understandable and easy to run locally.
 
@@ -35,19 +35,9 @@ The repository is private and GitHub Advanced Security is not assumed to be enab
 
 ## Workflow structure
 
-Create:
+Create `.github/workflows/ci.yml` and remove `.github/workflows/knowledge-ci.yml`.
 
-```text
-.github/workflows/ci.yml
-```
-
-Remove:
-
-```text
-.github/workflows/knowledge-ci.yml
-```
-
-The workflow triggers on:
+The workflow triggers on every pull request and every push to `main`:
 
 ```yaml
 on:
@@ -57,7 +47,7 @@ on:
       - main
 ```
 
-Use concurrency scoped to the workflow and current ref so a newer run cancels an older run for the same pull request or branch.
+Use concurrency scoped to the workflow and current pull request or ref so a newer run cancels an older run for the same change.
 
 Use workflow-level minimum permissions:
 
@@ -66,7 +56,7 @@ permissions:
   contents: read
 ```
 
-Do not use `pull_request_target`, write permissions, or repository secrets.
+Do not use `pull_request_target`, write permissions, or repository-defined secrets. The automatically provided `github.token` may be passed to Gitleaks for GitHub API access while comments and artifact uploads remain disabled.
 
 ## Runtime and dependency setup
 
@@ -86,9 +76,7 @@ The workflow contains six independent jobs. No job depends on another job.
 
 ### `quality`
 
-Purpose: validate formatting, lint rules, and TypeScript correctness.
-
-Commands:
+Run:
 
 ```bash
 pnpm check:ci
@@ -98,21 +86,17 @@ pnpm typecheck
 
 ### `test`
 
-Purpose: run the repository unit-test suite.
-
-Command:
+Run:
 
 ```bash
 pnpm test
 ```
 
-End-to-end tests are not added to this commit because the current CI foundation does not start the complete runtime stack.
+End-to-end tests are outside this commit because the workflow does not start the complete runtime stack.
 
 ### `build`
 
-Purpose: prove all buildable workspace packages compile successfully.
-
-Command:
+Run:
 
 ```bash
 pnpm build
@@ -122,9 +106,7 @@ No build artifacts are uploaded.
 
 ### `security`
 
-Purpose: gate severe dependency advisories and detect committed secrets.
-
-Dependency command:
+Run dependency auditing with:
 
 ```bash
 pnpm audit --audit-level high
@@ -132,39 +114,34 @@ pnpm audit --audit-level high
 
 This fails for `high` and `critical` advisories. Lower severities do not block the workflow.
 
-Secret scanning uses:
+Use the supported Gitleaks action major:
 
 ```text
-gitleaks/gitleaks-action@v3
+gitleaks/gitleaks-action@v2
 ```
 
-The security checkout uses full history:
+The security checkout fetches full history:
 
 ```yaml
 with:
   fetch-depth: 0
 ```
 
-Gitleaks configuration:
+Configure Gitleaks with:
 
 ```yaml
 env:
+  GITHUB_TOKEN: ${{ github.token }}
   GITLEAKS_ENABLE_COMMENTS: "false"
   GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
   GITLEAKS_ENABLE_SUMMARY: "true"
 ```
 
-The job does not use `continue-on-error`. Registry failures and scanner failures remain visible and fail the job.
+The repository belongs to a personal account, so a `GITLEAKS_LICENSE` secret is not required. The job does not use `continue-on-error`; registry failures and scanner failures fail the job.
 
 ### `knowledge`
 
-Purpose: preserve the existing knowledge-governance validation.
-
-Setup:
-
-- Python 3.12.
-
-Command:
+Use Python 3.12 and run:
 
 ```bash
 python tools/genesis_cli.py validate
@@ -172,38 +149,32 @@ python tools/genesis_cli.py validate
 
 ### `docker-config`
 
-Purpose: validate Compose interpolation and schema without building MinIO or starting services.
-
-Commands:
+Validate Compose interpolation and schema without building images or starting services:
 
 ```bash
 cp .env.docker.example .env.docker
 pnpm infra:config
 ```
 
-The copied `.env.docker` remains untracked and exists only for the job workspace.
+The copied `.env.docker` remains ignored and exists only in the job workspace.
 
 ## Failure handling and timeouts
 
 - Every job defines `timeout-minutes`.
 - No validation step uses `continue-on-error`.
-- Jobs remain independent so a failure in one category does not prevent other categories from reporting.
+- Jobs remain independent so one failure does not prevent other categories from reporting.
 - Dependency registry failures fail `security`; they are not silently ignored.
 - No job writes comments, commits, artifacts, releases, or repository settings.
 
 ## Repository documentation changes
 
-Update `README.md` with:
+Update `README.md` with the six CI checks, equivalent local commands, and the `high`/`critical` dependency threshold.
 
-- The CI checks that run on pull requests and `main`.
-- The equivalent local commands.
-- The dependency threshold used by the security job.
-
-Update `docs/backlog/SPRINT-0.md` to mark the CI foundation item complete only after the workflow and local verification pass.
+Update `docs/backlog/SPRINT-0.md` to mark the CI foundation and Genesis CI integration complete only after the workflow and local verification pass.
 
 ## Local verification
 
-Run before considering implementation complete:
+Run:
 
 ```bash
 pnpm install --frozen-lockfile
@@ -218,13 +189,13 @@ cp .env.docker.example .env.docker
 pnpm infra:config
 ```
 
-Also inspect the workflow to confirm:
+Also confirm:
 
 - YAML is valid.
 - `knowledge-ci.yml` has been removed.
 - `pull_request_target` is absent.
 - Workflow permissions are read-only.
-- No repository secrets are referenced.
+- No repository-defined secrets are referenced.
 - Triggers are limited to pull requests and pushes to `main`.
 - Gitleaks comments and artifact uploads are disabled.
 - All six jobs have explicit timeouts and no inter-job dependencies.
