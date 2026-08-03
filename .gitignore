@@ -1,11 +1,55 @@
-.turbo
+# Dependencies
+node_modules/
 
-.next
+# Package manager
+.pnpm-store/
 
-coverage
+# Build outputs
+dist/
+build/
+out/
+.next/
+.turbo/
 
-.env*
+# Test outputs
+coverage/
+playwright-report/
+test-results/
 
-dist
+# Runtime files
+*.pid
+*.pid.lock
+*.log
 
-node_modules
+# Environment
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Local databases and storage
+*.sqlite
+*.sqlite3
+data/
+storage/
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Operating systems
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+
+# Sentry
+.sentryclirc
+
+# Temporary files
+tmp/
+temp/
+.cache/
