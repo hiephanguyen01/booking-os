@@ -85,6 +85,24 @@ importers:
         specifier: 'catalog:'
         version: 5.9.3
 
+  packages/auth:
+    devDependencies:
+      '@booking-os/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.18.0
+      rimraf:
+        specifier: 6.0.1
+        version: 6.0.1
+      tsx:
+        specifier: 4.20.5
+        version: 4.20.5
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
   packages/contracts:
     devDependencies:
       '@booking-os/typescript-config':
