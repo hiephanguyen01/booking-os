@@ -38,6 +38,9 @@ importers:
       '@booking-os/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@booking-os/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@nestjs/common':
         specifier: 11.1.28
         version: 11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)
