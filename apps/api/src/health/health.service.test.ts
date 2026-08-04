@@ -1,72 +1,67 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { Environment } from "../config/environment.schema.js";
+import type { HealthResponse } from "@booking-os/contracts";
 
-import { EnvironmentService } from "../config/environment.service.js";
 import { HealthService } from "./health.service.js";
-import type { ReadinessChecker, ReadinessDependencies } from "./readiness-checker.js";
+import type { HealthResponseFactory } from "./health-response.factory.js";
+import type { ReadinessCoordinator, ReadinessResult } from "./readiness-coordinator.js";
 
-const testEnvironment: Environment = {
-  nodeEnvironment: "test",
-  host: "127.0.0.1",
-  port: 3101,
-  apiPrefix: "api",
-  appVersion: "0.1.0-test",
-  logLevel: "debug",
-  databaseUrl: "postgresql://booking:booking@localhost:5432/booking_os_test",
-  redisUrl: "redis://localhost:6379/1",
-  sessionSecret: "test-only-session-secret-at-least-32-characters",
-  paymentProvider: "mock",
+const healthResponse: HealthResponse = {
+  service: "api",
+  status: "ok",
+  version: "0.1.0-test",
+  timestamp: "2026-08-04T03:50:00.000Z",
+  uptimeSeconds: 10,
 };
 
-function createHealthService(
-  dependencies: ReadinessDependencies = {
-    postgres: { status: "ok" },
-    redis: { status: "ok" },
+const readinessResult: ReadinessResult = {
+  statusCode: 503,
+  body: {
+    ...healthResponse,
+    status: "unavailable",
+    dependencies: {
+      postgresql: { status: "ok", latencyMs: 3 },
+      redis: { status: "unavailable", latencyMs: 5, message: "connection_failed" },
+    },
   },
-): HealthService {
-  const environment = new EnvironmentService(testEnvironment);
-  const readinessChecker = {
-    check: async () => dependencies,
-  } as ReadinessChecker;
+};
 
-  return new HealthService(environment, readinessChecker);
-}
+test("getHealth delegates to the response factory without calling readiness", () => {
+  let healthCalls = 0;
+  let readinessCalls = 0;
+  const responses = {
+    createHealth() {
+      healthCalls += 1;
+      return healthResponse;
+    },
+  } as HealthResponseFactory;
+  const coordinator = {
+    async getReadiness() {
+      readinessCalls += 1;
+      return readinessResult;
+    },
+  } as ReadinessCoordinator;
+  const service = new HealthService(responses, coordinator);
 
-test("getHealth returns the API liveness contract", () => {
-  const service = createHealthService();
-  const response = service.getHealth();
-
-  assert.equal(response.service, "api");
-  assert.equal(response.status, "ok");
-  assert.equal(response.version, "0.1.0-test");
-
-  assert.match(response.timestamp, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
-
-  assert.ok(response.uptimeSeconds >= 0);
+  assert.equal(service.getHealth(), healthResponse);
+  assert.equal(healthCalls, 1);
+  assert.equal(readinessCalls, 0);
 });
 
-test("getReadiness returns dependency information", async () => {
-  const service = createHealthService({
-    postgres: { status: "ok", latencyMs: 7 },
-    redis: { status: "ok", latencyMs: 2 },
-  });
-  const response = await service.getReadiness();
+test("getReadiness forwards the request ID and returns the coordinator result", async () => {
+  let receivedRequestId: string | undefined;
+  const responses = {
+    createHealth: () => healthResponse,
+  } as HealthResponseFactory;
+  const coordinator = {
+    async getReadiness(requestId?: string) {
+      receivedRequestId = requestId;
+      return readinessResult;
+    },
+  } as ReadinessCoordinator;
+  const service = new HealthService(responses, coordinator);
 
-  assert.equal(response.status, "ok");
-  assert.deepEqual(response.dependencies, {
-    postgres: { status: "ok", latencyMs: 7 },
-    redis: { status: "ok", latencyMs: 2 },
-  });
-});
-
-test("getReadiness becomes unavailable when a required dependency is down", async () => {
-  const service = createHealthService({
-    postgres: { status: "unavailable", message: "connection_failed" },
-    redis: { status: "ok" },
-  });
-  const response = await service.getReadiness();
-
-  assert.equal(response.status, "unavailable");
+  assert.equal(await service.getReadiness("request-1"), readinessResult);
+  assert.equal(receivedRequestId, "request-1");
 });
