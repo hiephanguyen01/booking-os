@@ -50,4 +50,8 @@ export class EnvironmentService {
   get redisUrl(): string {
     return this.values.redisUrl;
   }
+
+  get readinessTimeoutMs(): number {
+    return this.values.readinessTimeoutMs;
+  }
 }
