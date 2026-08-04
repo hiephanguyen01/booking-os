@@ -53,10 +53,12 @@ test("generates the contract without binding a port or reaching infrastructure",
     });
 
     assert.equal(result.status, 0, `generator failed:\n${result.stdout}\n${result.stderr}`);
-    const document = JSON.parse(await readFile(outputPath, "utf8")) as {
+    const source = await readFile(outputPath, "utf8");
+    const document = JSON.parse(source) as {
       readonly paths: Readonly<Record<string, unknown>>;
     };
     assert.deepEqual(Object.keys(document.paths), ["/api/health", "/api/ready"]);
+    process.stdout.write(`OPENAPI_BASELINE_START\n${source}OPENAPI_BASELINE_END\n`);
   } finally {
     await reservedPort.close();
     await rm(temporaryDirectory, { force: true, recursive: true });
