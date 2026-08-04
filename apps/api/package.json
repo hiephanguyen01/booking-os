@@ -11,10 +11,11 @@
     "typecheck": "prisma generate && tsc -p tsconfig.json --noEmit",
     "test": "prisma generate && node --test --import tsx \"src/**/*.test.ts\" \"test/**/*.test.ts\"",
     "test:e2e": "prisma generate && node --test --import tsx \"test/**/*.test.ts\"",
+    "openapi:generate": "tsx src/openapi/generate-openapi.ts",
     "prisma:validate": "prisma validate",
     "prisma:generate": "prisma generate",
     "prisma:migrate:deploy": "prisma migrate deploy",
-    "prisma:seed": "prisma generate && prisma db seed",
+    "prisma:seed": "tsx prisma/seed.ts",
     "clean": "rimraf dist tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo"
   },
   "prisma": {
@@ -26,6 +27,7 @@
     "@nestjs/common": "11.1.28",
     "@nestjs/core": "11.1.28",
     "@nestjs/platform-express": "11.1.28",
+    "@nestjs/swagger": "11.4.6",
     "@prisma/client": "6.19.3",
     "dotenv": "17.4.2",
     "ioredis": "5.11.1",
