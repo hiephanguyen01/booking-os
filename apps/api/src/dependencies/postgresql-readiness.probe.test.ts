@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-
-import { PostgreSQLReadinessProbe } from "./postgresql-readiness.probe.js";
 import type { PostgresPoolPort } from "./ports.js";
+import { PostgreSQLReadinessProbe } from "./postgresql-readiness.probe.js";
 
 function createClock(...values: number[]): () => number {
   let index = 0;
@@ -40,14 +39,11 @@ test("rejects unexpected PostgreSQL result shapes safely", async () => {
     },
   };
 
-  assert.deepEqual(
-    await new PostgreSQLReadinessProbe(pool, createClock(1, 2)).check(),
-    {
-      status: "unavailable",
-      latencyMs: 1,
-      message: "unexpected_response",
-    },
-  );
+  assert.deepEqual(await new PostgreSQLReadinessProbe(pool, createClock(1, 2)).check(), {
+    status: "unavailable",
+    latencyMs: 1,
+    message: "unexpected_response",
+  });
 });
 
 test("classifies PostgreSQL connection failures without raw details", async () => {
