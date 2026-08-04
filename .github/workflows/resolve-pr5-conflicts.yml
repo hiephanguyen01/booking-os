@@ -6,7 +6,7 @@ on:
       - feat/booking-os-pilot-foundation
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   diagnose:
@@ -19,17 +19,31 @@ jobs:
           ref: feat/booking-os-pilot-foundation
           fetch-depth: 0
 
-      - name: Diagnose merge conflicts against main
+      - name: Persist merge conflict list
         shell: bash
         run: |
-          set +e
+          set -euo pipefail
+
+          if [[ -f docs/tmp/pr5-conflicts.txt ]]; then
+            echo "Conflict diagnostics already persisted."
+            exit 0
+          fi
+
           git fetch origin main
+          set +e
           git merge --no-commit --no-ff origin/main
           merge_status=$?
-          echo "merge_status=${merge_status}"
-          echo "conflicted_files_begin"
-          git diff --name-only --diff-filter=U
-          echo "conflicted_files_end"
-          git status --short
+          set -e
+
+          mkdir -p docs/tmp
+          {
+            echo "merge_status=${merge_status}"
+            git diff --name-only --diff-filter=U
+          } > docs/tmp/pr5-conflicts.txt
+
           git merge --abort >/dev/null 2>&1 || true
-          exit 1
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/tmp/pr5-conflicts.txt
+          git commit -m "chore: record PR 5 merge conflicts"
+          git push origin HEAD:feat/booking-os-pilot-foundation
