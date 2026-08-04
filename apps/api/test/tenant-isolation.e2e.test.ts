@@ -6,11 +6,12 @@ import { TENANT_A_ID, TENANT_B_ID } from "@booking-os/testing";
 import type { Environment } from "../src/config/environment.schema.js";
 import { EnvironmentService } from "../src/config/environment.service.js";
 import { PrismaService } from "../src/database/prisma.service.js";
-import { TenantContextService } from "../src/tenancy/tenant-context.service.js";
+import { runTenantTestTransaction } from "./support/tenant-test-transaction.js";
 
 const testEnvironment: Environment = {
   nodeEnvironment: "test",
   host: "127.0.0.1",
+  trustProxy: false,
   port: 3101,
   apiPrefix: "api",
   appVersion: "0.1.0-e2e",
@@ -24,11 +25,10 @@ const testEnvironment: Environment = {
 };
 
 let prisma: PrismaService;
-let tenantContext: TenantContextService;
 let tenantBProbeId: string;
 
 async function replaceTenantProbe(tenantId: string, value: string): Promise<string> {
-  return tenantContext.runInTenant(tenantId, async (transaction) => {
+  return runTenantTestTransaction(prisma, tenantId, async (transaction) => {
     await transaction.tenantProbe.deleteMany();
     const probe = await transaction.tenantProbe.create({
       data: { tenantId, value },
@@ -40,7 +40,6 @@ async function replaceTenantProbe(tenantId: string, value: string): Promise<stri
 
 before(async () => {
   prisma = new PrismaService(new EnvironmentService(testEnvironment));
-  tenantContext = new TenantContextService(prisma);
 
   await prisma.$connect();
   await prisma.tenant.upsert({
@@ -59,10 +58,10 @@ before(async () => {
 });
 
 after(async () => {
-  await tenantContext.runInTenant(TENANT_A_ID, (transaction) =>
+  await runTenantTestTransaction(prisma, TENANT_A_ID, (transaction) =>
     transaction.tenantProbe.deleteMany(),
   );
-  await tenantContext.runInTenant(TENANT_B_ID, (transaction) =>
+  await runTenantTestTransaction(prisma, TENANT_B_ID, (transaction) =>
     transaction.tenantProbe.deleteMany(),
   );
   await prisma.tenant.deleteMany({ where: { id: { in: [TENANT_A_ID, TENANT_B_ID] } } });
@@ -70,7 +69,7 @@ after(async () => {
 });
 
 test("tenant A cannot read tenant B rows", async () => {
-  const rowsForA = await tenantContext.runInTenant(TENANT_A_ID, (transaction) =>
+  const rowsForA = await runTenantTestTransaction(prisma, TENANT_A_ID, (transaction) =>
     transaction.tenantProbe.findMany({ orderBy: { id: "asc" } }),
   );
 
@@ -86,7 +85,7 @@ test("tenant A cannot read tenant B rows", async () => {
 
 test("tenant A cannot insert a row owned by tenant B", async () => {
   await assert.rejects(
-    tenantContext.runInTenant(TENANT_A_ID, (transaction) =>
+    runTenantTestTransaction(prisma, TENANT_A_ID, (transaction) =>
       transaction.tenantProbe.create({
         data: { tenantId: TENANT_B_ID, value: "forbidden" },
       }),
@@ -95,7 +94,7 @@ test("tenant A cannot insert a row owned by tenant B", async () => {
 });
 
 test("tenant A cannot fetch tenant B data by raw primary key", async () => {
-  const row = await tenantContext.runInTenant(TENANT_A_ID, (transaction) =>
+  const row = await runTenantTestTransaction(prisma, TENANT_A_ID, (transaction) =>
     transaction.tenantProbe.findUnique({ where: { id: tenantBProbeId } }),
   );
 
