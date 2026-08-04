@@ -1,8 +1,8 @@
 import "reflect-metadata";
 
 import {
-  INTERNAL_API_METADATA,
   type ApiVisibility,
+  INTERNAL_API_METADATA,
   SUPPORTED_API_METADATA,
 } from "./api-visibility.decorator.js";
 
@@ -25,10 +25,7 @@ function visibilityAt(target: object): ApiVisibility | undefined {
   return undefined;
 }
 
-export function resolveApiVisibility(
-  controller: ControllerType,
-  handler: Handler,
-): ApiVisibility {
+export function resolveApiVisibility(controller: ControllerType, handler: Handler): ApiVisibility {
   const methodVisibility = visibilityAt(handler);
   if (methodVisibility !== undefined) {
     return methodVisibility;
