@@ -67,3 +67,26 @@ test("serializes non-Error failures", () => {
     message: "bad payload",
   });
 });
+
+test("merges dynamic request context into each log record", () => {
+  const records: StructuredLogRecord[] = [];
+  let requestId = "req-1";
+  const logger = createStructuredLogger({
+    service: "api",
+    sink: (record) => records.push(record),
+    now: () => new Date("2026-08-04T04:30:00.000Z"),
+    contextProvider: () => ({
+      requestId,
+      traceId: "550e8400-e29b-41d4-a716-446655440000",
+    }),
+  });
+
+  logger.info("request.started");
+  requestId = "req-2";
+  logger.info("request.completed", { tenantId: "tenant-1" });
+
+  assert.equal(records[0]?.requestId, "req-1");
+  assert.equal(records[1]?.requestId, "req-2");
+  assert.equal(records[1]?.traceId, "550e8400-e29b-41d4-a716-446655440000");
+  assert.equal(records[1]?.tenantId, "tenant-1");
+});
