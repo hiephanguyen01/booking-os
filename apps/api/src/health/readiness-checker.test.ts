@@ -5,11 +5,7 @@ import type { HealthDependencyStatus } from "@booking-os/contracts/health";
 
 import type { Environment } from "../config/environment.schema.js";
 import { EnvironmentService } from "../config/environment.service.js";
-import {
-  DependencyProbe,
-  PostgresDependencyProbe,
-  ReadinessChecker,
-} from "./readiness-checker.js";
+import { DependencyProbe, PostgresDependencyProbe, ReadinessChecker } from "./readiness-checker.js";
 
 const testEnvironment: Environment = {
   nodeEnvironment: "test",
