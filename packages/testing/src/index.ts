@@ -16,3 +16,10 @@ export {
   createSessionFixture,
   type SessionFixtureOverrides,
 } from "./session-fixture.js";
+export {
+  createTenantFixture,
+  TENANT_A_ID,
+  TENANT_B_ID,
+  type TenantFixture,
+  type TenantFixtureOverrides,
+} from "./tenant-fixture.js";
