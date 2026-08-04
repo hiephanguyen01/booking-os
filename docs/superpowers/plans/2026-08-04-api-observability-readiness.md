@@ -78,7 +78,7 @@
 - Modify `apps/api/test/health.e2e.test.ts`: deterministic full-HTTP behavior with provider overrides.
 - Modify `README.md`: runtime contract and smoke commands.
 - Modify `docs/backlog/SPRINT-0.md`: checkbox only after final evidence.
-- Temporarily create then delete `.github/workflows/api-runtime-smoke.yml` and `.github/scripts/api-runtime-smoke.sh`.
+- Temporarily create then delete `.github/workflows/api-runtime-smoke.yml`, `.github/scripts/api-runtime-smoke.sh`, and `apps/api/test/runtime-smoke-app.ts`.
 
 ---
 
@@ -965,17 +965,18 @@ git commit -m "docs: describe API readiness and request observability"
 
 ---
 
-### Task 11: Run real outage/recovery smoke, final checks, and close the backlog item
+### Task 11: Run real startup/outage/recovery smoke, final checks, and close the backlog item
 
 **Files:**
 - Temporarily create: `.github/workflows/api-runtime-smoke.yml`
 - Temporarily create: `.github/scripts/api-runtime-smoke.sh`
-- Delete before final tree: both temporary files.
+- Temporarily create: `apps/api/test/runtime-smoke-app.ts`
+- Delete before final tree: all three temporary files.
 - Modify after all evidence passes: `docs/backlog/SPRINT-0.md`
 
 **Interfaces:**
-- Consumes: complete branch.
-- Produces: recorded real-infrastructure evidence, clean final tree, green CI, completed checkbox.
+- Consumes: complete branch and real Docker PostgreSQL/Redis.
+- Produces: evidence for lazy startup, liveness/readiness separation, outage recovery, real `500` normalization, safe logs, shutdown, clean final tree, and green CI.
 
 - [ ] **Step 1: Run clean verification**
 
@@ -994,7 +995,50 @@ pnpm infra:config
 
 All commands must PASS without relaxing gates.
 
-- [ ] **Step 2: Create the temporary workflow**
+- [ ] **Step 2: Create the temporary runtime harness**
+
+Create `apps/api/test/runtime-smoke-app.ts`:
+
+```ts
+import "reflect-metadata";
+
+import { Controller, Get, Module } from "@nestjs/common";
+import { NestFactory } from "@nestjs/core";
+
+import { AppModule } from "../src/app.module.js";
+import { EnvironmentService } from "../src/config/environment.service.js";
+
+@Controller("runtime-smoke")
+class RuntimeSmokeController {
+  @Get("boom")
+  boom(): never {
+    throw new Error("runtime smoke internal detail");
+  }
+}
+
+@Module({
+  imports: [AppModule],
+  controllers: [RuntimeSmokeController],
+})
+class RuntimeSmokeModule {}
+
+async function bootstrap(): Promise<void> {
+  const app = await NestFactory.create(RuntimeSmokeModule, { bufferLogs: true });
+  const environment = app.get(EnvironmentService);
+
+  app.enableShutdownHooks();
+  app.setGlobalPrefix(environment.apiPrefix);
+  await app.listen(environment.port, environment.host);
+}
+
+bootstrap().catch(() => {
+  process.exitCode = 1;
+});
+```
+
+This imports the real `AppModule` and adds only a temporary error route for the smoke run.
+
+- [ ] **Step 3: Create the temporary workflow**
 
 ```yaml
 name: API Runtime Smoke
@@ -1024,7 +1068,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: cp .env.docker.example .env.docker
-      - run: docker compose --env-file .env.docker up -d postgres redis
+      - run: docker compose --env-file .env.docker up -d postgres
       - run: pnpm --filter @booking-os/api build
       - name: Verify runtime behavior
         run: bash .github/scripts/api-runtime-smoke.sh
@@ -1039,9 +1083,11 @@ jobs:
         run: docker compose --env-file .env.docker down --volumes --remove-orphans
 ```
 
-- [ ] **Step 3: Create the executable temporary smoke script**
+Redis is deliberately absent when the API starts.
 
-Create `.github/scripts/api-runtime-smoke.sh` with:
+- [ ] **Step 4: Create the executable smoke script**
+
+Create `.github/scripts/api-runtime-smoke.sh`:
 
 ```bash
 #!/usr/bin/env bash
@@ -1053,9 +1099,8 @@ export REDIS_URL=redis://localhost:6379/0
 export READINESS_TIMEOUT_MS=500
 
 timeout 90 bash -c 'until docker compose --env-file .env.docker exec -T postgres pg_isready -U booking -d booking_os; do sleep 1; done'
-timeout 60 bash -c 'until docker compose --env-file .env.docker exec -T redis redis-cli ping | grep -q PONG; do sleep 1; done'
 
-node apps/api/dist/main.js > api.log 2>&1 &
+pnpm --filter @booking-os/api exec tsx test/runtime-smoke-app.ts > api.log 2>&1 &
 API_PID=$!
 cleanup() {
   if [ "${API_PID:-0}" -gt 0 ]; then
@@ -1067,34 +1112,43 @@ trap cleanup EXIT
 
 timeout 60 bash -c 'until curl --fail --silent http://127.0.0.1:3001/api/health >/dev/null; do sleep 1; done'
 
-curl --fail --silent -H 'x-request-id: health-silent' -D health.headers http://127.0.0.1:3001/api/health > health.json
-grep -qi '^x-request-id: health-silent' health.headers
+curl --fail --silent -H 'x-request-id: health-redis-down' -D health.headers http://127.0.0.1:3001/api/health > health.json
+grep -qi '^x-request-id: health-redis-down' health.headers
 jq -e '.status == "ok"' health.json
 
+STARTUP_READY_STATUS=$(curl --silent --output startup-ready.json --write-out '%{http_code}' -H 'x-request-id: startup-redis-down' http://127.0.0.1:3001/api/ready)
+test "$STARTUP_READY_STATUS" = "503"
+jq -e '.status == "unavailable" and .dependencies.postgresql.status == "ok" and .dependencies.redis.status == "unavailable"' startup-ready.json
+
+docker compose --env-file .env.docker up -d redis
+timeout 60 bash -c 'until docker compose --env-file .env.docker exec -T redis redis-cli ping | grep -q PONG; do sleep 1; done'
+sleep 2
 curl --fail --silent -H 'x-request-id: ready-healthy' http://127.0.0.1:3001/api/ready > ready.json
 jq -e '.status == "ok" and .dependencies.postgresql.status == "ok" and .dependencies.redis.status == "ok"' ready.json
 
 docker compose --env-file .env.docker stop redis
 sleep 2
-READY_STATUS=$(curl --silent --output ready-down.json --write-out '%{http_code}' -H 'x-request-id: ready-redis-down' http://127.0.0.1:3001/api/ready)
-test "$READY_STATUS" = "503"
-jq -e '.status == "unavailable" and .dependencies.postgresql.status == "ok" and .dependencies.redis.status == "unavailable"' ready-down.json
+OUTAGE_STATUS=$(curl --silent --output outage-ready.json --write-out '%{http_code}' -H 'x-request-id: outage-redis-down' http://127.0.0.1:3001/api/ready)
+test "$OUTAGE_STATUS" = "503"
+jq -e '.status == "unavailable" and .dependencies.postgresql.status == "ok" and .dependencies.redis.status == "unavailable"' outage-ready.json
 
 docker compose --env-file .env.docker start redis
 timeout 60 bash -c 'until docker compose --env-file .env.docker exec -T redis redis-cli ping | grep -q PONG; do sleep 1; done'
 sleep 2
-curl --fail --silent http://127.0.0.1:3001/api/ready > ready-recovered.json
-jq -e '.status == "ok" and .dependencies.redis.status == "ok"' ready-recovered.json
+curl --fail --silent http://127.0.0.1:3001/api/ready > recovered-ready.json
+jq -e '.status == "ok" and .dependencies.redis.status == "ok"' recovered-ready.json
 
-ERROR_STATUS=$(curl --silent --output error.json --dump-header error.headers --write-out '%{http_code}' -H 'x-request-id: error-request' http://127.0.0.1:3001/api/does-not-exist)
-test "$ERROR_STATUS" = "404"
-jq -e '.statusCode == 404 and .requestId == "error-request"' error.json
+ERROR_STATUS=$(curl --silent --output error.json --dump-header error.headers --write-out '%{http_code}' -H 'x-request-id: error-request' http://127.0.0.1:3001/api/runtime-smoke/boom)
+test "$ERROR_STATUS" = "500"
+jq -e '.statusCode == 500 and .error == "Internal Server Error" and .message == "An unexpected error occurred" and .requestId == "error-request"' error.json
 grep -qi '^x-request-id: error-request' error.headers
+! grep -Fq 'runtime smoke internal detail' error.json
 
 jq -Rs -e 'split("\n") | map(fromjson?) | any(.message == "readiness.probe_failed" and .dependency == "redis")' api.log
-jq -Rs -e 'split("\n") | map(fromjson?) | any(.message == "http.request_completed" and .requestId == "ready-redis-down" and .statusCode == 503)' api.log
-jq -Rs -e 'split("\n") | map(fromjson?) | any(.message == "http.request_failed" and .requestId == "error-request")' api.log
-jq -Rs -e 'split("\n") | map(fromjson?) | all(.message != "http.request_completed" or (.requestId != "health-silent" and .requestId != "ready-healthy"))' api.log
+jq -Rs -e 'split("\n") | map(fromjson?) | any(.message == "http.request_completed" and .requestId == "outage-redis-down" and .statusCode == 503)' api.log
+jq -Rs -e 'split("\n") | map(fromjson?) | any(.message == "http.request_failed" and .requestId == "error-request" and .statusCode == 500)' api.log
+jq -Rs -e 'split("\n") | map(fromjson?) | any(.message == "http.request_completed" and .requestId == "error-request" and .statusCode == 500)' api.log
+jq -Rs -e 'split("\n") | map(fromjson?) | all(.message != "http.request_completed" or (.requestId != "health-redis-down" and .requestId != "ready-healthy"))' api.log
 
 ! grep -Fq "$DATABASE_URL" api.log
 ! grep -Fq "$REDIS_URL" api.log
@@ -1115,31 +1169,31 @@ API_PID=0
 
 Run `chmod +x .github/scripts/api-runtime-smoke.sh`.
 
-- [ ] **Step 4: Commit, push, and record a green smoke run**
+- [ ] **Step 5: Commit, push, and record a green smoke run**
 
 ```bash
-git add .github/workflows/api-runtime-smoke.yml .github/scripts/api-runtime-smoke.sh
+git add .github/workflows/api-runtime-smoke.yml .github/scripts/api-runtime-smoke.sh apps/api/test/runtime-smoke-app.ts
 git commit -m "test: add temporary API runtime smoke"
 git push
 ```
 
 Record run ID and commit SHA.
 
-- [ ] **Step 5: Remove both temporary files**
+- [ ] **Step 6: Remove all temporary smoke files**
 
 ```bash
-git rm .github/workflows/api-runtime-smoke.yml .github/scripts/api-runtime-smoke.sh
+git rm .github/workflows/api-runtime-smoke.yml .github/scripts/api-runtime-smoke.sh apps/api/test/runtime-smoke-app.ts
 git commit -m "chore: remove temporary API runtime smoke"
 git push
 ```
 
-Confirm both are absent from the final tree.
+Confirm all three are absent from the final tree.
 
-- [ ] **Step 6: Verify the six permanent CI jobs**
+- [ ] **Step 7: Verify the six permanent CI jobs**
 
 Wait for `Quality`, `Unit tests`, `Build`, `Security`, `Knowledge validation`, and `Docker Compose configuration`. Diagnose failures from logs rather than rerunning blindly.
 
-- [ ] **Step 7: Mark only the completed backlog item**
+- [ ] **Step 8: Mark only the completed backlog item**
 
 Change:
 
@@ -1155,7 +1209,7 @@ into:
 
 Leave environment conventions, custom-domain routing, OpenAPI, tenant context, and Playwright unchecked.
 
-- [ ] **Step 8: Commit and verify final CI on the exact final SHA**
+- [ ] **Step 9: Commit and verify final CI on the exact final SHA**
 
 ```bash
 git add docs/backlog/SPRINT-0.md
@@ -1165,11 +1219,11 @@ git push
 
 Record the final CI run ID.
 
-- [ ] **Step 9: Final tree and security inspection**
+- [ ] **Step 10: Final tree and security inspection**
 
 ```bash
 git status --short
-git ls-files .github/workflows .github/scripts
+git ls-files .github/workflows .github/scripts apps/api/test/runtime-smoke-app.ts
 pnpm audit --audit-level high
 pnpm test
 pnpm build
