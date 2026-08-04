@@ -15,7 +15,7 @@
     "prisma:validate": "prisma validate",
     "prisma:generate": "prisma generate",
     "prisma:migrate:deploy": "prisma migrate deploy",
-    "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:seed": "prisma generate && prisma db seed",
     "clean": "rimraf dist tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo"
   },
   "prisma": {
