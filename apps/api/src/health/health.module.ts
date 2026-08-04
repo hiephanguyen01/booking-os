@@ -16,8 +16,8 @@ import {
   type WallClock,
 } from "../observability/tokens.js";
 import { HealthController } from "./health.controller.js";
-import { HealthResponseFactory } from "./health-response.factory.js";
 import { HealthService } from "./health.service.js";
+import { HealthResponseFactory } from "./health-response.factory.js";
 import { ReadinessCoordinator } from "./readiness-coordinator.js";
 
 @Module({
