@@ -11,7 +11,8 @@
       "!**/playwright-report",
       "!**/test-results",
       "!pnpm-lock.yaml",
-      "!packages/contracts/openapi/openapi.json"
+      "!packages/contracts/openapi/openapi.json",
+      "!packages/api-client/src/generated/**"
     ]
   },
   "formatter": {
