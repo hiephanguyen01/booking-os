@@ -6,4 +6,4 @@ baseContractSha256: "11111111111111111111111111111111111111111111111111111111111
 revisionContractSha256: "2222222222222222222222222222222222222222222222222222222222222222"
 findings:
   - severity: ERR
-    fingerprint: "ERR GET /api/example removed the success response with the status '200'"
+    fingerprint: "error at scripts/openapi/fixtures/breaking-revision.json, in API GET /api/example removed the success response with the status `200` [response-success-status-removed]."
