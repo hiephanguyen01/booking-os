@@ -1,4 +1,4 @@
-import { csrfOriginMismatchResponse, hasMatchingOrigin } from "./src/lib/session/csrf.js";
+import { csrfOriginMismatchResponse, hasMatchingOrigin } from "./src/lib/session/csrf";
 
 export function middleware(request: Request): Response | undefined {
   return hasMatchingOrigin(request) ? undefined : csrfOriginMismatchResponse();
