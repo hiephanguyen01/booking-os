@@ -1,0 +1,40 @@
+name: API Runtime Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/api-observability-readiness
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: cp .env.docker.example .env.docker
+      - run: docker compose --env-file .env.docker up -d postgres
+      - run: pnpm --filter @booking-os/api build
+      - name: Verify runtime behavior
+        run: bash .github/scripts/api-runtime-smoke.sh
+      - name: Upload API log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-runtime-smoke-log
+          path: api.log
+      - name: Cleanup Compose
+        if: always()
+        run: docker compose --env-file .env.docker down --volumes --remove-orphans
