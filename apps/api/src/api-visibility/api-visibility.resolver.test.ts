@@ -14,10 +14,7 @@ class InternalController {
 
 test("method visibility overrides controller visibility", () => {
   assert.equal(
-    resolveApiVisibility(
-      InternalController,
-      InternalController.prototype.supportedOverride,
-    ),
+    resolveApiVisibility(InternalController, InternalController.prototype.supportedOverride),
     "public-supported",
   );
   assert.equal(
@@ -45,11 +42,7 @@ test("rejects conflicting visibility at the selected level", () => {
   }
 
   assert.throws(
-    () =>
-      resolveApiVisibility(
-        ConflictingController,
-        ConflictingController.prototype.route,
-      ),
+    () => resolveApiVisibility(ConflictingController, ConflictingController.prototype.route),
     /exactly one API visibility; both markers were found/,
   );
 });
