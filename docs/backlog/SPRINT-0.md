@@ -7,7 +7,7 @@
 - [x] Tạo packages: contracts, api-client, ui, i18n, auth, observability, testing.
 - [x] Docker Compose: PostgreSQL, Redis, MinIO và Mailpit.
 - [x] CI: format, lint, typecheck, unit, secret/dependency scan và build.
-- [ ] Health, readiness, requestId và structured logging.
+- [x] Health, readiness, requestId và structured logging.
 - [ ] Environment validation và secret conventions.
 - [ ] Custom-domain local routing smoke test.
 
