@@ -6,8 +6,16 @@ import { Test } from "@nestjs/testing";
 import request from "supertest";
 
 import { AppModule } from "../src/app.module.js";
+import {
+  ReadinessChecker,
+  type ReadinessDependencies,
+} from "../src/health/readiness-checker.js";
 
 let app: INestApplication;
+let readinessDependencies: ReadinessDependencies = {
+  postgres: { status: "ok", latencyMs: 5 },
+  redis: { status: "ok", latencyMs: 2 },
+};
 
 const originalEnvironment = {
   NODE_ENV: process.env.NODE_ENV,
@@ -47,7 +55,12 @@ before(async () => {
 
   const testingModule = await Test.createTestingModule({
     imports: [AppModule],
-  }).compile();
+  })
+    .overrideProvider(ReadinessChecker)
+    .useValue({
+      check: async () => readinessDependencies,
+    })
+    .compile();
 
   app = testingModule.createNestApplication();
 
@@ -76,11 +89,28 @@ test("GET /api/health returns the liveness response", async () => {
   assert.equal(typeof body.uptimeSeconds, "number");
 });
 
-test("GET /api/ready returns the readiness response", async () => {
-  const response = await request(app.getHttpServer()).get("/api/ready").expect(200);
+test("GET /api/ready returns HTTP 200 when dependencies are ready", async () => {
+  readinessDependencies = {
+    postgres: { status: "ok", latencyMs: 5 },
+    redis: { status: "ok", latencyMs: 2 },
+  };
 
+  const response = await request(app.getHttpServer()).get("/api/ready").expect(200);
   const body = response.body as HealthResponse;
 
   assert.equal(body.status, "ok");
-  assert.deepEqual(body.dependencies, {});
+  assert.deepEqual(body.dependencies, readinessDependencies);
+});
+
+test("GET /api/ready returns HTTP 503 when a dependency is unavailable", async () => {
+  readinessDependencies = {
+    postgres: { status: "unavailable", message: "connection_failed" },
+    redis: { status: "ok" },
+  };
+
+  const response = await request(app.getHttpServer()).get("/api/ready").expect(503);
+  const body = response.body as HealthResponse;
+
+  assert.equal(body.status, "unavailable");
+  assert.deepEqual(body.dependencies, readinessDependencies);
 });
