@@ -1,6 +1,7 @@
 name: Task 7 RED proof
 
 on:
+  pull_request:
   push:
     branches:
       - feat/booking-os-pilot-foundation
