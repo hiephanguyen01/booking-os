@@ -3,8 +3,8 @@ import test from "node:test";
 
 import { Controller, Get, Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
-import { Test } from "@nestjs/testing";
 import type { OpenAPIObject } from "@nestjs/swagger";
+import { Test } from "@nestjs/testing";
 
 import { InternalApi } from "../api-visibility/api-visibility.decorator.js";
 import { HealthController } from "../health/health.controller.js";
