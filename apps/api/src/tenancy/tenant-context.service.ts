@@ -1,7 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-
-import type { Prisma } from "@prisma/client";
 import { Inject, Injectable } from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
 
 import { PrismaService } from "../database/prisma.service.js";
 import { assertTenantId, type TenantContext } from "./tenant-context.js";
