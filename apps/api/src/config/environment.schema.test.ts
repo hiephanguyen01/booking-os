@@ -56,17 +56,11 @@ test("parseEnvironment applies safe defaults", () => {
 });
 
 test("parseEnvironment accepts explicit disabled proxy trust", () => {
-  assert.equal(
-    parseEnvironment({ ...validEnvironment, TRUST_PROXY: "false" }).trustProxy,
-    false,
-  );
+  assert.equal(parseEnvironment({ ...validEnvironment, TRUST_PROXY: "false" }).trustProxy, false);
 });
 
 test("parseEnvironment rejects invalid proxy trust", () => {
-  assert.throws(
-    () => parseEnvironment({ ...validEnvironment, TRUST_PROXY: "1" }),
-    /TRUST_PROXY/,
-  );
+  assert.throws(() => parseEnvironment({ ...validEnvironment, TRUST_PROXY: "1" }), /TRUST_PROXY/);
 });
 
 test("parseEnvironment accepts readiness timeout boundaries", () => {
