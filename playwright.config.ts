@@ -1,8 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const databaseUrl =
-  process.env.DATABASE_URL ??
-  "postgresql://booking:booking@127.0.0.1:5432/booking_os_test";
+  process.env.DATABASE_URL ?? "postgresql://booking:booking@127.0.0.1:5432/booking_os_test";
 const redisUrl = process.env.REDIS_URL ?? "redis://127.0.0.1:6379/1";
 const apiBaseUrl = "http://127.0.0.1:3001/api";
 const reuseExistingServer = process.env.CI !== "true";
