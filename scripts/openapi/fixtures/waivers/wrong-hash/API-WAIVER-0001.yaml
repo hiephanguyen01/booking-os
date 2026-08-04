@@ -2,8 +2,8 @@ id: API-WAIVER-0001
 owner: hiephanguyen01
 reason: Exercise contract-pair mismatch behavior for compatibility governance tests.
 expiresOn: 2026-08-31
-baseContractSha256: 1111111111111111111111111111111111111111111111111111111111111111
-revisionContractSha256: 2222222222222222222222222222222222222222222222222222222222222222
+baseContractSha256: "1111111111111111111111111111111111111111111111111111111111111111"
+revisionContractSha256: "2222222222222222222222222222222222222222222222222222222222222222"
 findings:
   - severity: ERR
     fingerprint: "ERR GET /api/example removed the success response with the status '200'"
