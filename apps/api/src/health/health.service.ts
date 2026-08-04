@@ -2,6 +2,7 @@ import type { HealthResponse } from "@booking-os/contracts/health";
 import { Inject, Injectable } from "@nestjs/common";
 
 import { EnvironmentService } from "../config/environment.service.js";
+import { ReadinessChecker } from "./readiness-checker.js";
 
 @Injectable()
 export class HealthService {
@@ -10,6 +11,8 @@ export class HealthService {
   constructor(
     @Inject(EnvironmentService)
     private readonly environment: EnvironmentService,
+    @Inject(ReadinessChecker)
+    private readonly readinessChecker: ReadinessChecker,
   ) {}
 
   getHealth(): HealthResponse {
@@ -26,10 +29,14 @@ export class HealthService {
     };
   }
 
-  getReadiness(): HealthResponse {
+  async getReadiness(): Promise<HealthResponse> {
+    const dependencies = await this.readinessChecker.check();
+    const ready = Object.values(dependencies).every((dependency) => dependency.status === "ok");
+
     return {
       ...this.getHealth(),
-      dependencies: {},
+      status: ready ? "ok" : "unavailable",
+      dependencies,
     };
   }
 }
