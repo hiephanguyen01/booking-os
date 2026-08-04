@@ -2,10 +2,7 @@ import { Module } from "@nestjs/common";
 
 import { EnvironmentService } from "../config/environment.service.js";
 import { ObservabilityModule } from "../observability/observability.module.js";
-import {
-  MONOTONIC_CLOCK_TOKEN,
-  type MonotonicClock,
-} from "../observability/tokens.js";
+import { MONOTONIC_CLOCK_TOKEN, type MonotonicClock } from "../observability/tokens.js";
 import { createPostgresPool, createRedisClient } from "./dependency-clients.js";
 import { DependencyLifecycleService } from "./dependency-lifecycle.service.js";
 import type { PostgresPoolPort, RedisClientPort } from "./ports.js";

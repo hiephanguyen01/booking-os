@@ -1,10 +1,7 @@
 import type { HealthDependencyStatus } from "@booking-os/contracts";
 
 export type ReadinessDependency = "postgresql" | "redis";
-export type ReadinessFailureReason =
-  | "timeout"
-  | "connection_failed"
-  | "unexpected_response";
+export type ReadinessFailureReason = "timeout" | "connection_failed" | "unexpected_response";
 
 export interface ReadinessProbe {
   readonly dependency: ReadinessDependency;
