@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "prisma generate && tsx watch src/main.ts",
+    "dev": "tsx watch src/main.ts",
     "start": "node dist/main.js",
     "build": "prisma generate && tsc -p tsconfig.build.json",
     "lint": "biome check src test prisma",
@@ -14,6 +14,7 @@
     "openapi:generate": "prisma generate && tsx src/openapi/generate-openapi.ts",
     "prisma:validate": "prisma validate",
     "prisma:generate": "prisma generate",
+    "prisma:studio": "prisma studio",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:seed": "prisma generate && prisma db seed",
     "clean": "rimraf dist tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo"

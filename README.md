@@ -67,7 +67,14 @@ Both web applications read `API_BASE_URL` and `APP_LOCALE` from their deployment
 
 ### Run applications
 
-Start each deployment unit in a separate terminal:
+Generate Prisma Client once, then either start the whole monorepo or run each deployment unit separately:
+
+```bash
+pnpm --filter @booking-os/api prisma:generate
+pnpm dev
+```
+
+For separate terminals, run the generation command above once and then start the units you need:
 
 ```bash
 pnpm --filter @booking-os/api dev

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "prisma generate --schema ../api/prisma/schema.prisma && tsx watch src/main.ts",
+    "dev": "tsx watch src/main.ts",
     "start": "node dist/main.js",
     "build": "prisma generate --schema ../api/prisma/schema.prisma && tsc -p tsconfig.build.json",
     "lint": "biome check src",

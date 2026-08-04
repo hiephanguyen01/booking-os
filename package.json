@@ -8,7 +8,7 @@
     "pnpm": ">=10.0.0 <11.0.0"
   },
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "pnpm --filter @booking-os/api prisma:generate && turbo run dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
