@@ -8,7 +8,7 @@ const apiPrefixSchema = z
   .min(1, "API_PREFIX cannot be empty")
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "API_PREFIX must use lowercase kebab-case without slashes");
 
-export const environmentSchema = z
+const rawEnvironmentSchema = z
   .object({
     NODE_ENV: z.enum(NODE_ENVIRONMENTS).default("development"),
 
@@ -39,17 +39,33 @@ export const environmentSchema = z
         (value) => value.startsWith("redis://") || value.startsWith("rediss://"),
         "REDIS_URL must use the redis:// or rediss:// protocol",
       ),
+
+    SESSION_SECRET: z.string().min(32, "SESSION_SECRET must contain at least 32 characters"),
+
+    PAYMENT_PROVIDER: z.enum(["mock", "payos"]).default("mock"),
   })
-  .transform((values) => ({
-    nodeEnvironment: values.NODE_ENV,
-    host: values.HOST,
-    port: values.PORT,
-    apiPrefix: values.API_PREFIX,
-    appVersion: values.APP_VERSION,
-    logLevel: values.LOG_LEVEL,
-    databaseUrl: values.DATABASE_URL,
-    redisUrl: values.REDIS_URL,
-  }));
+  .superRefine((values, context) => {
+    if (values.NODE_ENV === "production" && values.PAYMENT_PROVIDER === "mock") {
+      context.addIssue({
+        code: "custom",
+        path: ["PAYMENT_PROVIDER"],
+        message: "PAYMENT_PROVIDER cannot be mock in production",
+      });
+    }
+  });
+
+export const environmentSchema = rawEnvironmentSchema.transform((values) => ({
+  nodeEnvironment: values.NODE_ENV,
+  host: values.HOST,
+  port: values.PORT,
+  apiPrefix: values.API_PREFIX,
+  appVersion: values.APP_VERSION,
+  logLevel: values.LOG_LEVEL,
+  databaseUrl: values.DATABASE_URL,
+  redisUrl: values.REDIS_URL,
+  sessionSecret: values.SESSION_SECRET,
+  paymentProvider: values.PAYMENT_PROVIDER,
+}));
 
 export type Environment = z.output<typeof environmentSchema>;
 
