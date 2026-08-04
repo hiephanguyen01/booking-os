@@ -1,26 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  BadRequestException,
-  ServiceUnavailableException,
-} from "@nestjs/common";
+import { BadRequestException, ServiceUnavailableException } from "@nestjs/common";
 
 import { normalizeApiError } from "./api-error-response.js";
 
 test("normalizes a client error into the public API envelope", () => {
-  assert.deepEqual(
-    normalizeApiError(new BadRequestException("Invalid input"), "request-1"),
-    {
+  assert.deepEqual(normalizeApiError(new BadRequestException("Invalid input"), "request-1"), {
+    statusCode: 400,
+    body: {
       statusCode: 400,
-      body: {
-        statusCode: 400,
-        error: "Bad Request",
-        message: "Invalid input",
-        requestId: "request-1",
-      },
+      error: "Bad Request",
+      message: "Invalid input",
+      requestId: "request-1",
     },
-  );
+  });
 });
 
 test("preserves safe validation arrays and ignores extra payload fields", () => {
@@ -57,16 +51,13 @@ test("hides internal server-side exception messages", () => {
 });
 
 test("maps unknown failures to a fixed 500 response", () => {
-  assert.deepEqual(
-    normalizeApiError(new Error("internal runtime detail"), "request-4"),
-    {
+  assert.deepEqual(normalizeApiError(new Error("internal runtime detail"), "request-4"), {
+    statusCode: 500,
+    body: {
       statusCode: 500,
-      body: {
-        statusCode: 500,
-        error: "Internal Server Error",
-        message: "An unexpected error occurred",
-        requestId: "request-4",
-      },
+      error: "Internal Server Error",
+      message: "An unexpected error occurred",
+      requestId: "request-4",
     },
-  );
+  });
 });

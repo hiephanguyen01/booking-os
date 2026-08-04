@@ -3,8 +3,9 @@ import { performance } from "node:perf_hooks";
 
 import { createStructuredLogger } from "@booking-os/observability";
 import { Global, type MiddlewareConsumer, Module, type NestModule } from "@nestjs/common";
-import { APP_INTERCEPTOR } from "@nestjs/core";
+import { APP_FILTER, APP_INTERCEPTOR } from "@nestjs/core";
 
+import { ApiExceptionFilter } from "./api-exception.filter.js";
 import { HttpLoggingInterceptor } from "./http-logging.interceptor.js";
 import { RequestIdMiddleware } from "./request-id.middleware.js";
 import {
@@ -37,6 +38,10 @@ import {
     {
       provide: APP_INTERCEPTOR,
       useClass: HttpLoggingInterceptor,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: ApiExceptionFilter,
     },
   ],
   exports: [API_LOGGER_TOKEN, MONOTONIC_CLOCK_TOKEN, WALL_CLOCK_TOKEN],

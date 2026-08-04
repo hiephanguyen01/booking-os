@@ -1,14 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  BadRequestException,
-  type ArgumentsHost,
-} from "@nestjs/common";
-import {
-  createStructuredLogger,
-  type StructuredLogRecord,
-} from "@booking-os/observability";
+import { createStructuredLogger, type StructuredLogRecord } from "@booking-os/observability";
+import { BadRequestException, type ArgumentsHost } from "@nestjs/common";
 
 import { ApiExceptionFilter } from "./api-exception.filter.js";
 
@@ -63,10 +57,7 @@ test("writes the normalized response and exactly one safe failure event", () => 
   };
   const exception = new BadRequestException("Invalid booking");
 
-  new ApiExceptionFilter(logger).catch(
-    exception,
-    createHost(request, response),
-  );
+  new ApiExceptionFilter(logger).catch(exception, createHost(request, response));
 
   assert.equal(response.statusCode, 400);
   assert.deepEqual(response.body, {
@@ -83,13 +74,7 @@ test("writes the normalized response and exactly one safe failure event", () => 
   assert.equal(records[0]?.statusCode, 400);
   assert.equal(records[0]?.error?.message, "Invalid booking");
 
-  for (const forbidden of [
-    "body",
-    "query",
-    "headers",
-    "cookies",
-    "environment",
-  ]) {
+  for (const forbidden of ["body", "query", "headers", "cookies", "environment"]) {
     assert.equal(Object.hasOwn(records[0] ?? {}, forbidden), false);
   }
 });
