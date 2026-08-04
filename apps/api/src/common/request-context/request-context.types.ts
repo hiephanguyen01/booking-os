@@ -6,6 +6,7 @@ export interface RequestHeaders {
 
 export interface RequestWithHeaders {
   readonly headers: RequestHeaders;
+  readonly requestId?: string;
 }
 
 export interface ResponseWithHeaders {
