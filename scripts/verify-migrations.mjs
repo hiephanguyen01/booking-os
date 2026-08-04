@@ -1,6 +1,6 @@
+import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { spawnSync } from "node:child_process";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
 const migrationDatabaseUrl =
@@ -23,7 +23,9 @@ function run(args, environment = {}) {
   }
 
   if (result.status !== 0) {
-    throw new Error(`Command failed with exit code ${String(result.status)}: pnpm ${args.join(" ")}`);
+    throw new Error(
+      `Command failed with exit code ${String(result.status)}: pnpm ${args.join(" ")}`,
+    );
   }
 }
 
@@ -36,7 +38,16 @@ const migrationEnvironment = { DATABASE_URL: migrationDatabaseUrl };
 run(["--filter", "@booking-os/api", "prisma:validate"], migrationEnvironment);
 run(["--filter", "@booking-os/api", "prisma:migrate:deploy"], migrationEnvironment);
 run(
-  ["--filter", "@booking-os/api", "exec", "prisma", "migrate", "status", "--schema", "prisma/schema.prisma"],
+  [
+    "--filter",
+    "@booking-os/api",
+    "exec",
+    "prisma",
+    "migrate",
+    "status",
+    "--schema",
+    "prisma/schema.prisma",
+  ],
   migrationEnvironment,
 );
 run(
@@ -84,7 +95,16 @@ if (existsSync(previousSchemaFixture)) {
     DATABASE_URL: previousSchemaDatabaseUrl,
   });
   run(
-    ["--filter", "@booking-os/api", "exec", "prisma", "migrate", "status", "--schema", "prisma/schema.prisma"],
+    [
+      "--filter",
+      "@booking-os/api",
+      "exec",
+      "prisma",
+      "migrate",
+      "status",
+      "--schema",
+      "prisma/schema.prisma",
+    ],
     { DATABASE_URL: previousSchemaDatabaseUrl },
   );
 } else {
