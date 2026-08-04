@@ -1,0 +1,56 @@
+.card {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+  border-radius: 1rem;
+  background: color-mix(in srgb, Canvas 96%, currentColor 4%);
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.125rem;
+  line-height: 1.35;
+}
+
+.status {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+}
+
+.indicator {
+  width: 0.625rem;
+  height: 0.625rem;
+  margin-top: 0.3rem;
+  border-radius: 999px;
+  background: currentColor;
+  flex: none;
+}
+
+.status[data-state="healthy"] {
+  color: #16794b;
+}
+
+.status[data-state="degraded"] {
+  color: #a65200;
+}
+
+.status[data-state="neutral"] {
+  color: #4b5563;
+}
+
+.description {
+  margin: 0;
+  color: CanvasText;
+  line-height: 1.55;
+}

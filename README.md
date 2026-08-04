@@ -17,6 +17,72 @@ python tools/genesis_cli.py validate
 python tools/genesis_cli.py new-adr "Tên quyết định"
 ```
 
+## Monorepo runtime
+
+### Deployment units
+
+```text
+apps/
+  api/                NestJS API, port 3001
+  web-storefront/     Next.js public storefront, port 3000
+  web-console/        Next.js operations console, port 3002
+  worker-critical/    BullMQ critical-job worker
+  worker-batch/       BullMQ batch-job worker
+packages/
+  api-client/         Typed health API client
+  auth/               Session, role, and permission primitives
+  contracts/          Shared API contracts
+  i18n/               Typed Vietnamese and English messages
+  observability/      Structured JSON logger
+  testing/            Deterministic test fixtures
+  typescript-config/  Shared strict TypeScript configurations
+  ui/                 Shared React components
+```
+
+### Local endpoints and queues
+
+| Unit | Endpoint or queue | Notes |
+| --- | --- | --- |
+| Storefront | `http://localhost:3000` | Public shell; remains available in degraded mode when the API is unavailable |
+| API | `http://localhost:3001/api` | Health endpoint: `http://localhost:3001/api/health` |
+| Console | `http://localhost:3002` | Demonstration partner session; no real login or cookie storage |
+| Critical worker | `booking-critical` | Scaffold `health-check` job only |
+| Batch worker | `booking-batch` | Scaffold `health-check` job only |
+| Redis | `127.0.0.1:6379` | No username or password by default |
+
+Both web applications read `API_BASE_URL` and `APP_LOCALE` from their deployment-unit environment. The default API base URL is `http://localhost:3001/api`, and unsupported locales fall back to Vietnamese.
+
+### Run applications
+
+Start each deployment unit in a separate terminal:
+
+```bash
+pnpm --filter @booking-os/api dev
+pnpm --filter @booking-os/web-storefront dev
+pnpm --filter @booking-os/web-console dev
+pnpm --filter @booking-os/worker-critical dev
+pnpm --filter @booking-os/worker-batch dev
+```
+
+After Redis and the workers are running, enqueue the scaffold jobs with:
+
+```bash
+pnpm --filter @booking-os/worker-critical smoke:enqueue
+pnpm --filter @booking-os/worker-batch smoke:enqueue
+```
+
+Worker environment defaults:
+
+```dotenv
+NODE_ENV=development
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_USERNAME=
+REDIS_PASSWORD=
+```
+
+A normal job validation or handler error fails only that BullMQ job. Bootstrap failures and fatal Redis or worker runtime errors set a non-zero process exit state. Worker logs never include Redis credentials.
+
 ## Local infrastructure
 
 ### Prerequisites
@@ -125,6 +191,8 @@ pnpm infra:config
 
 ## Cấu trúc
 
+- `apps/`: sáu deployment units của Booking OS.
+- `packages/`: shared contracts, runtime helpers, UI và test utilities.
 - `docs/`: kiến trúc, ADR, backlog và kế hoạch delivery.
 - `genesis/`: workflow, role, review checklist, template và business skills.
 - `schemas/`: schema kiểm tra artifact.

@@ -1,15 +1,18 @@
 import "reflect-metadata";
 
-import { Logger } from "@nestjs/common";
+import { createStructuredLogger } from "@booking-os/observability";
 import { NestFactory } from "@nestjs/core";
 import { config as loadDotenv } from "dotenv";
 
 import { AppModule } from "./app.module.js";
+import { logApiBootstrapFailure, logApiReady } from "./bootstrap-events.js";
 import { EnvironmentService } from "./config/environment.service.js";
 
 loadDotenv({
   path: process.env.ENV_FILE ?? ".env",
 });
+
+const logger = createStructuredLogger({ service: "api" });
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
@@ -23,19 +26,13 @@ async function bootstrap(): Promise<void> {
 
   await app.listen(environment.port, environment.host);
 
-  Logger.log(
-    [
-      "API started",
-      `environment=${environment.nodeEnvironment}`,
-      `address=http://localhost:${environment.port}/${environment.apiPrefix}`,
-    ].join(" "),
-    "Bootstrap",
-  );
+  logApiReady(logger, {
+    environment: environment.nodeEnvironment,
+    address: `http://localhost:${environment.port}/${environment.apiPrefix}`,
+  });
 }
 
 bootstrap().catch((error: unknown) => {
-  const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
-
-  Logger.error(message, undefined, "Bootstrap");
+  logApiBootstrapFailure(logger, error);
   process.exitCode = 1;
 });
