@@ -2,10 +2,7 @@ import type { HealthDependencyStatus, HealthResponse } from "@booking-os/contrac
 import type { StructuredLogger } from "@booking-os/observability";
 
 import type { EnvironmentService } from "../config/environment.service.js";
-import type {
-  ReadinessFailureReason,
-  ReadinessProbe,
-} from "../dependencies/readiness-probe.js";
+import type { ReadinessFailureReason, ReadinessProbe } from "../dependencies/readiness-probe.js";
 import type { MonotonicClock } from "../observability/tokens.js";
 import type { HealthResponseFactory } from "./health-response.factory.js";
 import {
@@ -27,8 +24,8 @@ interface CachedReadiness {
 }
 
 export class ReadinessCoordinator {
-  private cachedResult?: CachedReadiness;
-  private inFlight?: Promise<ReadinessResult>;
+  private cachedResult: CachedReadiness | undefined;
+  private inFlight: Promise<ReadinessResult> | undefined;
 
   constructor(
     private readonly postgresProbe: ReadinessProbe,
@@ -69,19 +66,13 @@ export class ReadinessCoordinator {
   private async runProbes(requestId?: string): Promise<ReadinessResult> {
     const postgresResultPromise = this.checkProbe(this.postgresProbe, requestId);
     const redisResultPromise = this.checkProbe(this.redisProbe, requestId);
-    const [postgresql, redis] = await Promise.all([
-      postgresResultPromise,
-      redisResultPromise,
-    ]);
+    const [postgresql, redis] = await Promise.all([postgresResultPromise, redisResultPromise]);
     const dependencies = { postgresql, redis };
     const isReady = postgresql.status === "ok" && redis.status === "ok";
 
     return {
       statusCode: isReady ? 200 : 503,
-      body: this.responseFactory.createReadiness(
-        isReady ? "ok" : "unavailable",
-        dependencies,
-      ),
+      body: this.responseFactory.createReadiness(isReady ? "ok" : "unavailable", dependencies),
     };
   }
 
@@ -94,11 +85,7 @@ export class ReadinessCoordinator {
     try {
       const operation = probe.check();
       result = await (this.scheduler
-        ? withReadinessTimeout(
-            operation,
-            this.environment.readinessTimeoutMs,
-            this.scheduler,
-          )
+        ? withReadinessTimeout(operation, this.environment.readinessTimeoutMs, this.scheduler)
         : withReadinessTimeout(operation, this.environment.readinessTimeoutMs));
     } catch (error: unknown) {
       if (!(error instanceof ReadinessTimeoutError)) {
