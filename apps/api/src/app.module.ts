@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { DiscoveryModule } from "@nestjs/core";
 
 import { RequestContextModule } from "./common/request-context/request-context.module.js";
 import { EnvironmentModule } from "./config/environment.module.js";
@@ -11,6 +12,7 @@ import { TenancyModule } from "./tenancy/tenancy.module.js";
 
 @Module({
   imports: [
+    DiscoveryModule,
     EnvironmentModule,
     ObservabilityModule,
     RequestContextModule,
