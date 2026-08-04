@@ -4,6 +4,7 @@ import { ApiClientError } from "./errors.js";
 import {
   createGeneratedClient,
   type GeneratedRequest,
+  type GeneratedRequestOptions,
   type GeneratedTransport,
 } from "./generated/client.js";
 import { healthResponseSchema } from "./health-schema.js";
@@ -28,8 +29,10 @@ function relativeToApiRoot(request: GeneratedRequest): GeneratedRequest {
 
 export function createApiClient(options: ApiClientOptions): ApiClient {
   const fetchTransport = createFetchTransport(options);
-  const generatedTransport: GeneratedTransport = <TResponse>(request, requestOptions) =>
-    fetchTransport<TResponse>(relativeToApiRoot(request), requestOptions);
+  const generatedTransport: GeneratedTransport = <TResponse>(
+    request: GeneratedRequest,
+    requestOptions?: GeneratedRequestOptions,
+  ) => fetchTransport<TResponse>(relativeToApiRoot(request), requestOptions);
   const generatedClient = createGeneratedClient(generatedTransport);
 
   async function getHealth(): Promise<HealthResponse> {
