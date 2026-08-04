@@ -54,9 +54,16 @@ def build_parser() -> GenesisArgumentParser:
     return parser
 
 
+def normalized_argv(argv: list[str] | None) -> list[str]:
+    values = list(sys.argv[1:] if argv is None else argv)
+    if len(values) == 2 and values[0] in COMMAND_TO_KIND and values[1].startswith("-"):
+        return [values[0], "--", values[1]]
+    return values
+
+
 def main(argv: list[str] | None = None) -> int:
     try:
-        args = build_parser().parse_args(argv)
+        args = build_parser().parse_args(normalized_argv(argv))
         if args.command == "validate":
             return validate()
 
