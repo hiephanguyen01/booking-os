@@ -1,6 +1,6 @@
 import type { StructuredLogger } from "@booking-os/observability";
 
-import { OutboxDispatcher } from "./outbox-dispatcher.js";
+import type { OutboxDispatcher } from "./outbox-dispatcher.js";
 
 const DEFAULT_BATCH_SIZE = 25;
 const DEFAULT_INTERVAL_MS = 1000;
