@@ -34,6 +34,7 @@ test("uses a valid incoming request ID and creates a trace ID", () => {
 
   assert.equal(observedContext?.requestId, "req-client-123");
   assert.match(observedContext?.traceId ?? "", /^[0-9a-f-]{36}$/);
+  assert.equal(observedContext?.source, "internal");
   assert.equal(response.headers["x-request-id"], "req-client-123");
   assert.equal(response.headers["x-trace-id"], observedContext?.traceId);
 });
@@ -84,4 +85,29 @@ test("preserves a valid incoming trace ID separately from request ID", () => {
 
   assert.equal(observedContext?.requestId, "req-client-456");
   assert.equal(observedContext?.traceId, traceId);
+});
+
+test("does not trust source tenant or actor headers", () => {
+  const storage = new RequestContextStorage();
+  const middleware = new RequestContextMiddleware(storage);
+  const response = createResponse();
+  let observedContext: ReturnType<RequestContextStorage["require"]> | undefined;
+
+  middleware.use(
+    {
+      headers: {
+        "x-source": "worker",
+        "x-tenant-id": "550e8400-e29b-41d4-a716-446655440000",
+        "x-actor-id": "attacker",
+      },
+    } as FakeRequest,
+    response,
+    () => {
+      observedContext = storage.require();
+    },
+  );
+
+  assert.equal(observedContext?.source, "internal");
+  assert.equal(observedContext?.tenantId, undefined);
+  assert.equal(observedContext?.actorId, undefined);
 });
