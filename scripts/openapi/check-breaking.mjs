@@ -8,7 +8,7 @@ import { loadWaivers, sha256File, WaiverError } from "./waiver-loader.mjs";
 const EXIT_COMPATIBLE = 0;
 const EXIT_BREAKING = 1;
 const EXIT_CONFIGURATION = 2;
-const FINDING_PATTERN = /^(ERR|WARN)\s/;
+const FINDING_PATTERN = /^(ERR|WARN|error|warning)\s/;
 const SUMMARY_PATTERN = /^\d+\s+changes?:/i;
 const NO_CHANGES_PATTERN = /^No (?:breaking )?changes/i;
 
@@ -60,6 +60,16 @@ function executeOasdiff(binary, args) {
   return result;
 }
 
+function normalizeSeverity(value) {
+  if (value === "ERR" || value === "error") {
+    return "ERR";
+  }
+  if (value === "WARN" || value === "warning") {
+    return "WARN";
+  }
+  throw new CompatibilityError(`unsupported oasdiff severity: ${value}`);
+}
+
 function parseRawFindings(output) {
   const lines = output
     .split(/\r?\n/)
@@ -71,7 +81,9 @@ function parseRawFindings(output) {
   for (const line of lines) {
     const match = FINDING_PATTERN.exec(line);
     if (match) {
-      findings.push(Object.freeze({ severity: match[1], fingerprint: line }));
+      findings.push(
+        Object.freeze({ severity: normalizeSeverity(match[1]), fingerprint: line }),
+      );
       continue;
     }
 
