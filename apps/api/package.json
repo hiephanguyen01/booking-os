@@ -9,7 +9,7 @@
     "build": "tsc -p tsconfig.build.json",
     "lint": "biome check src test",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test --import tsx \"src/**/*.test.ts\"",
+    "test": "node --test --import tsx \"src/**/*.test.ts\" \"test/**/*.test.ts\"",
     "test:e2e": "node --test --import tsx \"test/**/*.test.ts\"",
     "clean": "rimraf dist tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo"
   },
