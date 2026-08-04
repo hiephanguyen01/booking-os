@@ -6,10 +6,7 @@ import { createStructuredLogger, type StructuredLogRecord } from "@booking-os/ob
 
 import type { Environment } from "../config/environment.schema.js";
 import { EnvironmentService } from "../config/environment.service.js";
-import type {
-  ReadinessDependency,
-  ReadinessProbe,
-} from "../dependencies/readiness-probe.js";
+import type { ReadinessDependency, ReadinessProbe } from "../dependencies/readiness-probe.js";
 import { HealthResponseFactory } from "./health-response.factory.js";
 import { ReadinessCoordinator } from "./readiness-coordinator.js";
 import type { ReadinessTimerScheduler } from "./readiness-timeout.js";
