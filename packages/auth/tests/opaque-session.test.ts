@@ -3,8 +3,8 @@ import test from "node:test";
 
 import {
   hashSessionToken,
-  OpaqueSessionStore,
   type OpaqueSessionRepository,
+  OpaqueSessionStore,
   type StoredOpaqueSession,
 } from "../src/opaque-session.js";
 
