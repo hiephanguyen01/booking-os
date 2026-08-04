@@ -10,7 +10,7 @@ Sprint 1A converts the Sprint 0 tenant-isolation proof into a production-grade e
 
 Every tenant-owned operation runs through an application-owned transaction port under the `booking_app` role. PostgreSQL FORCE RLS remains the final enforcement layer. Application callbacks receive technology-neutral repository capabilities rather than `Prisma.TransactionClient`. HTTP middleware and guards are inbound adapters, Prisma implementations are outbound adapters, NestJS modules are composition roots, and CI verifies schema, policy, role, context isolation, and dependency direction.
 
-This slice deliberately excludes authentication, membership, RBAC, onboarding UI, and booking-domain behavior. Those capabilities will build on these boundaries in later slices.
+This slice excludes authentication, membership, RBAC, onboarding UI, and booking-domain behavior. Those capabilities will build on these boundaries in later slices.
 
 ## Current State
 
@@ -30,7 +30,7 @@ The proof intentionally couples infrastructure details:
 - repository contracts may expose Prisma transaction types;
 - NestJS, application orchestration, and persistence live in the same directory boundary.
 
-Those choices are acceptable for a proof but must not become the template copied by partner, listing, booking, payment, or finance modules.
+Those choices must not become the template copied by later product modules.
 
 ## Goals
 
@@ -52,7 +52,7 @@ Those choices are acceptable for a proof but must not become the template copied
 - Partner, listing, booking, payment, finance, settlement, or payout modules.
 - Replacing RLS with application filtering.
 - A generic repository abstraction shared by every domain.
-- A universal unit-of-work abstraction that exposes every table.
+- A universal unit-of-work or session containing every repository.
 - Moving untouched Foundation files solely for folder consistency.
 - Splitting modules into network services.
 
@@ -66,19 +66,15 @@ The tenancy module becomes:
 apps/api/src/modules/tenancy/
 ├── domain/
 │   ├── tenant-id.ts
-│   ├── tenant-id.test.ts
 │   └── resolved-tenant.ts
 ├── application/
 │   ├── ports/
 │   │   ├── tenant-directory.port.ts
 │   │   ├── tenant-probe-repository.port.ts
-│   │   ├── outbox-writer.port.ts
 │   │   └── tenant-transaction.port.ts
 │   ├── use-cases/
 │   │   ├── resolve-tenant.use-case.ts
-│   │   ├── resolve-tenant.use-case.test.ts
-│   │   ├── list-tenant-probes.use-case.ts
-│   │   └── list-tenant-probes.use-case.test.ts
+│   │   └── list-tenant-probes.use-case.ts
 │   ├── tenant-context.errors.ts
 │   └── tenant-execution-context.ts
 ├── infrastructure/
@@ -171,12 +167,7 @@ export class ResolveTenantUseCase {
 }
 ```
 
-The HTTP middleware:
-
-1. determines effective hostname using configured proxy trust;
-2. calls `ResolveTenantUseCase`;
-3. enriches immutable request context with the resolved tenant ID;
-4. never imports `PrismaService` or a Prisma adapter.
+The HTTP middleware determines effective hostname using configured proxy trust, calls the use case, and enriches immutable context with the resolved tenant ID. It never imports `PrismaService` or a Prisma adapter.
 
 The Prisma directory adapter maps the global `tenants` table to `ResolvedTenant`.
 
@@ -184,7 +175,7 @@ Unknown tenants do not expose database detail. Tenant-required routes return saf
 
 ## Tenant Transaction Port
 
-The application port is technology-neutral:
+The application port is technology-neutral and scoped to the capability needed by the current Foundation slice:
 
 ```ts
 export interface TenantProbeRecord {
@@ -197,13 +188,8 @@ export interface TenantProbeRepositoryPort {
   list(): Promise<readonly TenantProbeRecord[]>;
 }
 
-export interface OutboxWriterPort {
-  append(event: AppendOutboxEvent): Promise<void>;
-}
-
 export interface TenantDataSession {
   readonly tenantProbes: TenantProbeRepositoryPort;
-  readonly outbox: OutboxWriterPort;
 }
 
 export interface TenantTransactionPort {
@@ -214,7 +200,7 @@ export interface TenantTransactionPort {
 }
 ```
 
-The application layer does not import Prisma or receive a transaction client.
+The application layer does not import Prisma or receive a transaction client. `TenantDataSession` is not a universal repository registry. Later modules add or compose only the capabilities required by a real atomic use case.
 
 The Prisma transaction adapter must:
 
@@ -233,7 +219,7 @@ Network calls and long-running computation remain outside the database transacti
 
 ## Tenant-Probe Vertical Slice
 
-The internal tenant-probe endpoint remains a Foundation-only proof, but it is reorganized as a complete hexagonal vertical slice:
+The internal tenant-probe endpoint remains a Foundation proof, but it becomes a complete hexagonal vertical slice:
 
 ```text
 TenantProbeController
@@ -243,9 +229,9 @@ TenantProbeController
         -> PrismaTenantProbeRepositoryAdapter
 ```
 
-The controller handles authorization and transport mapping. The use case coordinates tenant context and transaction capability. The repository port exposes `list()` without Prisma parameters. The Prisma repository adapter is created inside the transaction adapter with the active transaction client.
+The controller handles authorization and transport mapping. The use case coordinates trusted context and the transaction port. The repository port exposes `list()` without Prisma parameters. The Prisma repository adapter is created inside the transaction adapter with the active transaction client.
 
-This slice proves the pattern before booking-domain repositories are created.
+This proves the pattern before booking-domain repositories are created.
 
 ## Data and Role Classification
 
@@ -282,7 +268,7 @@ It fails when:
 - an `application/` file imports Prisma, NestJS delivery code, `infrastructure/`, HTTP framework types, BullMQ, Redis, or PostgreSQL clients;
 - an application port includes `Prisma`, `TransactionClient`, `Request`, `Response`, `Job`, or adapter-specific types;
 - a module imports another module's `infrastructure/` path;
-- a touched/new module is missing from the architecture manifest.
+- a touched or new module is missing from the architecture manifest.
 
 Fixtures include valid and invalid dependency graphs. The verifier runs in CI and `verify:foundation`.
 
