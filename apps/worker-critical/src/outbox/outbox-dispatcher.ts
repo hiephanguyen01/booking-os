@@ -1,8 +1,4 @@
-import type {
-  DispatchableOutboxEvent,
-  DispatchSummary,
-  OutboxJobPayload,
-} from "./outbox-event.js";
+import type { DispatchableOutboxEvent, DispatchSummary, OutboxJobPayload } from "./outbox-event.js";
 
 const DEFAULT_MAX_ATTEMPTS = 5;
 
@@ -17,11 +13,7 @@ export interface OutboxDispatchRepository {
 }
 
 export interface OutboxQueue {
-  add(
-    name: string,
-    data: OutboxJobPayload,
-    options: { readonly jobId: string },
-  ): Promise<unknown>;
+  add(name: string, data: OutboxJobPayload, options: { readonly jobId: string }): Promise<unknown>;
 }
 
 export interface OutboxDispatcherOptions {
