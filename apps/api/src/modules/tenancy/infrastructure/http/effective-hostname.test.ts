@@ -4,15 +4,9 @@ import test from "node:test";
 import { effectiveHostname } from "./effective-hostname.js";
 
 test("uses direct host when proxy trust is disabled", () => {
+  assert.equal(effectiveHostname({ host: "tenant-a.localhost:3001" }, false), "tenant-a.localhost");
   assert.equal(
-    effectiveHostname({ host: "tenant-a.localhost:3001" }, false),
-    "tenant-a.localhost",
-  );
-  assert.equal(
-    effectiveHostname(
-      { host: "api.internal", "x-forwarded-host": "tenant-a.example.com" },
-      false,
-    ),
+    effectiveHostname({ host: "api.internal", "x-forwarded-host": "tenant-a.example.com" }, false),
     "api.internal",
   );
 });
