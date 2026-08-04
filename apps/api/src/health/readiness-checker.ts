@@ -99,7 +99,8 @@ export class PrismaPostgresDependencyProbe extends PostgresDependencyProbe {
       return {
         status: "unavailable",
         latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
-        message: error instanceof Error && error.message === "timeout" ? "timeout" : "connection_failed",
+        message:
+          error instanceof Error && error.message === "timeout" ? "timeout" : "connection_failed",
       };
     } finally {
       if (timeout) {
