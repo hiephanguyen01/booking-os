@@ -4,8 +4,9 @@ on:
   pull_request:
     paths:
       - .github/workflows/capture-oasdiff.yml
-      - scripts/openapi/fixtures/**
-      - scripts/openapi/check-breaking.mjs
+      - package.json
+      - pnpm-lock.yaml
+      - scripts/openapi/**
 
 permissions:
   contents: read
@@ -13,16 +14,31 @@ permissions:
 jobs:
   capture:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version: "1.26.x"
           cache: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Install pinned oasdiff
         run: go install github.com/oasdiff/oasdiff@v1.17.0
@@ -32,10 +48,24 @@ jobs:
           oasdiff --version || true
           sha256sum scripts/openapi/fixtures/breaking-base.json
           sha256sum scripts/openapi/fixtures/breaking-revision.json
-          set +e
           oasdiff breaking -f singleline --color never \
             scripts/openapi/fixtures/breaking-base.json \
             scripts/openapi/fixtures/breaking-revision.json
-          status=$?
+
+      - name: Prove unwaived break and exact waiver
+        env:
+          OPENAPI_WAIVER_TODAY: 2026-08-04
+        run: |
+          set +e
+          pnpm api:check-breaking \
+            scripts/openapi/fixtures/breaking-base.json \
+            scripts/openapi/fixtures/breaking-revision.json \
+            docs/api/compatibility-waivers
+          unwaived_status=$?
           set -e
-          echo "OASDIFF_RAW_EXIT=${status}"
+          test "${unwaived_status}" -eq 1
+
+          pnpm api:check-breaking \
+            scripts/openapi/fixtures/breaking-base.json \
+            scripts/openapi/fixtures/breaking-revision.json \
+            scripts/openapi/fixtures/waivers/valid
