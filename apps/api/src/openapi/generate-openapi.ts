@@ -17,12 +17,15 @@ const canonicalOutputPath = fileURLToPath(
 );
 
 async function generateOpenApi(): Promise<void> {
-  const [{ AppModule }, { EnvironmentService }, { createSupportedOpenApiDocument, serializeOpenApiDocument }] =
-    await Promise.all([
-      import("../app.module.js"),
-      import("../config/environment.service.js"),
-      import("./openapi-document.js"),
-    ]);
+  const [
+    { AppModule },
+    { EnvironmentService },
+    { createSupportedOpenApiDocument, serializeOpenApiDocument },
+  ] = await Promise.all([
+    import("../app.module.js"),
+    import("../config/environment.service.js"),
+    import("./openapi-document.js"),
+  ]);
   const outputPath = resolve(process.env.OPENAPI_OUTPUT_PATH ?? canonicalOutputPath);
   const app = await NestFactory.create(AppModule, { logger: false });
 
