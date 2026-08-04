@@ -39,6 +39,8 @@ export const environmentSchema = z
         (value) => value.startsWith("redis://") || value.startsWith("rediss://"),
         "REDIS_URL must use the redis:// or rediss:// protocol",
       ),
+
+    READINESS_TIMEOUT_MS: z.coerce.number().int().min(100).max(5000).default(750),
   })
   .transform((values) => ({
     nodeEnvironment: values.NODE_ENV,
@@ -49,6 +51,7 @@ export const environmentSchema = z
     logLevel: values.LOG_LEVEL,
     databaseUrl: values.DATABASE_URL,
     redisUrl: values.REDIS_URL,
+    readinessTimeoutMs: values.READINESS_TIMEOUT_MS,
   }));
 
 export type Environment = z.output<typeof environmentSchema>;

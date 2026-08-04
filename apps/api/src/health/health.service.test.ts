@@ -15,6 +15,7 @@ const testEnvironment: Environment = {
   logLevel: "debug",
   databaseUrl: "postgresql://booking:booking@localhost:5432/booking_os_test",
   redisUrl: "redis://localhost:6379/1",
+  readinessTimeoutMs: 750,
 };
 
 function createHealthService(): HealthService {
