@@ -5,6 +5,7 @@ import type { HealthDependencyStatus } from "@booking-os/contracts/health";
 import { Inject, Injectable } from "@nestjs/common";
 
 import { EnvironmentService } from "../config/environment.service.js";
+import { PrismaService } from "../database/prisma.service.js";
 
 const READINESS_TIMEOUT_MS = 1000;
 
@@ -15,6 +16,10 @@ export interface ReadinessDependencies extends Readonly<Record<string, HealthDep
 
 export abstract class DependencyProbe {
   abstract check(url: string, timeoutMs: number): Promise<HealthDependencyStatus>;
+}
+
+export abstract class PostgresDependencyProbe {
+  abstract check(timeoutMs: number): Promise<HealthDependencyStatus>;
 }
 
 function resolvePort(url: URL): number {
@@ -69,18 +74,56 @@ export class TcpDependencyProbe extends DependencyProbe {
 }
 
 @Injectable()
+export class PrismaPostgresDependencyProbe extends PostgresDependencyProbe {
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {
+    super();
+  }
+
+  async check(timeoutMs: number): Promise<HealthDependencyStatus> {
+    const startedAt = performance.now();
+    let timeout: NodeJS.Timeout | undefined;
+
+    try {
+      await Promise.race([
+        this.prisma.ping(),
+        new Promise<never>((_resolve, reject) => {
+          timeout = setTimeout(() => reject(new Error("timeout")), timeoutMs);
+        }),
+      ]);
+
+      return {
+        status: "ok",
+        latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
+      };
+    } catch (error: unknown) {
+      return {
+        status: "unavailable",
+        latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
+        message: error instanceof Error && error.message === "timeout" ? "timeout" : "connection_failed",
+      };
+    } finally {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    }
+  }
+}
+
+@Injectable()
 export class ReadinessChecker {
   constructor(
     @Inject(EnvironmentService)
     private readonly environment: EnvironmentService,
     @Inject(DependencyProbe)
-    private readonly probe: DependencyProbe,
+    private readonly redisProbe: DependencyProbe,
+    @Inject(PostgresDependencyProbe)
+    private readonly postgresProbe: PostgresDependencyProbe,
   ) {}
 
   async check(): Promise<ReadinessDependencies> {
     const [postgres, redis] = await Promise.all([
-      this.probe.check(this.environment.databaseUrl, READINESS_TIMEOUT_MS),
-      this.probe.check(this.environment.redisUrl, READINESS_TIMEOUT_MS),
+      this.postgresProbe.check(READINESS_TIMEOUT_MS),
+      this.redisProbe.check(this.environment.redisUrl, READINESS_TIMEOUT_MS),
     ]);
 
     return { postgres, redis };
