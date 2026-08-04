@@ -2,11 +2,7 @@ import { Module } from "@nestjs/common";
 
 import { HealthController } from "./health.controller.js";
 import { HealthService } from "./health.service.js";
-import {
-  DependencyProbe,
-  ReadinessChecker,
-  TcpDependencyProbe,
-} from "./readiness-checker.js";
+import { DependencyProbe, ReadinessChecker, TcpDependencyProbe } from "./readiness-checker.js";
 
 @Module({
   controllers: [HealthController],
