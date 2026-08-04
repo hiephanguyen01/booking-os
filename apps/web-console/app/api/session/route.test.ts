@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { BOOKING_OS_SESSION_COOKIE } from "../../../src/lib/session/session-cookie";
+import { createSessionRouteHandlers } from "../../../src/lib/session/session-route-handlers";
 import { createSessionStore } from "../../../src/lib/session/session-store";
-import { createSessionRouteHandlers } from "./route";
 
 test("GET returns public session metadata without the opaque token", async () => {
   const store = createSessionStore();
