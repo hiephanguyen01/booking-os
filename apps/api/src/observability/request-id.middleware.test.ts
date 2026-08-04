@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
+import type { ServerResponse } from "node:http";
 import test from "node:test";
-import type { NextFunction, Response } from "express";
 
 import type { RequestWithContext } from "./request-context.js";
 import { RequestIdMiddleware } from "./request-id.middleware.js";
@@ -15,20 +15,19 @@ function runMiddleware(header: string | string[] | undefined): {
     headers: {
       ...(header === undefined ? {} : { "x-request-id": header }),
     },
-  } as RequestWithContext;
+  } as unknown as RequestWithContext;
   const headers = new Map<string, unknown>();
   const response = {
     setHeader(name: string, value: unknown) {
       headers.set(name.toLowerCase(), value);
       return this;
     },
-  } as unknown as Response;
+  } as unknown as ServerResponse;
   let nextCalls = 0;
-  const next = (() => {
-    nextCalls += 1;
-  }) as NextFunction;
 
-  middleware.use(request, response, next);
+  middleware.use(request, response, () => {
+    nextCalls += 1;
+  });
 
   return {
     requestId: request.requestId,

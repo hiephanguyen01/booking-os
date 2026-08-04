@@ -2,12 +2,7 @@ import { randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
 
 import { createStructuredLogger } from "@booking-os/observability";
-import {
-  Global,
-  type MiddlewareConsumer,
-  Module,
-  type NestModule,
-} from "@nestjs/common";
+import { Global, type MiddlewareConsumer, Module, type NestModule } from "@nestjs/common";
 
 import { RequestIdMiddleware } from "./request-id.middleware.js";
 import {

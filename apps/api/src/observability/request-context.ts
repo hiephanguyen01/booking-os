@@ -1,5 +1,5 @@
-import type { Request } from "express";
+import type { IncomingMessage } from "node:http";
 
-export interface RequestWithContext extends Request {
+export interface RequestWithContext extends IncomingMessage {
   requestId: string;
 }
