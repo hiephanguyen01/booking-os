@@ -4,7 +4,7 @@
 
 **Goal:** Convert the Sprint 0 RLS proof into a fail-closed tenant boundary and establish enforceable Hexagonal Architecture rules for new and touched `apps/api` modules.
 
-**Architecture:** The tenancy module is reorganized into domain, application, and infrastructure zones. HTTP adapters call application use cases, application code depends on technology-neutral ports, and Prisma adapters implement those ports. `PrismaTenantTransactionAdapter` owns PostgreSQL role/context setup and supplies a `TenantDataSession` capability object rather than exposing `Prisma.TransactionClient`.
+**Architecture:** The tenancy module is reorganized into domain, application, and infrastructure zones. HTTP adapters call application use cases, application code depends on technology-neutral ports, and Prisma adapters implement those ports. `PrismaTenantTransactionAdapter` owns PostgreSQL role/context setup and supplies a focused `TenantDataSession` instead of exposing `Prisma.TransactionClient`.
 
 **Tech Stack:** Node.js 22+, TypeScript 5.9, NestJS 11, Prisma 6.19, PostgreSQL 17, `pg` 8.22, Node test runner, Supertest, pnpm 10, Turborepo.
 
@@ -36,12 +36,15 @@ apps/api/src/modules/tenancy/
 ├── domain/
 │   ├── resolved-tenant.ts
 │   ├── tenant-id.ts
-│   └── tenant-id.test.ts
+│   ├── tenant-id.test.ts
+│   ├── tenant-slug.ts
+│   └── tenant-slug.test.ts
 ├── application/
 │   ├── ports/
 │   │   ├── tenant-directory.port.ts
 │   │   ├── tenant-probe-repository.port.ts
-│   │   └── tenant-transaction.port.ts
+│   │   ├── tenant-transaction.port.ts
+│   │   └── tenant-transaction.port.test.ts
 │   ├── use-cases/
 │   │   ├── list-tenant-probes.use-case.ts
 │   │   ├── list-tenant-probes.use-case.test.ts
@@ -52,14 +55,18 @@ apps/api/src/modules/tenancy/
 │   └── tenant-execution-context.test.ts
 ├── infrastructure/
 │   ├── http/
-│   │   ├── tenant-host.ts
-│   │   ├── tenant-host.test.ts
+│   │   ├── effective-hostname.ts
+│   │   ├── effective-hostname.test.ts
 │   │   ├── tenant-probe.controller.ts
 │   │   ├── tenant-required.decorator.ts
 │   │   ├── tenant-required.guard.ts
 │   │   ├── tenant-required.guard.test.ts
-│   │   └── tenant-resolution.middleware.ts
+│   │   ├── tenant-resolution.middleware.ts
+│   │   └── tenant-resolution.middleware.test.ts
 │   └── persistence/
+│       ├── tenant-policy-manifest.ts
+│       ├── tenant-policy-verifier.ts
+│       ├── tenant-policy-verifier.test.ts
 │       └── prisma/
 │           ├── prisma-tenant-directory.adapter.ts
 │           ├── prisma-tenant-directory.adapter.test.ts
@@ -67,10 +74,11 @@ apps/api/src/modules/tenancy/
 │           ├── prisma-tenant-probe-repository.adapter.test.ts
 │           ├── prisma-tenant-transaction.adapter.ts
 │           └── prisma-tenant-transaction.adapter.test.ts
+├── tenancy.tokens.ts
 └── tenancy.module.ts
 ```
 
-The existing `apps/api/src/tenancy/` files are deleted only after replacements compile and focused tests pass.
+Delete existing `apps/api/src/tenancy/` files only after replacements compile and focused tests pass.
 
 ---
 
@@ -86,11 +94,11 @@ The existing `apps/api/src/tenancy/` files are deleted only after replacements c
 **Interfaces:**
 - Produces `verifyApiModuleBoundaries({ repositoryRoot, modules })`.
 - Produces root command `pnpm verify:architecture`.
-- Manifest initially declares `apps/api/src/modules/tenancy` as a strict hexagonal module.
+- The initial manifest exports an empty `modules` array; Task 2 registers tenancy after its module root exists.
 
 - [ ] **Step 1: Write failing architecture-fixture tests**
 
-Create temporary module trees inside the test and assert these cases:
+Create temporary module trees inside the test. Include one valid graph:
 
 ```js
 const valid = {
@@ -102,14 +110,7 @@ const valid = {
 };
 ```
 
-Invalid fixtures must be detected for:
-
-- domain importing `@nestjs/common`;
-- domain importing `@prisma/client`;
-- application importing `@prisma/client`;
-- application importing `../infrastructure/...`;
-- application port containing `Prisma.TransactionClient`;
-- one module importing another module's `/infrastructure/` path.
+Invalid fixtures must be detected for domain-to-NestJS, domain-to-Prisma, application-to-Prisma, application-to-infrastructure, a port containing `Prisma.TransactionClient`, and cross-module infrastructure import.
 
 - [ ] **Step 2: Run and observe missing-verifier failure**
 
@@ -121,15 +122,9 @@ Expected: FAIL because the verifier and manifest do not exist.
 
 - [ ] **Step 3: Implement deterministic import scanning**
 
-Use Node `fs`, `path`, and regular expressions over static `import` and `export ... from` declarations. For each `.ts` file under a declared module:
+Use Node `fs`, `path`, and regular expressions over static `import` and `export ... from` declarations. Classify each `.ts` file as domain, application, infrastructure, or composition root. Return sorted failures in `<relative-file>: <message>` format.
 
-- classify relative path as `domain`, `application`, `infrastructure`, or composition root;
-- collect module specifiers;
-- reject forbidden package and relative imports by zone;
-- reject application-port source containing adapter-specific type names;
-- return sorted strings in `<relative-file>: <message>` format.
-
-Use these exact forbidden package prefixes:
+Use these forbidden package prefixes:
 
 ```js
 const DOMAIN_FORBIDDEN = [
@@ -141,7 +136,6 @@ const DOMAIN_FORBIDDEN = [
   "ioredis",
   "pg",
 ];
-
 const APPLICATION_FORBIDDEN = DOMAIN_FORBIDDEN;
 const PORT_FORBIDDEN_TYPES = [
   "Prisma.",
@@ -153,9 +147,9 @@ const PORT_FORBIDDEN_TYPES = [
 ];
 ```
 
-Composition-root files may import every zone inside their own module.
+Composition roots may import every zone inside their own module.
 
-- [ ] **Step 4: Add executable command and CI step**
+- [ ] **Step 4: Add command and CI step**
 
 Add to root `package.json`:
 
@@ -163,9 +157,9 @@ Add to root `package.json`:
 "verify:architecture": "node scripts/architecture/api-module-boundaries.mjs"
 ```
 
-The executable imports the manifest, prints every failure, exits `1` on violations, and prints `API module boundary verification PASS.` on success.
+The executable prints all failures, exits `1` on violations, and prints `API module boundary verification PASS.` on success.
 
-Add a permanent CI step after Genesis validation:
+Add this permanent CI step after Genesis validation:
 
 ```yaml
 - name: API architecture boundaries
@@ -184,7 +178,7 @@ git commit -m "feat: enforce hexagonal API module boundaries"
 
 ---
 
-### Task 2: Define Trusted Context and Technology-Neutral Domain Types
+### Task 2: Define Trusted Context and Domain Types
 
 **Files:**
 - Modify: `packages/contracts/src/request-context.ts`
@@ -197,12 +191,12 @@ git commit -m "feat: enforce hexagonal API module boundaries"
 - Create: `apps/api/src/modules/tenancy/application/tenant-context.errors.ts`
 - Create: `apps/api/src/modules/tenancy/application/tenant-execution-context.ts`
 - Create: `apps/api/src/modules/tenancy/application/tenant-execution-context.test.ts`
+- Modify: `scripts/architecture/api-module-manifest.mjs`
 
 **Interfaces:**
 
 ```ts
 export type ExecutionSource = "storefront" | "console" | "worker" | "internal";
-
 export interface RequestContext {
   readonly requestId: string;
   readonly traceId: string;
@@ -210,7 +204,6 @@ export interface RequestContext {
   readonly actorId?: string;
   readonly tenantId?: string;
 }
-
 export interface TenantExecutionContext extends RequestContext {
   readonly tenantId: string;
 }
@@ -233,7 +226,6 @@ test("tenant execution context is assignable to request context", () => {
     tenantId: "00000000-0000-4000-8000-000000000001",
   };
   const request: RequestContext = tenant;
-  assert.equal(request.source, "internal");
   assert.equal(request.tenantId, tenant.tenantId);
 });
 ```
@@ -246,31 +238,35 @@ pnpm --filter @booking-os/contracts test
 
 Expected: FAIL because `source` and `TenantExecutionContext` do not exist.
 
-- [ ] **Step 3: Implement the shared contract and fixed HTTP source**
+- [ ] **Step 3: Implement contract and fixed HTTP source**
 
-Update the middleware storage call to:
+Update request middleware storage to:
 
 ```ts
 this.storage.run({ requestId, traceId, source: "internal" }, next);
 ```
 
-Add a middleware test proving headers named `x-source`, `x-tenant-id`, and `x-actor-id` do not populate trusted fields.
+Add a test proving `x-source`, `x-tenant-id`, and `x-actor-id` headers cannot populate trusted fields.
 
 - [ ] **Step 4: Write failing domain/application tests**
 
-Cover:
+Cover a valid RFC-4122 UUID, malformed UUID, missing tenant ID, valid narrowing without mutation, and stable error class names.
 
-- valid RFC-4122 UUID accepted;
-- malformed UUID throws `InvalidTenantContextError`;
-- missing tenant ID throws `TenantContextUnavailableError`;
-- a valid request context narrows without mutation;
-- returned context is frozen or already immutable by storage contract.
+- [ ] **Step 5: Implement validation without framework imports**
 
-- [ ] **Step 5: Implement validation and errors without framework imports**
+`tenant-id.ts` contains only the UUID regex and validation function. Error classes extend `Error`. `tenant-execution-context.ts` imports only contracts, domain validation, and application errors.
 
-`tenant-id.ts` contains only the UUID regex and validation function. Error classes extend `Error` and set stable `name` values. `tenant-execution-context.ts` imports only contracts, domain validation, and application errors.
+- [ ] **Step 6: Register tenancy in architecture manifest**
 
-- [ ] **Step 6: Run architecture and focused tests, then commit**
+Set:
+
+```js
+export const modules = [
+  { name: "tenancy", root: "apps/api/src/modules/tenancy" },
+];
+```
+
+- [ ] **Step 7: Run and commit**
 
 ```bash
 pnpm --filter @booking-os/contracts test
@@ -280,37 +276,37 @@ pnpm --filter @booking-os/api exec node --test --import tsx \
   src/modules/tenancy/application/tenant-execution-context.test.ts
 pnpm verify:architecture
 pnpm --filter @booking-os/api typecheck
-git add packages/contracts apps/api/src/common/request-context apps/api/src/modules/tenancy
+git add packages/contracts apps/api/src/common/request-context apps/api/src/modules/tenancy scripts/architecture/api-module-manifest.mjs
 git commit -m "feat: define trusted tenant context contracts"
 ```
 
 ---
 
-### Task 3: Implement the Tenant Directory Port and Resolution Use Case
+### Task 3: Implement Tenant Slug, Directory Port, and Resolution Use Case
 
 **Files:**
+- Create: `apps/api/src/modules/tenancy/domain/tenant-slug.ts`
+- Create: `apps/api/src/modules/tenancy/domain/tenant-slug.test.ts`
 - Create: `apps/api/src/modules/tenancy/application/ports/tenant-directory.port.ts`
 - Create: `apps/api/src/modules/tenancy/application/use-cases/resolve-tenant.use-case.ts`
 - Create: `apps/api/src/modules/tenancy/application/use-cases/resolve-tenant.use-case.test.ts`
-- Create: `apps/api/src/modules/tenancy/infrastructure/http/tenant-host.ts`
-- Create: `apps/api/src/modules/tenancy/infrastructure/http/tenant-host.test.ts`
 - Create: `apps/api/src/modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-directory.adapter.ts`
 - Create: `apps/api/src/modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-directory.adapter.test.ts`
 
 **Interfaces:**
 
 ```ts
+export function tenantSlugFromHostname(hostname: string): string | undefined;
 export interface TenantDirectoryPort {
   findActiveBySlug(slug: string): Promise<ResolvedTenant | null>;
 }
-
 export class ResolveTenantUseCase {
   constructor(private readonly tenants: TenantDirectoryPort) {}
   execute(hostname: string): Promise<ResolvedTenant | null>;
 }
 ```
 
-- [ ] **Step 1: Write failing hostname tests**
+- [ ] **Step 1: Write failing slug tests**
 
 ```ts
 assert.equal(tenantSlugFromHostname("tenant-a.example.com"), "tenant-a");
@@ -320,27 +316,27 @@ assert.equal(tenantSlugFromHostname("127.0.0.1"), undefined);
 assert.equal(tenantSlugFromHostname("localhost"), undefined);
 ```
 
-- [ ] **Step 2: Implement pure hostname-to-slug parsing**
+- [ ] **Step 2: Implement pure slug parsing**
 
-The function lowercases and trims input, rejects IPs and malformed labels, and returns only a slug matching:
+Lowercase and trim input, reject IPs and malformed labels, and accept only:
 
 ```ts
 /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/
 ```
 
-This file imports no NestJS or Prisma.
+The file imports no infrastructure.
 
 - [ ] **Step 3: Write failing use-case tests with a fake port**
 
-Use an object literal implementing `TenantDirectoryPort`. Assert valid host calls `findActiveBySlug("tenant-a")` once, invalid host returns `null` without calling the port, and the use case returns the port result unchanged.
+Assert valid host calls `findActiveBySlug("tenant-a")` once, invalid host returns `null` without calling the port, and the use case returns the port result unchanged.
 
-- [ ] **Step 4: Implement the port and use case**
+- [ ] **Step 4: Implement port and use case**
 
-Keep input and result technology-neutral. The use case imports the pure hostname function and the application port only.
+The use case imports only domain slug parsing, the port, and domain result type.
 
 - [ ] **Step 5: Write failing Prisma adapter test**
 
-Use a fake `PrismaService` shape and assert:
+Assert the adapter calls:
 
 ```ts
 prisma.tenant.findUnique({
@@ -349,15 +345,11 @@ prisma.tenant.findUnique({
 });
 ```
 
-Returns `null` or `{ id, slug }` without exposing a Prisma model type.
-
-- [ ] **Step 6: Implement the adapter and run focused tests**
-
-The adapter is `@Injectable()`, implements `TenantDirectoryPort`, and is the only file in this task importing `PrismaService`.
+- [ ] **Step 6: Implement adapter and commit**
 
 ```bash
 pnpm --filter @booking-os/api exec node --test --import tsx \
-  src/modules/tenancy/infrastructure/http/tenant-host.test.ts \
+  src/modules/tenancy/domain/tenant-slug.test.ts \
   src/modules/tenancy/application/use-cases/resolve-tenant.use-case.test.ts \
   src/modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-directory.adapter.test.ts
 pnpm verify:architecture
@@ -368,12 +360,14 @@ git commit -m "feat: resolve tenants through an application port"
 
 ---
 
-### Task 4: Build the HTTP Inbound Adapters and Composition Root
+### Task 4: Build HTTP Inbound Adapters
 
 **Files:**
 - Modify: `apps/api/src/config/environment.schema.ts`
 - Modify: `apps/api/src/config/environment.schema.test.ts`
 - Modify: `apps/api/.env.example`
+- Create: `apps/api/src/modules/tenancy/infrastructure/http/effective-hostname.ts`
+- Create: `apps/api/src/modules/tenancy/infrastructure/http/effective-hostname.test.ts`
 - Create: `apps/api/src/modules/tenancy/infrastructure/http/tenant-resolution.middleware.ts`
 - Create: `apps/api/src/modules/tenancy/infrastructure/http/tenant-resolution.middleware.test.ts`
 - Create: `apps/api/src/modules/tenancy/infrastructure/http/tenant-required.decorator.ts`
@@ -390,11 +384,11 @@ git commit -m "feat: resolve tenants through an application port"
 
 - [ ] **Step 1: Add failing `TRUST_PROXY` tests**
 
-Assert default `false`, explicit `"true"` becomes `true`, explicit `"false"` remains `false`, and any other string fails environment parsing.
+Assert default `false`, explicit `"true"` becomes `true`, explicit `"false"` remains `false`, and any other string fails parsing.
 
 - [ ] **Step 2: Parse and document `TRUST_PROXY`**
 
-Add a strict enum field defaulting to `"false"`, transform it to `trustProxy: boolean`, and add `TRUST_PROXY=false` to `.env.example`.
+Add a strict enum defaulting to `"false"`, transform to `trustProxy: boolean`, and add `TRUST_PROXY=false` to `.env.example`.
 
 - [ ] **Step 3: Add failing effective-host tests**
 
@@ -404,23 +398,17 @@ assert.equal(effectiveHostname({ host: "api.internal", "x-forwarded-host": "tena
 assert.equal(effectiveHostname({ host: "api.internal", "x-forwarded-host": "tenant-a.example.com, proxy.internal" }, true), "tenant-a.example.com");
 ```
 
-Select the first comma-separated forwarded value only when proxy trust is enabled. Lowercase, trim, and remove a numeric port.
+Select the first forwarded value only with proxy trust, lowercase, trim, and strip numeric port.
 
-- [ ] **Step 4: Write middleware tests before implementation**
+- [ ] **Step 4: Write middleware tests**
 
-Use fakes for the use case and context storage. Assert:
+Assert effective hostname is sent to the use case, resolved tenant nests context with `tenantId`, unresolved tenant calls `next()` unchanged, client body/query/header tenant values are ignored, and no Prisma dependency exists.
 
-- the effective hostname is passed to `ResolveTenantUseCase.execute`;
-- a resolved tenant nests downstream execution with `{ ...current, tenantId }`;
-- unknown/invalid tenant calls `next()` without tenant enrichment;
-- request body/query/header tenant values are ignored;
-- no constructor parameter or import references Prisma.
+- [ ] **Step 5: Implement middleware**
 
-- [ ] **Step 5: Implement middleware as a pure inbound adapter**
+Do not inject `PrismaService` or a concrete adapter. Call `ResolveTenantUseCase` only.
 
-Do not inject `PrismaService` or the directory adapter. The middleware calls the use case only.
-
-- [ ] **Step 6: Add and implement tenant-required guard tests**
+- [ ] **Step 6: Add and implement guard tests**
 
 Metadata absent returns `true`; metadata present with tenant returns `true`; metadata present without tenant throws:
 
@@ -428,11 +416,9 @@ Metadata absent returns `true`; metadata present with tenant returns `true`; met
 new NotFoundException("Tenant context could not be resolved")
 ```
 
-The guard uses `Reflector` and `RequestContextStorage` only.
+- [ ] **Step 7: Compose directory port and guard**
 
-- [ ] **Step 7: Compose ports and adapters in `TenancyModule`**
-
-Use symbol tokens in `tenancy.tokens.ts`. Register:
+Register:
 
 ```ts
 {
@@ -446,34 +432,34 @@ Use symbol tokens in `tenancy.tokens.ts`. Register:
 }
 ```
 
-Register the guard as `APP_GUARD`. Keep database-backed tenant middleware scoped to tenant-aware controllers rather than `"*"` so liveness does not depend on PostgreSQL.
-
-Update `AppModule` to import `./modules/tenancy/tenancy.module.js`.
+Register `TenantRequiredGuard` with `APP_GUARD`. Do not apply database-backed middleware yet; Task 6 applies it to the new controller. Update `AppModule` to import `./modules/tenancy/tenancy.module.js`.
 
 - [ ] **Step 8: Run and commit**
 
 ```bash
 pnpm --filter @booking-os/api exec node --test --import tsx \
   src/config/environment.schema.test.ts \
-  src/modules/tenancy/infrastructure/http/tenant-host.test.ts \
+  src/modules/tenancy/infrastructure/http/effective-hostname.test.ts \
   src/modules/tenancy/infrastructure/http/tenant-resolution.middleware.test.ts \
   src/modules/tenancy/infrastructure/http/tenant-required.guard.test.ts
 pnpm verify:architecture
 pnpm --filter @booking-os/api typecheck
 git add apps/api/.env.example apps/api/src/config apps/api/src/modules/tenancy apps/api/src/app.module.ts
-git commit -m "feat: add tenant HTTP adapters and composition root"
+git commit -m "feat: add tenant HTTP adapters"
 ```
 
 ---
 
-### Task 5: Define the Transaction Port and Prisma Transaction Adapter
+### Task 5: Define Transaction Capabilities and Prisma Adapters
 
 **Files:**
 - Create: `apps/api/src/modules/tenancy/application/ports/tenant-probe-repository.port.ts`
 - Create: `apps/api/src/modules/tenancy/application/ports/tenant-transaction.port.ts`
+- Create: `apps/api/src/modules/tenancy/application/ports/tenant-transaction.port.test.ts`
+- Create: `apps/api/src/modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-probe-repository.adapter.ts`
+- Create: `apps/api/src/modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-probe-repository.adapter.test.ts`
 - Create: `apps/api/src/modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-transaction.adapter.ts`
 - Create: `apps/api/src/modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-transaction.adapter.test.ts`
-- Modify: `apps/api/src/modules/tenancy/tenancy.tokens.ts`
 - Modify: `apps/api/src/modules/tenancy/tenancy.module.ts`
 
 **Interfaces:**
@@ -484,15 +470,12 @@ export interface TenantProbeRecord {
   readonly tenantId: string;
   readonly value: string;
 }
-
 export interface TenantProbeRepositoryPort {
   list(): Promise<readonly TenantProbeRecord[]>;
 }
-
 export interface TenantDataSession {
   readonly tenantProbes: TenantProbeRepositoryPort;
 }
-
 export interface TenantTransactionPort {
   run<T>(
     context: TenantExecutionContext,
@@ -501,98 +484,11 @@ export interface TenantTransactionPort {
 }
 ```
 
-- [ ] **Step 1: Write a compile-time architecture test for the ports**
+- [ ] **Step 1: Write failing port compilation test**
 
-Import the port types in a Node test, construct fakes, and assert the source files contain none of these strings:
+Construct fake `TenantProbeRepositoryPort`, `TenantDataSession`, and `TenantTransactionPort` values and execute a callback. The test imports no Prisma or NestJS.
 
-```ts
-["@prisma/client", "Prisma.", "TransactionClient", "@nestjs/"]
-```
-
-The repository method has no transaction parameter.
-
-- [ ] **Step 2: Write failing Prisma transaction adapter tests**
-
-Cover exact behavior:
-
-- malformed tenant rejects before `$transaction` is called;
-- `SET LOCAL ROLE booking_app` occurs before `set_config`;
-- callback receives `{ tenantProbes }`, not the raw transaction;
-- the repository capability is constructed with the active transaction;
-- same-tenant nested call reuses one transaction and the same session;
-- different-tenant nested call throws `TenantContextConflictError`;
-- callback failure propagates so Prisma rolls back;
-- completed callbacks cannot retrieve an active session.
-
-- [ ] **Step 3: Implement active-session storage**
-
-Use private `AsyncLocalStorage` inside the adapter:
-
-```ts
-interface ActiveTenantSession {
-  readonly context: TenantExecutionContext;
-  readonly session: TenantDataSession;
-}
-```
-
-The adapter opens Prisma transaction only when no active session exists. For a nested call, compare tenant IDs and either reuse or throw.
-
-- [ ] **Step 4: Construct technology-neutral capabilities**
-
-Inside the Prisma transaction callback:
-
-```ts
-const session: TenantDataSession = Object.freeze({
-  tenantProbes: new PrismaTenantProbeRepositoryAdapter(transaction),
-});
-```
-
-The adapter file may import Prisma and the concrete repository adapter. Application files may not.
-
-- [ ] **Step 5: Bind the application port**
-
-Register `TENANT_TRANSACTION_PORT` to `PrismaTenantTransactionAdapter` in `TenancyModule`. Do not export the concrete adapter outside the module.
-
-- [ ] **Step 6: Run and commit**
-
-```bash
-pnpm --filter @booking-os/api exec node --test --import tsx \
-  src/modules/tenancy/application/ports/tenant-transaction.port.test.ts \
-  src/modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-transaction.adapter.test.ts
-pnpm verify:architecture
-pnpm --filter @booking-os/api typecheck
-git add apps/api/src/modules/tenancy
-git commit -m "feat: add hexagonal tenant transaction adapter"
-```
-
----
-
-### Task 6: Complete the Tenant-Probe Hexagonal Vertical Slice
-
-**Files:**
-- Create: `apps/api/src/modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-probe-repository.adapter.ts`
-- Create: `apps/api/src/modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-probe-repository.adapter.test.ts`
-- Create: `apps/api/src/modules/tenancy/application/use-cases/list-tenant-probes.use-case.ts`
-- Create: `apps/api/src/modules/tenancy/application/use-cases/list-tenant-probes.use-case.test.ts`
-- Create: `apps/api/src/modules/tenancy/infrastructure/http/tenant-probe.controller.ts`
-- Modify: `apps/api/src/modules/tenancy/tenancy.module.ts`
-- Modify: `apps/api/test/tenant-probe.e2e.test.ts` if present; otherwise create it.
-- Delete: `apps/api/src/tenancy/tenant-context.ts`
-- Delete: `apps/api/src/tenancy/tenant-context.service.ts`
-- Delete: `apps/api/src/tenancy/tenant-probe.controller.ts`
-- Delete: `apps/api/src/tenancy/tenant-resolution.middleware.ts`
-- Delete: `apps/api/src/tenancy/tenancy.module.ts`
-
-**Interfaces:**
-
-```ts
-export class ListTenantProbesUseCase {
-  constructor(private readonly transactions: TenantTransactionPort) {}
-  execute(context: TenantExecutionContext): Promise<readonly TenantProbeRecord[]>;
-}
-```
-
-- [ ] **Step 1: Write failing repository-adapter test**
+- [ ] **Step 2: Write failing repository-adapter test**
 
 Assert `list()` calls exactly:
 
@@ -603,27 +499,83 @@ transaction.tenantProbe.findMany({
 });
 ```
 
-The adapter constructor receives Prisma transaction infrastructure, but its public interface is `TenantProbeRepositoryPort`.
+- [ ] **Step 3: Implement repository adapter**
 
-- [ ] **Step 2: Implement the Prisma repository adapter**
+The constructor receives `Prisma.TransactionClient`, but the public interface is `TenantProbeRepositoryPort`. Keep all Prisma types inside infrastructure.
 
-Keep all Prisma types inside `infrastructure/persistence/prisma`.
+- [ ] **Step 4: Write failing transaction-adapter tests**
 
-- [ ] **Step 3: Write failing use-case test using fake transaction port**
+Cover malformed tenant before `$transaction`, role before `set_config`, callback receives only `{ tenantProbes }`, repository capability uses the active transaction, same-tenant nesting reuses session, different-tenant nesting throws `TenantContextConflictError`, and callback failure propagates.
 
-The fake calls the callback with:
+- [ ] **Step 5: Implement active session and transaction**
+
+Use private `AsyncLocalStorage`:
 
 ```ts
-const session: TenantDataSession = {
-  tenantProbes: {
-    list: async () => [{ id: "probe-1", tenantId, value: "visible" }],
-  },
-};
+interface ActiveTenantSession {
+  readonly context: TenantExecutionContext;
+  readonly session: TenantDataSession;
+}
 ```
 
-Assert the use case passes the exact context to `transactions.run` and returns `session.tenantProbes.list()`.
+Inside Prisma transaction:
 
-- [ ] **Step 4: Implement the use case**
+```ts
+await transaction.$executeRawUnsafe("SET LOCAL ROLE booking_app");
+await transaction.$executeRaw`SELECT set_config('app.tenant_id', ${context.tenantId}, true)`;
+const session = Object.freeze({
+  tenantProbes: new PrismaTenantProbeRepositoryAdapter(transaction),
+});
+```
+
+- [ ] **Step 6: Bind transaction port**
+
+Register `TENANT_TRANSACTION_PORT` to `PrismaTenantTransactionAdapter`. Do not export the concrete adapter.
+
+- [ ] **Step 7: Run and commit**
+
+```bash
+pnpm --filter @booking-os/api exec node --test --import tsx \
+  src/modules/tenancy/application/ports/tenant-transaction.port.test.ts \
+  src/modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-probe-repository.adapter.test.ts \
+  src/modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-transaction.adapter.test.ts
+pnpm verify:architecture
+pnpm --filter @booking-os/api typecheck
+git add apps/api/src/modules/tenancy
+git commit -m "feat: add hexagonal tenant transaction adapters"
+```
+
+---
+
+### Task 6: Complete the Tenant-Probe Vertical Slice
+
+**Files:**
+- Create: `apps/api/src/modules/tenancy/application/use-cases/list-tenant-probes.use-case.ts`
+- Create: `apps/api/src/modules/tenancy/application/use-cases/list-tenant-probes.use-case.test.ts`
+- Create: `apps/api/src/modules/tenancy/infrastructure/http/tenant-probe.controller.ts`
+- Modify: `apps/api/src/modules/tenancy/tenancy.module.ts`
+- Create: `apps/api/test/tenant-probe.e2e.test.ts`
+- Modify: `apps/api/test/tenant-isolation.e2e.test.ts`
+- Delete: `apps/api/src/tenancy/tenant-context.ts`
+- Delete: `apps/api/src/tenancy/tenant-context.service.ts`
+- Delete: `apps/api/src/tenancy/tenant-probe.controller.ts`
+- Delete: `apps/api/src/tenancy/tenant-resolution.middleware.ts`
+- Delete: `apps/api/src/tenancy/tenancy.module.ts`
+
+**Interface:**
+
+```ts
+export class ListTenantProbesUseCase {
+  constructor(private readonly transactions: TenantTransactionPort) {}
+  execute(context: TenantExecutionContext): Promise<readonly TenantProbeRecord[]>;
+}
+```
+
+- [ ] **Step 1: Write failing use-case test**
+
+Use a fake transaction port that calls the callback with a fake `tenantProbes.list()`. Assert exact context forwarding and returned records.
+
+- [ ] **Step 2: Implement use case**
 
 ```ts
 execute(context: TenantExecutionContext): Promise<readonly TenantProbeRecord[]> {
@@ -631,39 +583,35 @@ execute(context: TenantExecutionContext): Promise<readonly TenantProbeRecord[]> 
 }
 ```
 
-No NestJS or Prisma imports are allowed.
+No NestJS or Prisma imports.
 
-- [ ] **Step 5: Implement controller as inbound adapter**
+- [ ] **Step 3: Write controller and E2E tests before implementation**
 
-Preserve the existing test-only authorization and internal route visibility. The controller:
+Preserve the existing internal route and test-only bearer authorization. Assert the controller reads trusted context, narrows it, calls the use case, and returns records. E2E covers tenant A, tenant B, missing tenant, and invalid authorization.
 
-- reads trusted context from `RequestContextStorage`;
-- narrows with `requireTenantExecutionContext`;
-- invokes `ListTenantProbesUseCase.execute(context)`;
-- contains no Prisma or transaction logic;
-- is decorated with `@TenantRequired()`.
+- [ ] **Step 4: Implement controller as inbound adapter**
 
-- [ ] **Step 6: Wire use case and middleware route**
+The controller imports `RequestContextStorage`, `requireTenantExecutionContext`, and `ListTenantProbesUseCase`. It contains no Prisma or transaction code and is decorated with `@TenantRequired()`.
 
-Construct `ListTenantProbesUseCase` from `TENANT_TRANSACTION_PORT`. Register the controller and apply tenant resolution middleware only to this controller.
+- [ ] **Step 5: Wire use case, controller, and middleware route**
 
-- [ ] **Step 7: Remove superseded tenancy files after tests pass**
+Construct `ListTenantProbesUseCase` from `TENANT_TRANSACTION_PORT`, register the controller, and apply tenant middleware only to this controller.
 
-Search for imports before deletion:
+- [ ] **Step 6: Replace old test imports and remove old module**
 
 ```bash
 rg 'src/tenancy|\.\/tenancy|\.\.\/tenancy' apps/api/src apps/api/test
 ```
 
-Update every remaining import to `src/modules/tenancy` paths, then remove the old directory.
+Update every result to `src/modules/tenancy` paths, then delete the old files.
 
-- [ ] **Step 8: Run and commit**
+- [ ] **Step 7: Run and commit**
 
 ```bash
 pnpm --filter @booking-os/api exec node --test --import tsx \
-  src/modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-probe-repository.adapter.test.ts \
   src/modules/tenancy/application/use-cases/list-tenant-probes.use-case.test.ts \
-  test/tenant-probe.e2e.test.ts
+  test/tenant-probe.e2e.test.ts \
+  test/tenant-isolation.e2e.test.ts
 pnpm verify:architecture
 pnpm --filter @booking-os/api typecheck
 git add apps/api/src apps/api/test
@@ -678,37 +626,22 @@ git commit -m "refactor: complete tenant probe hexagonal slice"
 - Modify: `apps/api/test/tenant-isolation.e2e.test.ts`
 - Create: `apps/api/test/tenant-context-concurrency.e2e.test.ts`
 - Create: `apps/api/test/tenant-resolution.e2e.test.ts`
-- Modify: test helpers under `apps/api/test/` only when shared setup removes duplication.
 
-**Interfaces:**
-- Tests execute tenant-owned work through `TenantTransactionPort` or the public HTTP adapter path, never by importing the Prisma transaction adapter from application code.
+- [ ] **Step 1: Expand RLS CRUD matrix**
 
-- [ ] **Step 1: Expand the RLS CRUD matrix**
-
-Add tenant A against tenant B cases for list, primary-key lookup, raw select, insert, update, updateMany, delete, deleteMany, upsert, and raw update. Assert null, zero count, or rejection according to Prisma behavior without matching complete PostgreSQL error text.
+Add tenant A against tenant B cases for list, primary-key lookup, raw select, insert, update, updateMany, delete, deleteMany, upsert, and raw update. Assert null, zero count, or rejection without matching complete PostgreSQL error text.
 
 - [ ] **Step 2: Add commit and rollback cases**
 
-A successful transaction persists. A create followed by a thrown sentinel error rolls back. A malformed tenant ID rejects before the fake or real Prisma `$transaction` call.
+A successful transaction persists. A create followed by a thrown sentinel error rolls back. A malformed tenant ID rejects before Prisma `$transaction`.
 
-- [ ] **Step 3: Add parallel context-leakage test**
+- [ ] **Step 3: Add parallel leakage test**
 
-Run at least 20 interleaved tenant A/B operations. Cross an async scheduling boundary with `setImmediate` or `Promise.resolve()`. Assert each response contains only its active tenant's rows.
-
-Then run A → B → missing-context sequentially to prove AsyncLocalStorage and transaction-local `SET LOCAL` state do not leak through pooled connections.
+Run at least 20 interleaved tenant A/B operations, cross an async boundary, and assert every response contains only its active tenant. Then run A → B → missing-context sequentially to prove AsyncLocalStorage and `SET LOCAL` state do not leak.
 
 - [ ] **Step 4: Add HTTP E2E cases**
 
-Cover:
-
-- tenant A host;
-- tenant B host;
-- unknown host;
-- missing host;
-- body/query/header values attempting to select tenant B during tenant A request;
-- `TRUST_PROXY=false` ignoring forwarded host;
-- `TRUST_PROXY=true` accepting first trusted forwarded host;
-- health and readiness without tenant context.
+Cover tenant A host, tenant B host, unknown host, missing host, malicious body/query/header tenant IDs, `TRUST_PROXY=false`, `TRUST_PROXY=true`, health, and readiness.
 
 - [ ] **Step 5: Run and commit**
 
@@ -742,80 +675,53 @@ git commit -m "test: complete tenant isolation matrix"
 export interface TenantOwnedTablePolicy {
   readonly table: string;
   readonly tenantColumn: string;
+  readonly tenantColumnNullable: boolean;
   readonly applicationRole: string;
 }
-
 export async function verifyTenantPolicies(
   client: Pick<PoolClient, "query">,
   manifest: readonly TenantOwnedTablePolicy[],
 ): Promise<readonly string[]>;
 ```
 
-- [ ] **Step 1: Write failing verifier tests with catalog fakes**
+- [ ] **Step 1: Write failing catalog tests**
 
-Fixtures cover:
+Cover valid table, missing table, missing tenant column, incorrect nullability, missing index, RLS disabled, FORCE RLS disabled, missing policy, missing `USING`, missing `WITH CHECK`, superuser application role, BYPASSRLS, and excessive grants.
 
-- valid table;
-- missing table;
-- missing `tenant_id`;
-- nullable tenant column when manifest requires non-null;
-- missing tenant index;
-- RLS disabled;
-- FORCE RLS disabled;
-- missing policy;
-- missing `USING` expression;
-- missing `WITH CHECK` expression;
-- `booking_app` superuser;
-- `booking_app` with BYPASSRLS;
-- excessive grants.
-
-Assert failures are sorted and include table/role names.
-
-- [ ] **Step 2: Run and observe missing-verifier failure**
+- [ ] **Step 2: Run and observe failure**
 
 ```bash
 pnpm --filter @booking-os/api exec node --test --import tsx \
   src/modules/tenancy/infrastructure/persistence/tenant-policy-verifier.test.ts
 ```
 
-- [ ] **Step 3: Implement PostgreSQL catalog inspection**
+- [ ] **Step 3: Implement catalog inspection**
 
-Query:
-
-- `pg_class.relrowsecurity` and `relforcerowsecurity`;
-- `information_schema.columns`;
-- `pg_indexes`;
-- `pg_policies.qual` and `with_check`;
-- `information_schema.role_table_grants`;
-- `pg_roles.rolsuper` and `rolbypassrls`.
-
-Require policy expressions to reference:
+Query `pg_class`, `information_schema.columns`, `pg_indexes`, `pg_policies`, `information_schema.role_table_grants`, and `pg_roles`. Require policy expressions to reference:
 
 ```sql
 current_setting('app.tenant_id', true)
 ```
 
-The manifest initially declares `tenant_probes` and the tenant-bound behavior of `outbox_events` according to its accepted mixed-scope migration.
+Declare `tenant_probes` with `tenantColumnNullable: false` and `outbox_events` with `tenantColumnNullable: true` according to its accepted mixed-scope migration.
 
 - [ ] **Step 4: Add executable command**
 
-Add to API scripts:
+Add:
 
 ```json
 "verify:tenant-policies": "tsx scripts/verify-tenant-policies.ts"
 ```
 
-The script reads `MIGRATION_DATABASE_URL` or `DATABASE_URL`, creates `pg.Pool`, prints all failures, exits non-zero on violation, prints `Tenant policy verification PASS.` on success, and closes the pool in `finally`.
+The script reads `MIGRATION_DATABASE_URL` or `DATABASE_URL`, creates `pg.Pool`, prints failures, exits non-zero, prints `Tenant policy verification PASS.` on success, and closes in `finally`.
 
 - [ ] **Step 5: Wire migration verification**
 
-After deploy/status/diff, run:
+After deploy/status/diff and after previous-schema upgrade, run:
 
 ```js
 run(["--filter", "@booking-os/api", "verify:tenant-policies"], migrationEnvironment);
 ```
-
-Run it again after upgrading the previous-schema database.
 
 - [ ] **Step 6: Run and commit**
 
@@ -847,20 +753,18 @@ git commit -m "feat: verify tenant RLS policy invariants"
 run<T>(work: (transaction: Prisma.TransactionClient) => Promise<T>): Promise<T>;
 ```
 
-This Prisma-bearing interface is allowed because `worker-critical/src/database` is infrastructure, not API application core.
+This Prisma-bearing interface is allowed because it remains inside worker infrastructure, not API application core.
 
-- [ ] **Step 1: Write failing worker-wrapper tests**
+- [ ] **Step 1: Write failing wrapper tests**
 
-Assert one transaction, `SET LOCAL ROLE booking_worker` runs first, callback receives the transaction, errors propagate, and no caller-provided role parameter exists.
+Assert one transaction, `SET LOCAL ROLE booking_worker` first, callback receives transaction, errors propagate, and no caller-provided role parameter exists.
 
 - [ ] **Step 2: Implement worker-only wrapper**
 
 ```ts
 const WORKER_DATABASE_ROLE = "booking_worker";
-
 export class WorkerDatabase {
   constructor(private readonly prisma: PrismaClient) {}
-
   run<T>(work: (transaction: Prisma.TransactionClient) => Promise<T>): Promise<T> {
     return this.prisma.$transaction(async (transaction) => {
       await transaction.$executeRawUnsafe(`SET LOCAL ROLE ${WORKER_DATABASE_ROLE}`);
@@ -870,15 +774,15 @@ export class WorkerDatabase {
 }
 ```
 
-Do not export a generic `runAsRole` function.
+Do not export a generic `runAsRole`.
 
 - [ ] **Step 3: Refactor Outbox repository and providers**
 
-`PrismaOutboxRepository` receives `WorkerDatabase`; each method delegates to `database.run`. Providers keep the raw Prisma token only for connection lifecycle and construct `WorkerDatabase` inside `worker-critical`.
+`PrismaOutboxRepository` receives `WorkerDatabase`; providers keep raw Prisma only for connection lifecycle and construct the wrapper inside `worker-critical`.
 
 - [ ] **Step 4: Add safety and integration tests**
 
-Assert logs include safe `eventId`, event type, and optional tenant ID but exclude payload and credentials. API application-role tests prove one tenant cannot alter another tenant's Outbox rows. Worker integration proves `claimBatch`, `markDispatched`, and `markFailed` operate across approved rows.
+Logs include safe event ID, type, and optional tenant ID but exclude payload and credentials. API application role cannot alter another tenant's Outbox rows. Worker integration proves approved cross-tenant claim and state transitions.
 
 - [ ] **Step 5: Run and commit**
 
@@ -911,7 +815,7 @@ git commit -m "refactor: isolate privileged worker database access"
 
 - [ ] **Step 1: Document module usage**
 
-Show an application use case depending on ports:
+Show:
 
 ```ts
 return this.transactions.run(context, (session) =>
@@ -919,27 +823,17 @@ return this.transactions.run(context, (session) =>
 );
 ```
 
-Show that controllers call use cases, middleware calls `ResolveTenantUseCase`, and Prisma remains under `infrastructure/persistence/prisma`.
-
-Document `TRUST_PROXY=false` as default and enable forwarded host only behind a controlled proxy.
+Document that controllers call use cases, middleware calls `ResolveTenantUseCase`, Prisma stays under `infrastructure/persistence/prisma`, and `TRUST_PROXY=false` is the default.
 
 - [ ] **Step 2: Document architecture verification**
 
-Add:
-
-```bash
-pnpm verify:architecture
-```
-
-Explain the domain, application, infrastructure, composition-root, and cross-module rules. State that an accepted ADR is required for exceptions.
+Add `pnpm verify:architecture` and explain domain, application, infrastructure, composition-root, and cross-module rules. An accepted ADR is required for exceptions.
 
 - [ ] **Step 3: Extend recovery runbook**
 
-Add tenant-context and tenant-policy diagnosis using request ID, trace ID, effective host, read-only PostgreSQL catalog checks, `pnpm verify:architecture`, and `pnpm verify:migrations`.
+Add tenant-context and tenant-policy diagnosis using request ID, trace ID, effective host, read-only PostgreSQL catalog checks, architecture verification, and migration verification. Forbid disabling RLS, granting BYPASSRLS, editing applied migrations, importing infrastructure to bypass a port, or ad-hoc tenant data repair.
 
-Explicitly forbid disabling RLS, granting BYPASSRLS, editing applied migrations, importing infrastructure to bypass a port, or repairing tenant data with ad-hoc SQL.
-
-- [ ] **Step 4: Run focused and repository-wide gates**
+- [ ] **Step 4: Run repository-wide gates**
 
 ```bash
 pnpm format
@@ -956,7 +850,7 @@ pnpm verify:foundation
 pnpm build
 ```
 
-Install and run the pinned OpenAPI compatibility tool when required by the local environment:
+When required locally:
 
 ```bash
 go install github.com/oasdiff/oasdiff@v1.17.0
@@ -971,18 +865,16 @@ rg '@nestjs/|@prisma/client|/infrastructure/' \
   apps/api/src/modules/tenancy/application
 ```
 
-Expected: no matches except test strings deliberately used to validate the architecture verifier; those fixtures live under `scripts/architecture`, not the module.
+Expected: no matches.
 
-- [ ] **Step 6: Commit final documentation**
+- [ ] **Step 6: Commit documentation**
 
 ```bash
-git add README.md docs apps/api apps/worker-critical scripts package.json .github/workflows/ci.yml
+git add README.md docs
 git commit -m "docs: complete tenant isolation operating guidance"
 ```
 
-- [ ] **Step 7: Final branch evidence**
-
-Record:
+- [ ] **Step 7: Record final evidence**
 
 ```bash
 git status --short
