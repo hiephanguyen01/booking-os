@@ -19,7 +19,10 @@ type ControllerType = abstract new (...args: never[]) => unknown;
 type Handler = (...args: never[]) => unknown;
 
 function metadataPaths(target: object): readonly string[] {
-  const metadata = Reflect.getMetadata(PATH_METADATA, target) as string | readonly string[] | undefined;
+  const metadata = Reflect.getMetadata(PATH_METADATA, target) as
+    | string
+    | readonly string[]
+    | undefined;
   if (metadata === undefined) {
     return [""];
   }
@@ -51,10 +54,7 @@ function joinPath(...parts: readonly string[]): string {
   return `/${segments.join("/")}`;
 }
 
-export function inspectApiRoutes(
-  app: INestApplication,
-  globalPrefix: string,
-): readonly ApiRoute[] {
+export function inspectApiRoutes(app: INestApplication, globalPrefix: string): readonly ApiRoute[] {
   const discovery = app.get(DiscoveryService);
   const routes: ApiRoute[] = [];
 
@@ -68,7 +68,9 @@ export function inspectApiRoutes(
     const prototype = Object.getPrototypeOf(instance) as Record<string, Handler>;
     for (const handlerName of methodNames(prototype)) {
       const handler = prototype[handlerName];
-      const requestMethod = Reflect.getMetadata(METHOD_METADATA, handler) as RequestMethod | undefined;
+      const requestMethod = Reflect.getMetadata(METHOD_METADATA, handler) as
+        | RequestMethod
+        | undefined;
       if (requestMethod === undefined) {
         continue;
       }
@@ -89,8 +91,8 @@ export function inspectApiRoutes(
     }
   }
 
-  const sorted = routes.sort((left, right) =>
-    left.path.localeCompare(right.path) || left.method.localeCompare(right.method),
+  const sorted = routes.sort(
+    (left, right) => left.path.localeCompare(right.path) || left.method.localeCompare(right.method),
   );
   const seen = new Set<string>();
   for (const route of sorted) {
