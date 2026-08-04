@@ -66,6 +66,7 @@ The tenancy module becomes:
 apps/api/src/modules/tenancy/
 ├── domain/
 │   ├── tenant-id.ts
+│   ├── tenant-slug.ts
 │   └── resolved-tenant.ts
 ├── application/
 │   ├── ports/
@@ -79,16 +80,19 @@ apps/api/src/modules/tenancy/
 │   └── tenant-execution-context.ts
 ├── infrastructure/
 │   ├── http/
-│   │   ├── tenant-host.ts
+│   │   ├── effective-hostname.ts
 │   │   ├── tenant-resolution.middleware.ts
 │   │   ├── tenant-required.decorator.ts
 │   │   ├── tenant-required.guard.ts
 │   │   └── tenant-probe.controller.ts
 │   └── persistence/
+│       ├── tenant-policy-manifest.ts
+│       ├── tenant-policy-verifier.ts
 │       └── prisma/
 │           ├── prisma-tenant-directory.adapter.ts
 │           ├── prisma-tenant-probe-repository.adapter.ts
 │           └── prisma-tenant-transaction.adapter.ts
+├── tenancy.tokens.ts
 └── tenancy.module.ts
 ```
 
@@ -141,7 +145,26 @@ A narrowing function validates tenant context before application execution. Miss
 
 Tenant identity originates from a trusted hostname resolver. Request body, query string, and arbitrary tenant headers are never authorization sources.
 
-The application owns the outbound port:
+Transport-specific host extraction belongs to the HTTP adapter:
+
+```ts
+export function effectiveHostname(
+  headers: Readonly<Record<string, string | string[] | undefined>>,
+  trustProxy: boolean,
+): string | undefined;
+```
+
+It decides whether `x-forwarded-host` is trusted, selects the first forwarded value, normalizes case, and removes a numeric port.
+
+Pure hostname-to-slug policy belongs to the domain boundary:
+
+```ts
+export function tenantSlugFromHostname(
+  hostname: string,
+): string | undefined;
+```
+
+The application owns the outbound directory port:
 
 ```ts
 export interface ResolvedTenant {
@@ -154,7 +177,7 @@ export interface TenantDirectoryPort {
 }
 ```
 
-The application use case owns hostname-to-slug behavior and directory lookup:
+The application use case owns slug extraction and directory lookup:
 
 ```ts
 export class ResolveTenantUseCase {
@@ -167,7 +190,7 @@ export class ResolveTenantUseCase {
 }
 ```
 
-The HTTP middleware determines effective hostname using configured proxy trust, calls the use case, and enriches immutable context with the resolved tenant ID. It never imports `PrismaService` or a Prisma adapter.
+The HTTP middleware extracts the effective hostname, calls the use case, and enriches immutable context with the resolved tenant ID. It never imports `PrismaService` or a Prisma adapter.
 
 The Prisma directory adapter maps the global `tenants` table to `ResolvedTenant`.
 
@@ -365,6 +388,8 @@ Sprint 1A is complete only when:
 ## Delivery Boundaries
 
 Implementation is decomposed into reviewable commits covering architecture enforcement, context/domain contracts, tenant-resolution ports and adapters, transaction ports and adapters, tenant-probe vertical slice, isolation tests, migration verification, privileged-path isolation, and documentation.
+
+The new tenancy module remains unmounted while its adapters are built. `AppModule` cuts over only after the new controller passes behavior-compatible E2E tests, preserving runtime behavior after every task commit.
 
 No identity or booking-domain behavior enters this slice. The Hexagonal pattern applies immediately to tenancy and all new business modules, while untouched Foundation code is migrated only by later slices that need to change it.
 
