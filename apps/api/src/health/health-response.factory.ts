@@ -1,8 +1,4 @@
-import type {
-  HealthDependencyStatus,
-  HealthResponse,
-  HealthStatus,
-} from "@booking-os/contracts";
+import type { HealthDependencyStatus, HealthResponse, HealthStatus } from "@booking-os/contracts";
 
 import type { EnvironmentService } from "../config/environment.service.js";
 import type { MonotonicClock, WallClock } from "../observability/tokens.js";
