@@ -1,0 +1,9 @@
+id: API-WAIVER-0001
+owner: hiephanguyen01
+reason: Approve this exact fixture finding while validating compatibility governance.
+expiresOn: 2026-08-31
+baseContractSha256: 0000000000000000000000000000000000000000000000000000000000000000
+revisionContractSha256: ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+findings:
+  - severity: ERR
+    fingerprint: "ERR GET /api/example removed the success response with the status '200'"
