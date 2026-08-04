@@ -1,16 +1,16 @@
 name: Update API dependency lockfile
 
 on:
-  push:
+  pull_request:
     branches:
-      - feat/api-observability-readiness
+      - main
 
 permissions:
   contents: write
 
 jobs:
   update-lockfile:
-    if: github.event.head_commit.message == 'chore(api): add dependency manifests'
+    if: github.event.pull_request.head.ref == 'feat/api-observability-readiness'
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout branch
