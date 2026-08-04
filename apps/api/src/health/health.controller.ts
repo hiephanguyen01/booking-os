@@ -1,11 +1,11 @@
 import type { HealthResponse } from "@booking-os/contracts/health";
-import { Controller, Get, Inject, Res } from "@nestjs/common";
+import { Controller, Get, Inject, Req, Res } from "@nestjs/common";
 
+import type { RequestWithContext } from "../observability/request-context.js";
 import { HealthService } from "./health.service.js";
 
-interface HttpResponse {
-  status(code: number): HttpResponse;
-  json(body: HealthResponse): HttpResponse;
+interface HttpStatusResponse {
+  status(statusCode: number): unknown;
 }
 
 @Controller()
@@ -18,10 +18,13 @@ export class HealthController {
   }
 
   @Get("ready")
-  async getReadiness(@Res() response: HttpResponse): Promise<void> {
-    const readiness = await this.healthService.getReadiness();
-    const statusCode = readiness.status === "ok" ? 200 : 503;
+  async getReadiness(
+    @Req() request: RequestWithContext,
+    @Res({ passthrough: true }) response: HttpStatusResponse,
+  ): Promise<HealthResponse> {
+    const result = await this.healthService.getReadiness(request.requestId);
 
-    response.status(statusCode).json(readiness);
+    response.status(result.statusCode);
+    return result.body;
   }
 }
