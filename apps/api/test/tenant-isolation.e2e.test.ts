@@ -58,8 +58,12 @@ before(async () => {
 });
 
 after(async () => {
-  await tenantContext.runInTenant(TENANT_A_ID, (transaction) => transaction.tenantProbe.deleteMany());
-  await tenantContext.runInTenant(TENANT_B_ID, (transaction) => transaction.tenantProbe.deleteMany());
+  await tenantContext.runInTenant(TENANT_A_ID, (transaction) =>
+    transaction.tenantProbe.deleteMany(),
+  );
+  await tenantContext.runInTenant(TENANT_B_ID, (transaction) =>
+    transaction.tenantProbe.deleteMany(),
+  );
   await prisma.tenant.deleteMany({ where: { id: { in: [TENANT_A_ID, TENANT_B_ID] } } });
   await prisma.$disconnect();
 });
