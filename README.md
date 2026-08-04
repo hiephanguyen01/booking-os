@@ -214,7 +214,16 @@ const health = await client.health.get();
 
 Generated TypeScript chỉ cung cấp static typing. Zod vẫn kiểm tra runtime response khi dữ liệu không tin cậy đi qua boundary.
 
-**Compatibility gate: pending PR 2.** PR 1 chỉ thiết lập baseline deterministic và zero-diff generation. `oasdiff`, waiver có thời hạn và base-versus-revision merge protection chỉ được kích hoạt sau khi baseline này đã merge vào `main`.
+Mọi pull request được kiểm tra bằng gate `OpenAPI compatibility`. CI lấy chính `github.event.pull_request.base.sha`, materialize contract bằng `git show`, rồi so sánh với revision đã commit bằng `oasdiff@v1.17.0`. `ERR` và `WARN` chưa được waiver đều chặn merge; lỗi tool, schema, parser hoặc dữ liệu waiver cũng fail-closed.
+
+Waiver chỉ áp dụng cho đúng cặp SHA-256 contract, đúng severity và đúng dòng finding; owner, lý do và ngày hết hạn là bắt buộc. Quy trình chi tiết nằm tại `docs/api/compatibility-waivers/README.md`.
+
+Kiểm tra fixture bằng binary thật tại local sau khi cài Go 1.26 và `oasdiff` đã pin:
+
+```bash
+go install github.com/oasdiff/oasdiff@v1.17.0
+pnpm api:verify-compatibility-fixtures
+```
 
 ### Request correlation and errors
 
@@ -278,6 +287,7 @@ Các check chính:
 - `Docker Compose configuration`: Compose interpolation và schema validation.
 - `Genesis tooling`: Python unit tests cùng repository validation.
 - `OpenAPI contract`: deterministic regeneration, zero-diff, generated-client typecheck và generator tests.
+- `OpenAPI compatibility`: fixture verification bằng `oasdiff` thật và fail-closed comparison với contract tại pull-request base SHA.
 
 Dependency audit chặn advisory `high` và `critical`. Gitleaks quét committed history mà không đăng PR comment hoặc upload SARIF artifact.
 
@@ -287,6 +297,7 @@ Chạy các gate chính tại local:
 pnpm install --frozen-lockfile
 pnpm genesis:validate
 pnpm api:check-generated
+pnpm api:verify-compatibility-fixtures
 pnpm check:ci
 pnpm lint
 pnpm typecheck
