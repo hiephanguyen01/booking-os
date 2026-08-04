@@ -1,6 +1,6 @@
 import {
-  OpaqueSessionStore,
   type OpaqueSessionRepository,
+  OpaqueSessionStore,
   type OpaqueSessionStoreOptions,
   type StoredOpaqueSession,
 } from "@booking-os/auth";
