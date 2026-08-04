@@ -74,8 +74,11 @@ after(async () => {
   }
 });
 
-test("GET /api/health returns the liveness response", async () => {
-  const response = await request(app.getHttpServer()).get("/api/health").expect(200);
+test("GET /api/health returns liveness with request identifiers", async () => {
+  const response = await request(app.getHttpServer())
+    .get("/api/health")
+    .set("x-request-id", "req-e2e-health")
+    .expect(200);
 
   const body = response.body as HealthResponse;
 
@@ -84,6 +87,8 @@ test("GET /api/health returns the liveness response", async () => {
   assert.equal(body.version, "0.1.0-e2e");
   assert.equal(typeof body.timestamp, "string");
   assert.equal(typeof body.uptimeSeconds, "number");
+  assert.equal(response.headers["x-request-id"], "req-e2e-health");
+  assert.match(response.headers["x-trace-id"] ?? "", /^[0-9a-f-]{36}$/);
 });
 
 test("GET /api/ready returns HTTP 200 when dependencies are ready", async () => {
