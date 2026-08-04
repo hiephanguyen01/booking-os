@@ -117,7 +117,10 @@ function responseType(operation, operationId) {
   if (response.content === undefined) {
     return "void";
   }
-  const content = assertRecord(response.content, `invalid ${status} response content for ${operationId}`);
+  const content = assertRecord(
+    response.content,
+    `invalid ${status} response content for ${operationId}`,
+  );
   const mediaTypes = Object.keys(content).sort();
   if (mediaTypes.length !== 1 || mediaTypes[0] !== "application/json") {
     throw new GeneratorError(`unsupported response media type for ${operationId}`);
@@ -150,7 +153,9 @@ function renderPath(path, pathParameters, operationId) {
 function interfaceName(operationId) {
   const name = `${operationId[0].toUpperCase()}${operationId.slice(1)}Parameters`;
   if (!IDENTIFIER.test(name)) {
-    throw new GeneratorError(`operationId is not a supported TypeScript identifier: ${operationId}`);
+    throw new GeneratorError(
+      `operationId is not a supported TypeScript identifier: ${operationId}`,
+    );
   }
   return name;
 }
@@ -250,9 +255,7 @@ function methodSignature(operation) {
 }
 
 function methodImplementation(operation) {
-  const argumentsList = operation.parametersInterface
-    ? "parameters, options"
-    : "options";
+  const argumentsList = operation.parametersInterface ? "parameters, options" : "options";
   const requestLines = [
     `      method: ${JSON.stringify(operation.method)},`,
     `      path: ${operation.pathExpression},`,
