@@ -8,8 +8,8 @@
 - [x] Docker Compose: PostgreSQL, Redis, MinIO và Mailpit.
 - [x] CI: format, lint, typecheck, unit, secret/dependency scan và build.
 - [x] Health, readiness, requestId và structured logging.
-- [ ] Environment validation và secret conventions.
-- [ ] Custom-domain local routing smoke test.
+- [x] Environment validation và secret conventions.
+- [x] Custom-domain local routing smoke test.
 
 ## P0 — Knowledge and Governance
 
@@ -24,8 +24,8 @@
 ## P1 — First Vertical Slice Skeleton
 
 - [ ] OpenAPI contract package.
-- [ ] Tenant context interface.
-- [ ] RLS migration proof of concept.
-- [ ] Session BFF proof of concept.
-- [ ] Outbox table and relay skeleton.
-- [ ] Playwright smoke test across storefront, console and API.
+- [x] Tenant context interface.
+- [x] RLS migration proof of concept.
+- [x] Session BFF proof of concept.
+- [x] Outbox table and relay skeleton.
+- [x] Playwright smoke test across storefront, console and API.

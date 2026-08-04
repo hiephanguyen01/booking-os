@@ -7,9 +7,9 @@
     "dev": "next dev --webpack -p 3002",
     "start": "next start -p 3002",
     "build": "next build --webpack",
-    "lint": "biome check app src next.config.ts",
+    "lint": "biome check app src middleware.ts next.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test --import tsx \"src/**/*.test.ts\"",
+    "test": "node --test --import tsx \"src/**/*.test.ts\" \"app/**/*.test.ts\"",
     "clean": "rimraf .next tsconfig.tsbuildinfo"
   },
   "dependencies": {

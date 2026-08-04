@@ -35,6 +35,15 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
+      - name: Restore Turborepo cache
+        uses: actions/cache@v5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.job }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-${{ github.job }}-
+            ${{ runner.os }}-turbo-
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -48,9 +57,102 @@ jobs:
         run: pnpm typecheck
 
   test:
-    name: Unit tests
+    name: Unit, API E2E, and RLS tests
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: booking
+          POSTGRES_PASSWORD: booking
+          POSTGRES_DB: booking_os_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U booking -d booking_os_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://booking:booking@127.0.0.1:5432/booking_os_test
+      REDIS_URL: redis://127.0.0.1:6379/1
+      SESSION_SECRET: test-only-session-secret-at-least-32-characters
+      PAYMENT_PROVIDER: mock
+      NODE_ENV: test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Restore Turborepo cache
+        uses: actions/cache@v5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.job }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-${{ github.job }}-
+            ${{ runner.os }}-turbo-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Prisma schema
+        run: pnpm --filter @booking-os/api prisma:validate
+
+      - name: Apply database migrations
+        run: pnpm --filter @booking-os/api prisma:migrate:deploy
+
+      - name: Run unit tests
+        run: pnpm test
+
+      - name: Run API end-to-end and tenant-isolation tests
+        run: pnpm --filter @booking-os/api test:e2e
+
+  migration:
+    name: Migration verification
+    needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: booking
+          POSTGRES_PASSWORD: booking
+          POSTGRES_DB: booking_os_migration_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U booking -d booking_os_migration_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      MIGRATION_DATABASE_URL: postgresql://booking:booking@127.0.0.1:5432/booking_os_migration_test
+      DATABASE_URL: postgresql://booking:booking@127.0.0.1:5432/booking_os_migration_test
+      NODE_ENV: test
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -70,13 +172,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run unit tests
-        run: pnpm test
+      - name: Verify migrations and schema drift
+        run: pnpm verify:migrations
 
   build:
     name: Build
+    needs: migration
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -92,6 +195,15 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+
+      - name: Restore Turborepo cache
+        uses: actions/cache@v5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.job }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-${{ github.job }}-
+            ${{ runner.os }}-turbo-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -99,8 +211,111 @@ jobs:
       - name: Build workspaces
         run: pnpm build
 
+  smoke:
+    name: Playwright foundation smoke
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: booking
+          POSTGRES_PASSWORD: booking
+          POSTGRES_DB: booking_os_smoke
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U booking -d booking_os_smoke"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: "true"
+      DATABASE_URL: postgresql://booking:booking@127.0.0.1:5432/booking_os_smoke
+      REDIS_URL: redis://127.0.0.1:6379/1
+      SESSION_SECRET: smoke-only-session-secret-at-least-32-characters
+      PAYMENT_PROVIDER: mock
+      NODE_ENV: test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Restore Turborepo cache
+        uses: actions/cache@v5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.job }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-${{ github.job }}-
+            ${{ runner.os }}-turbo-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply smoke database migrations
+        run: pnpm --filter @booking-os/api prisma:migrate:deploy
+
+      - name: Seed two smoke tenants
+        run: pnpm --filter @booking-os/api prisma:seed
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run Playwright foundation smoke
+        run: pnpm test:e2e
+
+  production-config:
+    name: Production configuration guard
+    needs: smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Reject mock payments in production
+        run: pnpm verify:production-config
+
   security:
     name: Security
+    needs: production-config
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

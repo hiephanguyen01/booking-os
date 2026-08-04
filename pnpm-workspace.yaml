@@ -4,5 +4,11 @@ packages:
   - "tools/*"
 
 catalog:
+  "@playwright/test": 1.62.0
   "@types/node": 22.18.0
   typescript: 5.9.3
+
+onlyBuiltDependencies:
+  - "@prisma/client"
+  - "@prisma/engines"
+  - "prisma"

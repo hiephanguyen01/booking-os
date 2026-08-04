@@ -41,6 +41,8 @@ const originalEnvironment = {
   DATABASE_URL: process.env.DATABASE_URL,
   REDIS_URL: process.env.REDIS_URL,
   READINESS_TIMEOUT_MS: process.env.READINESS_TIMEOUT_MS,
+  SESSION_SECRET: process.env.SESSION_SECRET,
+  PAYMENT_PROVIDER: process.env.PAYMENT_PROVIDER,
 };
 
 function restoreEnvironmentValue(key: keyof typeof originalEnvironment): void {
@@ -104,6 +106,8 @@ before(() => {
   process.env.DATABASE_URL = "postgresql://local-user:local-pass@localhost:5432/booking_os_test";
   process.env.REDIS_URL = "redis://localhost:6379/1";
   process.env.READINESS_TIMEOUT_MS = "100";
+  process.env.SESSION_SECRET = "test-only-session-secret-at-least-32-characters";
+  process.env.PAYMENT_PROVIDER = "mock";
 });
 
 after(() => {
@@ -112,13 +116,14 @@ after(() => {
   }
 });
 
-test("GET /api/health generates a request ID and suppresses successful probe logs", async () => {
+test("GET /api/health generates request identifiers and suppresses successful probe logs", async () => {
   const { app, records } = await createTestApplication();
   try {
     const response = await request(app.getHttpServer()).get("/api/health").expect(200);
     const body = response.body as HealthResponse;
 
     assert.equal(response.headers["x-request-id"], "generated-request-id");
+    assert.match(response.headers["x-trace-id"] ?? "", /^[0-9a-f-]{36}$/);
     assert.equal(body.service, "api");
     assert.equal(body.status, "ok");
     assert.equal(body.version, "0.1.0-e2e");

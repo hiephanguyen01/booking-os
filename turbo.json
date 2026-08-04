@@ -1,6 +1,12 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
+  "globalPassThroughEnv": [
+    "DATABASE_URL",
+    "MIGRATION_DATABASE_URL",
+    "PREVIOUS_SCHEMA_DATABASE_URL",
+    "REDIS_URL"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

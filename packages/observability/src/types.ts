@@ -4,6 +4,8 @@ export type LogValue = string | number | boolean | null;
 
 export interface LogContext {
   readonly requestId?: string;
+  readonly traceId?: string;
+  readonly actorId?: string;
   readonly jobId?: string;
   readonly jobName?: string;
   readonly tenantId?: string;
@@ -38,6 +40,7 @@ export interface StructuredLogger {
 export interface CreateStructuredLoggerOptions {
   readonly service: string;
   readonly context?: LogContext;
+  readonly contextProvider?: () => LogContext | undefined;
   readonly sink?: LogSink;
   readonly now?: () => Date;
 }

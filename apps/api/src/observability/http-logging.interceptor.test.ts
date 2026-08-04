@@ -32,6 +32,8 @@ const environment: Environment = {
   databaseUrl: "postgresql://booking:booking@localhost:5432/booking_os_test",
   redisUrl: "redis://localhost:6379/1",
   readinessTimeoutMs: 750,
+  sessionSecret: "test-only-session-secret-at-least-32-characters",
+  paymentProvider: "mock",
 };
 
 function runCompletion(options: {

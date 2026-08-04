@@ -48,6 +48,7 @@ function createBoundLogger(
   boundContext: SanitizedContext,
   sink: LogSink,
   now: () => Date,
+  contextProvider: (() => LogContext | undefined) | undefined,
 ): StructuredLogger {
   function write(
     level: LogLevel,
@@ -57,6 +58,7 @@ function createBoundLogger(
   ): void {
     const record: StructuredLogRecord = {
       ...boundContext,
+      ...sanitizeContext(contextProvider?.()),
       ...sanitizeContext(context),
       level,
       message,
@@ -76,6 +78,7 @@ function createBoundLogger(
         },
         sink,
         now,
+        contextProvider,
       );
     },
     debug(message, context) {
@@ -101,5 +104,6 @@ export function createStructuredLogger(options: CreateStructuredLoggerOptions): 
     },
     options.sink ?? defaultSink,
     options.now ?? (() => new Date()),
+    options.contextProvider,
   );
 }

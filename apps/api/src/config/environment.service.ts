@@ -54,4 +54,12 @@ export class EnvironmentService {
   get readinessTimeoutMs(): number {
     return this.values.readinessTimeoutMs;
   }
+
+  get sessionSecret(): string {
+    return this.values.sessionSecret;
+  }
+
+  get paymentProvider(): Environment["paymentProvider"] {
+    return this.values.paymentProvider;
+  }
 }

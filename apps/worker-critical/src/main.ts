@@ -7,6 +7,7 @@ import { config as loadDotenv } from "dotenv";
 
 import { AppModule } from "./app.module.js";
 import { SERVICE_NAME, type WorkerConfig } from "./config/worker-config.js";
+import { OutboxPollingService } from "./outbox/outbox-polling.service.js";
 import { BULLMQ_WORKER_TOKEN, LOGGER_TOKEN, WORKER_CONFIG_TOKEN } from "./queue/tokens.js";
 
 loadDotenv({
@@ -22,9 +23,11 @@ async function bootstrap(): Promise<void> {
   const config = app.get<WorkerConfig>(WORKER_CONFIG_TOKEN);
   const logger = app.get<StructuredLogger>(LOGGER_TOKEN);
   const worker = app.get<Worker>(BULLMQ_WORKER_TOKEN);
+  const outboxPolling = app.get(OutboxPollingService);
   let fatalShutdownStarted = false;
 
   app.enableShutdownHooks(["SIGINT", "SIGTERM"]);
+  outboxPolling.start();
 
   worker.on("error", (error: Error) => {
     if (fatalShutdownStarted) {
