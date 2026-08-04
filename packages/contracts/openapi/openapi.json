@@ -1,0 +1,133 @@
+{
+  "components": {
+    "schemas": {
+      "HealthDependencyStatusDto": {
+        "properties": {
+          "latencyMs": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "message": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "degraded",
+              "unavailable"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "HealthResponseDto": {
+        "properties": {
+          "dependencies": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HealthDependencyStatusDto"
+            },
+            "type": "object"
+          },
+          "service": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "degraded",
+              "unavailable"
+            ],
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "uptimeSeconds": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service",
+          "status",
+          "version",
+          "timestamp",
+          "uptimeSeconds"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "contact": {},
+    "description": "Supported Booking OS HTTP API",
+    "title": "Booking OS API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "getHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/ready": {
+      "get": {
+        "operationId": "getReadiness",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "system"
+        ]
+      }
+    }
+  },
+  "tags": []
+}
