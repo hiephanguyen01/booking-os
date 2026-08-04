@@ -26,7 +26,7 @@ export class RequestContextMiddleware implements NestMiddleware {
 
   use(request: RequestWithHeaders, response: ResponseWithHeaders, next: () => void): void {
     const requestId = validOrGenerated(
-      firstHeaderValue(request.headers["x-request-id"]),
+      request.requestId ?? firstHeaderValue(request.headers["x-request-id"]),
       REQUEST_ID_PATTERN,
     );
     const traceId = validOrGenerated(
