@@ -13,9 +13,22 @@ Bộ khởi tạo để bắt đầu triển khai **Booking SaaS + Multi-Tenant 
 ## Bắt đầu
 
 ```bash
-python tools/genesis_cli.py validate
-python tools/genesis_cli.py new-adr "Tên quyết định"
+pnpm install --frozen-lockfile
+pnpm genesis:validate
 ```
+
+### Genesis artifacts
+
+Các template chuẩn nằm trong `genesis/templates/`. Tạo artifact qua CLI thay vì sao chép Markdown thủ công:
+
+```bash
+python tools/genesis_cli.py new-adr "Tên quyết định"
+python tools/genesis_cli.py new-feature "Tên tính năng"
+python tools/genesis_cli.py new-pattern "Tên pattern"
+pnpm genesis:validate
+```
+
+ADR bắt đầu ở trạng thái `proposed`; Feature và Pattern bắt đầu ở trạng thái `draft`. Các trạng thái nháp được phép có section chưa hoàn chỉnh và `owner: unassigned`. Artifact `accepted`, `active` hoặc trạng thái lịch sử phải có owner được gán, nội dung thực trong mọi section bắt buộc và không chứa `TODO`, `TBD` hoặc placeholder template.
 
 ## Monorepo runtime
 
@@ -29,9 +42,9 @@ apps/
   worker-critical/    BullMQ critical-job worker
   worker-batch/       BullMQ batch-job worker
 packages/
-  api-client/         Typed health API client
+  api-client/         Typed framework-agnostic API client
   auth/               Session, role, and permission primitives
-  contracts/          Shared API contracts
+  contracts/          Shared API contracts and committed OpenAPI baseline
   i18n/               Typed Vietnamese and English messages
   observability/      Structured JSON logger
   testing/            Deterministic test fixtures
@@ -171,6 +184,38 @@ curl -i http://localhost:3001/api/health
 curl -i http://localhost:3001/api/ready
 ```
 
+### Supported OpenAPI contract
+
+NestJS controllers, DTOs and Swagger decorators are source of truth. Chỉ route được đánh dấu `public-supported` xuất hiện trong contract đã cam kết:
+
+```text
+packages/contracts/openapi/openapi.json
+packages/api-client/src/generated/schema.ts
+packages/api-client/src/generated/client.ts
+```
+
+Hiện tại contract hỗ trợ `GET /api/health` và `GET /api/ready`. Tenant probe cùng Foundation diagnostics là internal và không xuất hiện trong contract. Generator không bind cổng, không cần PostgreSQL hoặc Redis khả dụng và không expose Swagger UI hay raw Swagger endpoint.
+
+Sinh lại spec và TypeScript client:
+
+```bash
+pnpm api:generate
+pnpm api:check-generated
+```
+
+Generated files được commit để contract diff có thể review và build không phụ thuộc codegen ẩn. Không chỉnh trực tiếp `openapi.json` hoặc `src/generated/`; thay đổi controller, DTO hoặc generator rồi chạy `pnpm api:generate`. Gate `api:check-generated` sinh lại artifact và fail khi Git tree khác output đã commit.
+
+`@booking-os/api-client` vẫn giữ API public ổn định:
+
+```ts
+const client = createApiClient({ baseUrl: "http://localhost:3001/api" });
+const health = await client.health.get();
+```
+
+Generated TypeScript chỉ cung cấp static typing. Zod vẫn kiểm tra runtime response khi dữ liệu không tin cậy đi qua boundary.
+
+**Compatibility gate: pending PR 2.** PR 1 chỉ thiết lập baseline deterministic và zero-diff generation. `oasdiff`, waiver có thời hạn và base-versus-revision merge protection chỉ được kích hoạt sau khi baseline này đã merge vào `main`.
+
 ### Request correlation and errors
 
 Every response contains `x-request-id`. A safe upstream value is preserved; a missing or invalid value is replaced with a generated UUID. Request IDs are correlation values only and are not authentication or authorization proof.
@@ -218,40 +263,47 @@ If a host port is already occupied, change only the corresponding host port in `
 
 ## Continuous integration
 
-GitHub Actions runs the unified CI workflow for every pull request and every push to `main`.
+GitHub Actions chạy Foundation CI cùng các Sprint 0 gates cho mọi pull request và mọi push vào `main`.
 
-The workflow reports six independent checks:
+Các check chính:
 
-- `quality`: formatting, lint, and TypeScript validation.
-- `test`: unit tests.
-- `build`: workspace production builds.
-- `security`: dependency audit and committed-secret scanning.
-- `knowledge`: Genesis artifact validation.
-- `docker-config`: Docker Compose interpolation and schema validation.
+- `Quality`: formatting, lint và TypeScript validation.
+- `Unit, API E2E, and RLS tests`: unit, API end-to-end và tenant isolation.
+- `Migration verification`: migration replay và schema drift.
+- `Build`: workspace production builds.
+- `Playwright foundation smoke`: storefront, console và API critical smoke.
+- `Production configuration guard`: từ chối mock payment trong production.
+- `Security`: dependency audit và committed-secret scanning.
+- `Knowledge validation`: validation artifact hiện hữu.
+- `Docker Compose configuration`: Compose interpolation và schema validation.
+- `Genesis tooling`: Python unit tests cùng repository validation.
+- `OpenAPI contract`: deterministic regeneration, zero-diff, generated-client typecheck và generator tests.
 
-The dependency audit blocks `high` and `critical` advisories. Gitleaks scans committed history without posting pull-request comments or uploading SARIF artifacts.
+Dependency audit chặn advisory `high` và `critical`. Gitleaks quét committed history mà không đăng PR comment hoặc upload SARIF artifact.
 
-Run the equivalent checks locally:
+Chạy các gate chính tại local:
 
 ```bash
 pnpm install --frozen-lockfile
+pnpm genesis:validate
+pnpm api:check-generated
 pnpm check:ci
 pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
 pnpm audit --audit-level high
-python tools/genesis_cli.py validate
+python -m unittest discover -s tools/tests -p 'test_*.py' -v
 cp .env.docker.example .env.docker
 pnpm infra:config
 ```
 
 ## Cấu trúc
 
-- `apps/`: sáu deployment units của Booking OS.
+- `apps/`: năm deployment units của Booking OS.
 - `packages/`: shared contracts, runtime helpers, UI và test utilities.
 - `docs/`: kiến trúc, ADR, backlog và kế hoạch delivery.
 - `genesis/`: workflow, role, review checklist, template và business skills.
 - `schemas/`: schema kiểm tra artifact.
-- `tools/`: CLI tối thiểu.
-- `.github/workflows/`: unified quality, test, build, security, knowledge, and Docker configuration CI.
+- `tools/`: Genesis CLI và validation modules.
+- `.github/workflows/`: Foundation CI cùng governance/OpenAPI gates.
