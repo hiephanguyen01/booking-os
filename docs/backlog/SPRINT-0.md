@@ -13,19 +13,23 @@
 
 ## P0 — Knowledge and Governance
 
-- [ ] Adopt ADR template.
-- [ ] Adopt feature template.
-- [ ] Adopt pattern template.
+- [x] Adopt ADR template.
+- [x] Adopt feature template.
+- [x] Adopt pattern template.
 - [x] Enable `genesis validate` in CI.
-- [ ] Assign owners for Identity, Tenancy, Catalog, Booking, Payment và Finance.
-- [ ] Freeze naming of deployment units.
-- [ ] Record architecture baseline in ADRs.
+- [x] Assign owners for Identity, Tenancy, Catalog, Booking, Payment và Finance.
+- [x] Freeze naming of deployment units.
+- [x] Record architecture baseline in ADRs.
 
 ## P1 — First Vertical Slice Skeleton
 
-- [ ] OpenAPI contract package.
+- [x] OpenAPI contract package.
 - [x] Tenant context interface.
 - [x] RLS migration proof of concept.
 - [x] Session BFF proof of concept.
 - [x] Outbox table and relay skeleton.
 - [x] Playwright smoke test across storefront, console and API.
+
+## Delivery note
+
+PR 1 thiết lập OpenAPI baseline deterministic, committed generated client và zero-diff gate. Sprint 0 chỉ được đóng hoàn toàn sau PR 2 kích hoạt fail-closed compatibility comparison cùng waiver có phạm vi và thời hạn.

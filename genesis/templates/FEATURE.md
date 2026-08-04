@@ -1,39 +1,21 @@
 ---
-id: FEAT-XXXX
-title: Feature title
-domain: booking
-owner: team-or-person
-status: draft
+id: {{ id }}
+title: {{ title }}
+status: {{ status }}
+owner: {{ owner }}
+date: {{ date }}
 ---
 
-# Feature title
+# {{ title }}
 
 ## Problem
-
-## Evidence
 
 ## Goal
 
 ## Non-goals
 
-## Actors
-
 ## Business Rules
-
-## User Flow
-
-## Edge Cases
-
-## Permissions and Tenant Scope
-
-## Data and Contract Changes
-
-## Observability
-
-## Rollout and Rollback
 
 ## Acceptance Criteria
 
 ## Test Plan
-
-## Lessons and Patterns

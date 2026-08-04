@@ -2,7 +2,7 @@
 id: ADR-0001
 title: Build Booking Before Extracting Genesis
 status: accepted
-owner: founding-team
+owner: hiephanguyen01
 date: 2026-08-03
 ---
 
@@ -10,33 +10,38 @@ date: 2026-08-03
 
 ## Context
 
-Dự án có một Master Spec Booking SaaS hoàn chỉnh và nhiều ý tưởng về Genesis. Xây runtime hoặc platform Genesis độc lập trước sẽ tạo rủi ro over-engineering và không có use case thực để kiểm chứng.
+The repository has a complete Booking SaaS product specification and an ambition to extract reusable Genesis standards, workflows, templates, and patterns from real delivery work.
 
 ## Problem
 
-Xây Genesis độc lập trước Booking có thể tạo ra một framework lớn nhưng chưa chứng minh được giá trị, làm phân tán nguồn lực khỏi Pilot.
+Building an independent Genesis runtime or platform before Booking would create framework scope without a proven production use case, divert effort from the Pilot, and make standards difficult to validate against real constraints.
+
+## Options Considered
+
+1. Build Genesis as an independent platform before implementing Booking.
+2. Build Booking first and extract Genesis knowledge from validated vertical slices.
+3. Develop both as equal products from the beginning.
 
 ## Decision
 
-Booking SaaS là sản phẩm ưu tiên. Genesis tồn tại trong cùng repository dưới dạng standards, workflows, templates, reviews và patterns được trích xuất từ quá trình triển khai Booking.
+Booking SaaS is the priority product. Genesis remains in this repository as standards, workflows, templates, reviews, and patterns extracted from the implementation of Booking.
 
-Một artifact chỉ trở thành Genesis Standard khi đã được dùng và kiểm chứng trong ít nhất một vertical slice thực tế. Pattern nên có nhiều lần sử dụng trước khi được tự động hóa.
+An artifact becomes a Genesis standard only after it has been used and validated in a real vertical slice. Repeated evidence is required before a pattern is automated or generalized.
 
 ## Trade-offs
 
-Chấp nhận Genesis ban đầu thủ công và phát triển theo nhu cầu thực tế thay vì có runtime hoàn chỉnh ngay từ đầu.
+This decision accepts a smaller, initially manual Genesis system and slower framework extraction in exchange for evidence-driven standards, lower speculative scope, and continued focus on Pilot transactions.
 
 ## Consequences
 
-### Positive
+The repository must capture architecture decisions, lessons, and reusable patterns during product delivery. Booking becomes the first case study and conformance suite. Independent Genesis runtime work remains out of scope until repeated product evidence justifies it.
 
-- Mọi standard đều dựa trên vấn đề thật.
-- Tập trung vào Pilot và giao dịch thật.
-- Giảm thời gian xây framework chưa tạo giá trị.
-- Booking trở thành case study và conformance suite đầu tiên.
+## Validation
 
-### Negative
+Every Sprint 0 governance artifact and future pattern is reviewed against an implemented Booking use case. The Pilot backlog and vertical-slice acceptance tests remain the primary proof that extracted standards are useful.
 
-- Genesis phát triển chậm hơn một platform độc lập.
-- Một số workflow ban đầu còn thủ công.
-- Cần kỷ luật ghi ADR, lesson và pattern sau mỗi sprint.
+## References
+
+- `docs/superpowers/specs/2026-08-04-booking-os-pilot-design.md`
+- `docs/superpowers/specs/2026-08-04-sprint-0-closeout-design.md`
+- `docs/backlog/SPRINT-0.md`

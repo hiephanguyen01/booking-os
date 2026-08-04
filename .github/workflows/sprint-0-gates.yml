@@ -1,0 +1,75 @@
+name: Sprint 0 gates
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api-contract:
+    name: OpenAPI contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NODE_ENV: test
+      API_PREFIX: api
+      DATABASE_URL: postgresql://booking:booking@127.0.0.1:1/booking_os_openapi
+      REDIS_URL: redis://127.0.0.1:1/15
+      SESSION_SECRET: openapi-ci-only-secret-at-least-32-characters
+      PAYMENT_PROVIDER: mock
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Reject stale generated artifacts
+        run: pnpm api:check-generated
+
+      - name: Typecheck generated API client
+        run: pnpm --filter @booking-os/api-client typecheck
+
+      - name: Test repository generators
+        run: pnpm test:scripts
+
+  genesis-tooling:
+    name: Genesis tooling
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Test Genesis tooling
+        run: python -m unittest discover -s tools/tests -p 'test_*.py' -v
+
+      - name: Validate Genesis artifacts
+        run: python tools/genesis_cli.py validate
