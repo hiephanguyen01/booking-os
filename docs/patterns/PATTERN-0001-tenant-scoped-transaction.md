@@ -43,13 +43,8 @@ interface TenantProbeRepositoryPort {
   list(): Promise<readonly TenantProbe[]>;
 }
 
-interface OutboxWriterPort {
-  append(event: AppendOutboxEvent): Promise<void>;
-}
-
 interface TenantDataSession {
   readonly tenantProbes: TenantProbeRepositoryPort;
-  readonly outbox: OutboxWriterPort;
 }
 
 interface TenantTransactionPort {
@@ -102,6 +97,8 @@ For HTTP requests, resolve tenant identity through an inbound adapter calling a 
 
 For workers, reconstruct tenant context from a trusted persisted event or job envelope before calling tenant-owned application code. Cross-tenant infrastructure relay code uses a separate privileged database adapter and never supplies privileged access through `TenantDataSession`.
 
+Do not grow `TenantDataSession` into a universal repository registry. A later module adds or composes capabilities only when a real atomic application use case requires them.
+
 ## Trade-offs
 
 - Application transaction sessions must declare required capabilities explicitly.
@@ -119,6 +116,7 @@ These costs keep Prisma outside the application core, make allowed database capa
 - [ ] Application code depends on `TenantTransactionPort`, not its Prisma adapter.
 - [ ] The callback receives `TenantDataSession`, not `Prisma.TransactionClient`.
 - [ ] Every session capability is an application-owned port.
+- [ ] Capability sessions remain focused on a real atomic use case.
 - [ ] Prisma repository adapters remain under infrastructure persistence.
 - [ ] Domain and application files do not import Prisma or NestJS delivery types.
 - [ ] The database role is `booking_app` and remains `NOBYPASSRLS`.
