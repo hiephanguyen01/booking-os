@@ -5,6 +5,9 @@ on:
   push:
     branches:
       - feat/api-observability-readiness
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
