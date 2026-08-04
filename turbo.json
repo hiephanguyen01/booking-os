@@ -1,6 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
+  "concurrency": "13",
   "globalPassThroughEnv": [
     "DATABASE_URL",
     "MIGRATION_DATABASE_URL",
