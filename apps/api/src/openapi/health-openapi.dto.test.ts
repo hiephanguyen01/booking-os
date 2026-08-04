@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { Module } from "@nestjs/common";
-import { Test } from "@nestjs/testing";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { Test } from "@nestjs/testing";
 
 import { HealthController } from "../health/health.controller.js";
 import { HealthService } from "../health/health.service.js";
