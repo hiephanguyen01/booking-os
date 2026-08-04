@@ -58,7 +58,6 @@ test("generates the contract without binding a port or reaching infrastructure",
       readonly paths: Readonly<Record<string, unknown>>;
     };
     assert.deepEqual(Object.keys(document.paths), ["/api/health", "/api/ready"]);
-    process.stdout.write(`OPENAPI_BASELINE_START\n${source}OPENAPI_BASELINE_END\n`);
   } finally {
     await reservedPort.close();
     await rm(temporaryDirectory, { force: true, recursive: true });
