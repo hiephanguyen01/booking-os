@@ -4,11 +4,11 @@ export {
   ROLE_PERMISSIONS,
 } from "./authorization.js";
 export {
+  type CreatedOpaqueSession,
   createSessionToken,
   hashSessionToken,
-  OpaqueSessionStore,
-  type CreatedOpaqueSession,
   type OpaqueSessionRepository,
+  OpaqueSessionStore,
   type OpaqueSessionStoreOptions,
   type StoredOpaqueSession,
 } from "./opaque-session.js";
