@@ -7,12 +7,6 @@ import { HealthModule } from "./health/health.module.js";
 import { TenancyModule } from "./tenancy/tenancy.module.js";
 
 @Module({
-  imports: [
-    EnvironmentModule,
-    RequestContextModule,
-    DatabaseModule,
-    HealthModule,
-    TenancyModule,
-  ],
+  imports: [EnvironmentModule, RequestContextModule, DatabaseModule, HealthModule, TenancyModule],
 })
 export class AppModule {}
