@@ -1,6 +1,7 @@
 import type { HealthResponse } from "@booking-os/contracts/health";
 import { Controller, Get, Inject, Req, Res } from "@nestjs/common";
 
+import { SupportedApi } from "../api-visibility/api-visibility.decorator.js";
 import type { RequestWithContext } from "../observability/request-context.js";
 import { HealthService } from "./health.service.js";
 
@@ -8,6 +9,7 @@ interface HttpStatusResponse {
   status(statusCode: number): unknown;
 }
 
+@SupportedApi()
 @Controller()
 export class HealthController {
   constructor(@Inject(HealthService) private readonly healthService: HealthService) {}
