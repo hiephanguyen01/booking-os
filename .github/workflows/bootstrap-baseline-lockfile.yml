@@ -48,3 +48,5 @@ jobs:
           git add pnpm-lock.yaml
           git commit -m "chore: update baseline lockfile"
           git push origin HEAD:feat/sprint-0-baseline
+
+# Temporary bootstrap workflow; remove before merging PR 1.
