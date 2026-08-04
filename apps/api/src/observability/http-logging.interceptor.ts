@@ -17,13 +17,9 @@ import {
   type RoutableRequest,
   resolveRequestRoute,
 } from "./route-resolver.js";
-import {
-  API_LOGGER_TOKEN,
-  MONOTONIC_CLOCK_TOKEN,
-  type MonotonicClock,
-} from "./tokens.js";
+import { API_LOGGER_TOKEN, MONOTONIC_CLOCK_TOKEN, type MonotonicClock } from "./tokens.js";
 
-interface LoggingRequest extends RequestWithContext, RoutableRequest {}
+type LoggingRequest = RequestWithContext & RoutableRequest;
 
 interface LoggingResponse extends EventEmitter {
   readonly statusCode: number;
@@ -38,7 +34,7 @@ export class HttpLoggingInterceptor implements NestInterceptor {
   constructor(
     @Inject(API_LOGGER_TOKEN) private readonly logger: StructuredLogger,
     @Inject(MONOTONIC_CLOCK_TOKEN) private readonly clock: MonotonicClock,
-    private readonly environment: EnvironmentService,
+    @Inject(EnvironmentService) private readonly environment: EnvironmentService,
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
