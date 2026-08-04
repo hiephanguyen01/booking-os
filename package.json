@@ -13,7 +13,8 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "test:e2e": "turbo run test:e2e",
+    "test:e2e": "playwright test",
+    "test:e2e:api": "turbo run test:e2e",
     "format": "biome format --write .",
     "check": "biome check .",
     "check:ci": "biome ci .",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.6",
+    "@playwright/test": "1.62.0",
     "@types/node": "22.18.0",
     "rimraf": "6.0.1",
     "turbo": "2.10.7",
