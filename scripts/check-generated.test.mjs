@@ -26,9 +26,15 @@ async function createFixtureRepository() {
   await mkdir(join(root, "packages/api-client/src/generated"), { recursive: true });
   await mkdir(bin, { recursive: true });
 
-  await writeFile(join(root, "packages/contracts/openapi/openapi.json"), "{\"openapi\":\"3.0.0\"}\n");
-  await writeFile(join(root, "packages/api-client/src/generated/schema.ts"), "export type Schema = true;\n");
-  await writeFile(join(root, "packages/api-client/src/generated/client.ts"), "export type Client = true;\n");
+  await writeFile(join(root, "packages/contracts/openapi/openapi.json"), '{"openapi":"3.0.0"}\n');
+  await writeFile(
+    join(root, "packages/api-client/src/generated/schema.ts"),
+    "export type Schema = true;\n",
+  );
+  await writeFile(
+    join(root, "packages/api-client/src/generated/client.ts"),
+    "export type Client = true;\n",
+  );
   await writeFile(join(root, "unrelated.txt"), "clean\n");
 
   const fakePnpm = join(bin, "pnpm");
