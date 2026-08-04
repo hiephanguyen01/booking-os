@@ -47,15 +47,11 @@ export interface TenantDirectoryPort {
   findActiveBySlug(slug: string): Promise<ResolvedTenant | null>;
 }
 
-export interface ResolveTenantInput {
-  readonly hostname: string;
-}
-
 export class ResolveTenantUseCase {
   constructor(private readonly tenants: TenantDirectoryPort) {}
 
-  execute(input: ResolveTenantInput): Promise<ResolvedTenant | null> {
-    const slug = tenantSlugFromHostname(input.hostname);
+  execute(hostname: string): Promise<ResolvedTenant | null> {
+    const slug = tenantSlugFromHostname(hostname);
     return slug ? this.tenants.findActiveBySlug(slug) : Promise.resolve(null);
   }
 }
@@ -68,7 +64,7 @@ Application code does not import framework decorators, Prisma models, transport 
 Controllers, middleware, guards, and queue handlers translate an external request into an application input and map an application result back to the delivery mechanism.
 
 ```ts
-const tenant = await this.resolveTenant.execute({ hostname });
+const tenant = await this.resolveTenant.execute(hostname);
 ```
 
 Inbound adapters do not query Prisma or another module's persistence adapter directly.
@@ -95,12 +91,11 @@ Framework decorators are allowed here because this is infrastructure code.
 
 ### Transaction capability sessions
 
-Application callbacks do not receive `Prisma.TransactionClient`. The transaction port supplies a capability session composed of application-owned ports:
+Application callbacks do not receive `Prisma.TransactionClient`. A transaction port supplies a module-scoped capability session composed of application-owned ports needed by the current use case:
 
 ```ts
 export interface TenantDataSession {
   readonly tenantProbes: TenantProbeRepositoryPort;
-  readonly outbox: OutboxWriterPort;
 }
 
 export interface TenantTransactionPort {
@@ -111,11 +106,11 @@ export interface TenantTransactionPort {
 }
 ```
 
-The Prisma transaction adapter creates transaction-bound implementations behind this session.
+The Prisma transaction adapter creates transaction-bound implementations behind this session. Do not turn the session into a universal registry of every repository. Add or compose capabilities only when a real atomic application use case needs them.
 
 ### Composition root
 
-The NestJS module owns dependency injection tokens and binds application ports to adapters. Tokens are symbols exported from the application boundary or module composition file; domain code never imports them.
+The NestJS module owns dependency-injection tokens and binds application ports to adapters. Tokens are symbols exported from the module composition boundary; domain code never imports them.
 
 ### Cross-module access
 
@@ -139,6 +134,7 @@ The benefit is stable business-facing contracts, fast unit tests, auditable depe
 - [ ] Prisma access exists only in infrastructure persistence adapters or database foundation code.
 - [ ] The NestJS module acts as composition root and binds ports to adapters.
 - [ ] Tenant transaction callbacks receive capability ports, not a Prisma transaction client.
+- [ ] Capability sessions remain focused on the current module/use case rather than becoming a global repository registry.
 - [ ] No module imports another module's infrastructure directory.
 - [ ] Unit tests use fakes for application ports.
 - [ ] Adapter integration tests verify Prisma mappings and transaction behavior.
