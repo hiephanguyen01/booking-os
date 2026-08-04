@@ -40,6 +40,8 @@ const rawEnvironmentSchema = z
         "REDIS_URL must use the redis:// or rediss:// protocol",
       ),
 
+    READINESS_TIMEOUT_MS: z.coerce.number().int().min(100).max(5000).default(750),
+
     SESSION_SECRET: z.string().min(32, "SESSION_SECRET must contain at least 32 characters"),
 
     PAYMENT_PROVIDER: z.enum(["mock", "payos"]).default("mock"),
@@ -63,6 +65,7 @@ export const environmentSchema = rawEnvironmentSchema.transform((values) => ({
   logLevel: values.LOG_LEVEL,
   databaseUrl: values.DATABASE_URL,
   redisUrl: values.REDIS_URL,
+  readinessTimeoutMs: values.READINESS_TIMEOUT_MS,
   sessionSecret: values.SESSION_SECRET,
   paymentProvider: values.PAYMENT_PROVIDER,
 }));
