@@ -14,11 +14,24 @@ loadDotenv({
   path: process.env.ENV_FILE ?? ".env",
 });
 
-let requestContextStorage: RequestContextStorage | undefined;
+let activeRequestContextStorage: RequestContextStorage | undefined;
 
 const logger = createStructuredLogger({
   service: "api",
-  contextProvider: () => requestContextStorage?.get(),
+  contextProvider: () => {
+    const context = activeRequestContextStorage?.get();
+
+    if (!context) {
+      return undefined;
+    }
+
+    return {
+      requestId: context.requestId,
+      traceId: context.traceId,
+      ...(context.actorId === undefined ? {} : { actorId: context.actorId }),
+      ...(context.tenantId === undefined ? {} : { tenantId: context.tenantId }),
+    };
+  },
 });
 
 async function bootstrap(): Promise<void> {
@@ -27,7 +40,8 @@ async function bootstrap(): Promise<void> {
   });
 
   const environment = app.get(EnvironmentService);
-  requestContextStorage = app.get(RequestContextStorage);
+  const requestContextStorage = app.get(RequestContextStorage);
+  activeRequestContextStorage = requestContextStorage;
 
   app.enableShutdownHooks();
   app.setGlobalPrefix(environment.apiPrefix);
