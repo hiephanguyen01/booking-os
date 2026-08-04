@@ -50,10 +50,8 @@ def parse_frontmatter(text: str) -> ParsedDocument:
 
 
 def render_frontmatter(metadata: Mapping[str, str], body: str) -> str:
-    lines = ["---"]
-    lines.extend(f"{key}: {value}" for key, value in metadata.items())
-    lines.extend(["---", ""])
-    rendered = "\n".join(lines) + body.lstrip("\n")
+    header = "\n".join(["---", *(f"{key}: {value}" for key, value in metadata.items()), "---"])
+    rendered = f"{header}\n\n{body.lstrip(chr(10))}"
     if not rendered.endswith("\n"):
         rendered += "\n"
     return rendered
