@@ -1,0 +1,40 @@
+name: Capture pinned oasdiff fixture
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/capture-oasdiff.yml
+      - scripts/openapi/fixtures/**
+      - scripts/openapi/check-breaking.mjs
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.24.x"
+
+      - name: Install pinned oasdiff
+        run: go install github.com/oasdiff/oasdiff@v1.17.0
+
+      - name: Capture fixture evidence
+        run: |
+          oasdiff version
+          sha256sum scripts/openapi/fixtures/breaking-base.json
+          sha256sum scripts/openapi/fixtures/breaking-revision.json
+          set +e
+          oasdiff breaking -f singleline --color never \
+            scripts/openapi/fixtures/breaking-base.json \
+            scripts/openapi/fixtures/breaking-revision.json
+          status=$?
+          set -e
+          echo "OASDIFF_RAW_EXIT=${status}"
