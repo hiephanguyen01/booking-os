@@ -1,0 +1,35 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Compatibility fixture",
+    "version": "1.1.0"
+  },
+  "paths": {
+    "/api/example": {
+      "get": {
+        "operationId": "getExample",
+        "responses": {
+          "200": {
+            "description": "Example response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["id"],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "displayName": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
