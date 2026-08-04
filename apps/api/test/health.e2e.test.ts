@@ -16,10 +16,7 @@ import {
   POSTGRES_READINESS_PROBE_TOKEN,
   REDIS_READINESS_PROBE_TOKEN,
 } from "../src/dependencies/tokens.js";
-import {
-  API_LOGGER_TOKEN,
-  REQUEST_ID_GENERATOR_TOKEN,
-} from "../src/observability/tokens.js";
+import { API_LOGGER_TOKEN, REQUEST_ID_GENERATOR_TOKEN } from "../src/observability/tokens.js";
 
 @Controller("test")
 class TestErrorController {
@@ -125,7 +122,10 @@ test("GET /api/health generates a request ID and suppresses successful probe log
     assert.equal(body.service, "api");
     assert.equal(body.status, "ok");
     assert.equal(body.version, "0.1.0-e2e");
-    assert.equal(records.some((record) => record.message === "http.request_completed"), false);
+    assert.equal(
+      records.some((record) => record.message === "http.request_completed"),
+      false,
+    );
   } finally {
     await app.close();
   }
@@ -189,7 +189,10 @@ test("GET /api/ready returns 503 and logs the unavailable Redis probe", async ()
     assert.equal(failure?.requestId, "readiness-request");
     assert.equal(failure?.dependency, "redis");
     assert.equal(failure?.reason, "connection_failed");
-    assert.equal(records.some((record) => record.message === "http.request_completed"), true);
+    assert.equal(
+      records.some((record) => record.message === "http.request_completed"),
+      true,
+    );
   } finally {
     await app.close();
   }
