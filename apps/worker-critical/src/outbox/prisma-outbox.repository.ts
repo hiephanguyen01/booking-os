@@ -1,7 +1,6 @@
-import { PrismaClient } from "@prisma/client";
-
-import type { DispatchableOutboxEvent } from "./outbox-event.js";
+import type { PrismaClient } from "@prisma/client";
 import type { OutboxDispatchRepository } from "./outbox-dispatcher.js";
+import type { DispatchableOutboxEvent } from "./outbox-event.js";
 
 const WORKER_DATABASE_ROLE = "booking_worker";
 const CLAIM_TIMEOUT_MINUTES = 5;
