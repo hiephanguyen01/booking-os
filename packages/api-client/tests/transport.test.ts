@@ -130,10 +130,7 @@ test("aborts requests after the configured timeout", async () => {
     timeoutMs: 5,
   });
 
-  await expectApiClientError(
-    () => transport({ method: "GET", path: "/health" }),
-    "timeout",
-  );
+  await expectApiClientError(() => transport({ method: "GET", path: "/health" }), "timeout");
 });
 
 test("rejects invalid transport configuration before fetching", () => {
