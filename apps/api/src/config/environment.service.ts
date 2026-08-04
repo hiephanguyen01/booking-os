@@ -50,4 +50,12 @@ export class EnvironmentService {
   get redisUrl(): string {
     return this.values.redisUrl;
   }
+
+  get sessionSecret(): string {
+    return this.values.sessionSecret;
+  }
+
+  get paymentProvider(): Environment["paymentProvider"] {
+    return this.values.paymentProvider;
+  }
 }
