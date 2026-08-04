@@ -1,31 +1,19 @@
 ---
-id: PAT-XXXX
-name: Pattern name
-category: backend
-status: candidate
-owner: team-or-person
+id: {{ id }}
+title: {{ title }}
+status: {{ status }}
+owner: {{ owner }}
+date: {{ date }}
 ---
 
-# Pattern name
+# {{ title }}
 
 ## Problem
 
 ## Context
 
-## Forces
-
 ## Solution
 
 ## Trade-offs
 
-## Alternatives
-
-## Examples
-
-## Anti-patterns
-
 ## Review Checklist
-
-## Evidence of Use
-
-## References
