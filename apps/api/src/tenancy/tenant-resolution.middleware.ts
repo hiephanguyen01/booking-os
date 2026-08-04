@@ -20,7 +20,7 @@ function tenantSlugFromHost(hostValue: string | undefined): string | undefined {
     return undefined;
   }
 
-  const hostname = hostValue.toLowerCase().split(":", 1)[0];
+  const [hostname = ""] = hostValue.toLowerCase().split(":", 1);
   const [candidate] = hostname.split(".");
 
   return candidate && TENANT_SLUG_PATTERN.test(candidate) ? candidate : undefined;
