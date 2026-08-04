@@ -1,4 +1,4 @@
-import Redis, { type RedisOptions } from "ioredis";
+import { Redis, type RedisOptions } from "ioredis";
 import { Pool, type PoolConfig } from "pg";
 
 import type { PostgresPoolPort, RedisClientPort } from "./ports.js";
