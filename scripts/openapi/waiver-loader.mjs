@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFile, readdir } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -7,10 +7,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 import { parse } from "yaml";
 
 const moduleDirectory = dirname(fileURLToPath(import.meta.url));
-const schemaPath = join(
-  moduleDirectory,
-  "../../schemas/openapi-compatibility-waiver.schema.json",
-);
+const schemaPath = join(moduleDirectory, "../../schemas/openapi-compatibility-waiver.schema.json");
 const schema = JSON.parse(await readFile(schemaPath, "utf8"));
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 const validateWaiver = ajv.compile(schema);
@@ -48,9 +45,7 @@ function schemaErrors() {
 }
 
 function freezeWaiver(document) {
-  const findings = Object.freeze(
-    document.findings.map((finding) => Object.freeze({ ...finding })),
-  );
+  const findings = Object.freeze(document.findings.map((finding) => Object.freeze({ ...finding })));
   return Object.freeze({ ...document, findings });
 }
 
