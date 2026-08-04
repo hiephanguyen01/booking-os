@@ -27,6 +27,10 @@ export class EnvironmentService {
     return this.values.host;
   }
 
+  get trustProxy(): boolean {
+    return this.values.trustProxy;
+  }
+
   get port(): number {
     return this.values.port;
   }
