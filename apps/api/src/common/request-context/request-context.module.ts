@@ -1,4 +1,4 @@
-import { Global, MiddlewareConsumer, Module, type NestModule } from "@nestjs/common";
+import { Global, type MiddlewareConsumer, Module, type NestModule } from "@nestjs/common";
 
 import { RequestContextMiddleware } from "./request-context.middleware.js";
 import { RequestContextStorage } from "./request-context.storage.js";
