@@ -1,8 +1,8 @@
-import { type ArgumentsHost, Catch, Inject, type ExceptionFilter } from "@nestjs/common";
+import { type ArgumentsHost, Catch, type ExceptionFilter, Inject } from "@nestjs/common";
 
 import { normalizeApiError } from "./api-error-response.js";
 import type { RequestWithContext } from "./request-context.js";
-import { resolveRequestRoute, type RoutableRequest } from "./route-resolver.js";
+import { type RoutableRequest, resolveRequestRoute } from "./route-resolver.js";
 import { API_LOGGER_TOKEN, type ApiLogger } from "./tokens.js";
 
 interface ApiResponse {

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createStructuredLogger, type StructuredLogRecord } from "@booking-os/observability";
-import { BadRequestException, type ArgumentsHost } from "@nestjs/common";
+import { type ArgumentsHost, BadRequestException } from "@nestjs/common";
 
 import { ApiExceptionFilter } from "./api-exception.filter.js";
 

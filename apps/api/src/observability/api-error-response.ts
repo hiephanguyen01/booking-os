@@ -53,8 +53,12 @@ export function normalizeApiError(exception: unknown, requestId: string): ApiErr
   }
 
   const response = exception instanceof HttpException ? exception.getResponse() : undefined;
-  const message = typeof response === "string" ? response : safeMessage(isRecord(response) ? response.message : undefined, fallback);
-  const error = isRecord(response) && typeof response.error === "string" ? response.error : fallback;
+  const message =
+    typeof response === "string"
+      ? response
+      : safeMessage(isRecord(response) ? response.message : undefined, fallback);
+  const error =
+    isRecord(response) && typeof response.error === "string" ? response.error : fallback;
 
   return {
     statusCode,
