@@ -33,8 +33,7 @@ test("rejects malformed tenant context with a stable error class", () => {
         tenantId: "tenant-a",
       }),
     (error) =>
-      error instanceof InvalidTenantContextError &&
-      error.name === "InvalidTenantContextError",
+      error instanceof InvalidTenantContextError && error.name === "InvalidTenantContextError",
   );
 });
 
