@@ -6,10 +6,7 @@ import { Test } from "@nestjs/testing";
 import request from "supertest";
 
 import { AppModule } from "../src/app.module.js";
-import {
-  ReadinessChecker,
-  type ReadinessDependencies,
-} from "../src/health/readiness-checker.js";
+import { ReadinessChecker, type ReadinessDependencies } from "../src/health/readiness-checker.js";
 
 let app: INestApplication;
 let readinessDependencies: ReadinessDependencies = {
