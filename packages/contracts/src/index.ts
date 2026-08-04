@@ -5,4 +5,8 @@ export {
   type HealthResponse,
   type HealthStatus,
 } from "./health/index.js";
-export type { RequestContext } from "./request-context.js";
+export type {
+  ExecutionSource,
+  RequestContext,
+  TenantExecutionContext,
+} from "./request-context.js";
