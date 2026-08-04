@@ -6,6 +6,7 @@ import { EnvironmentValidationError, parseEnvironment } from "./environment.js";
 const validEnvironment = {
   NODE_ENV: "test",
   HOST: "127.0.0.1",
+  TRUST_PROXY: "true",
   PORT: "3101",
   API_PREFIX: "api",
   APP_VERSION: "0.1.0-test",
@@ -23,6 +24,7 @@ test("parseEnvironment validates and normalizes environment variables", () => {
   assert.deepEqual(environment, {
     nodeEnvironment: "test",
     host: "127.0.0.1",
+    trustProxy: true,
     port: 3101,
     apiPrefix: "api",
     appVersion: "0.1.0-test",
@@ -44,12 +46,27 @@ test("parseEnvironment applies safe defaults", () => {
 
   assert.equal(environment.nodeEnvironment, "development");
   assert.equal(environment.host, "0.0.0.0");
+  assert.equal(environment.trustProxy, false);
   assert.equal(environment.port, 3001);
   assert.equal(environment.apiPrefix, "api");
   assert.equal(environment.appVersion, "0.1.0");
   assert.equal(environment.logLevel, "info");
   assert.equal(environment.readinessTimeoutMs, 750);
   assert.equal(environment.paymentProvider, "mock");
+});
+
+test("parseEnvironment accepts explicit disabled proxy trust", () => {
+  assert.equal(
+    parseEnvironment({ ...validEnvironment, TRUST_PROXY: "false" }).trustProxy,
+    false,
+  );
+});
+
+test("parseEnvironment rejects invalid proxy trust", () => {
+  assert.throws(
+    () => parseEnvironment({ ...validEnvironment, TRUST_PROXY: "1" }),
+    /TRUST_PROXY/,
+  );
 });
 
 test("parseEnvironment accepts readiness timeout boundaries", () => {
