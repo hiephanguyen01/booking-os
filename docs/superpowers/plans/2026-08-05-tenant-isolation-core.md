@@ -13,6 +13,7 @@
 - Execute in a fresh worktree created from `docs/sprint-1a-tenant-isolation-design`; the implementation PR targets `main`.
 - Run `pnpm install --frozen-lockfile` and `pnpm --filter @booking-os/api prisma:generate` once before focused tests.
 - Follow TDD for every task: write one focused failing test, observe the intended failure, implement the smallest behavior, rerun focused and affected suites, then commit.
+- Keep the repository buildable and preserve existing HTTP behavior after every task commit.
 - `domain/` imports no NestJS, Prisma, HTTP framework, queue, logger, environment, or infrastructure code.
 - `application/` imports only same-module domain/application files and technology-neutral shared contracts.
 - Application ports expose no Prisma, NestJS, Express, Fastify, BullMQ, Redis, or PostgreSQL-specific types.
@@ -78,7 +79,7 @@ apps/api/src/modules/tenancy/
 └── tenancy.module.ts
 ```
 
-Delete existing `apps/api/src/tenancy/` files only after replacements compile and focused tests pass.
+Keep the existing `apps/api/src/tenancy/` module mounted until Task 6 has a behavior-compatible replacement. Delete the old files only after the new controller passes E2E tests.
 
 ---
 
@@ -149,13 +150,15 @@ const PORT_FORBIDDEN_TYPES = [
 
 Composition roots may import every zone inside their own module.
 
-- [ ] **Step 4: Add command and CI step**
+- [ ] **Step 4: Add command, Foundation gate, and CI step**
 
 Add to root `package.json`:
 
 ```json
 "verify:architecture": "node scripts/architecture/api-module-boundaries.mjs"
 ```
+
+Insert `pnpm verify:architecture` into `verify:foundation` immediately after `pnpm check:ci`.
 
 The executable prints all failures, exits `1` on violations, and prints `API module boundary verification PASS.` on success.
 
@@ -172,6 +175,7 @@ Add this permanent CI step after Genesis validation:
 node --test scripts/architecture/api-module-boundaries.test.mjs
 pnpm verify:architecture
 pnpm format
+pnpm check:ci
 git add scripts/architecture package.json .github/workflows/ci.yml
 git commit -m "feat: enforce hexagonal API module boundaries"
 ```
@@ -276,6 +280,7 @@ pnpm --filter @booking-os/api exec node --test --import tsx \
   src/modules/tenancy/application/tenant-execution-context.test.ts
 pnpm verify:architecture
 pnpm --filter @booking-os/api typecheck
+pnpm --filter @booking-os/api test:e2e
 git add packages/contracts apps/api/src/common/request-context apps/api/src/modules/tenancy scripts/architecture/api-module-manifest.mjs
 git commit -m "feat: define trusted tenant context contracts"
 ```
@@ -354,13 +359,14 @@ pnpm --filter @booking-os/api exec node --test --import tsx \
   src/modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-directory.adapter.test.ts
 pnpm verify:architecture
 pnpm --filter @booking-os/api typecheck
+pnpm --filter @booking-os/api test:e2e
 git add apps/api/src/modules/tenancy
 git commit -m "feat: resolve tenants through an application port"
 ```
 
 ---
 
-### Task 4: Build HTTP Inbound Adapters
+### Task 4: Build Unmounted HTTP Adapters and Composition
 
 **Files:**
 - Modify: `apps/api/src/config/environment.schema.ts`
@@ -375,12 +381,12 @@ git commit -m "feat: resolve tenants through an application port"
 - Create: `apps/api/src/modules/tenancy/infrastructure/http/tenant-required.guard.test.ts`
 - Create: `apps/api/src/modules/tenancy/tenancy.tokens.ts`
 - Create: `apps/api/src/modules/tenancy/tenancy.module.ts`
-- Modify: `apps/api/src/app.module.ts`
 
 **Interfaces:**
 - Produces `effectiveHostname(headers, trustProxy)`.
 - Produces `TENANT_DIRECTORY_PORT`, `TENANT_TRANSACTION_PORT`, `TenantRequired()`, and `TenantRequiredGuard`.
 - Middleware depends on `ResolveTenantUseCase`, `EnvironmentService`, and `RequestContextStorage`; it has no Prisma dependency.
+- The new module is intentionally not imported by `AppModule` until Task 6, so the existing probe route remains live after this commit.
 
 - [ ] **Step 1: Add failing `TRUST_PROXY` tests**
 
@@ -416,7 +422,7 @@ Metadata absent returns `true`; metadata present with tenant returns `true`; met
 new NotFoundException("Tenant context could not be resolved")
 ```
 
-- [ ] **Step 7: Compose directory port and guard**
+- [ ] **Step 7: Compose directory port and guard without mounting the module**
 
 Register:
 
@@ -432,7 +438,7 @@ Register:
 }
 ```
 
-Register `TenantRequiredGuard` with `APP_GUARD`. Do not apply database-backed middleware yet; Task 6 applies it to the new controller. Update `AppModule` to import `./modules/tenancy/tenancy.module.js`.
+Register `TenantRequiredGuard` with `APP_GUARD`. Do not modify `AppModule` and do not apply middleware to routes in this task.
 
 - [ ] **Step 8: Run and commit**
 
@@ -444,8 +450,9 @@ pnpm --filter @booking-os/api exec node --test --import tsx \
   src/modules/tenancy/infrastructure/http/tenant-required.guard.test.ts
 pnpm verify:architecture
 pnpm --filter @booking-os/api typecheck
-git add apps/api/.env.example apps/api/src/config apps/api/src/modules/tenancy apps/api/src/app.module.ts
-git commit -m "feat: add tenant HTTP adapters"
+pnpm --filter @booking-os/api test:e2e
+git add apps/api/.env.example apps/api/src/config apps/api/src/modules/tenancy
+git commit -m "feat: prepare tenant HTTP adapters"
 ```
 
 ---
@@ -541,19 +548,21 @@ pnpm --filter @booking-os/api exec node --test --import tsx \
   src/modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-transaction.adapter.test.ts
 pnpm verify:architecture
 pnpm --filter @booking-os/api typecheck
+pnpm --filter @booking-os/api test:e2e
 git add apps/api/src/modules/tenancy
 git commit -m "feat: add hexagonal tenant transaction adapters"
 ```
 
 ---
 
-### Task 6: Complete the Tenant-Probe Vertical Slice
+### Task 6: Complete and Cut Over the Tenant-Probe Vertical Slice
 
 **Files:**
 - Create: `apps/api/src/modules/tenancy/application/use-cases/list-tenant-probes.use-case.ts`
 - Create: `apps/api/src/modules/tenancy/application/use-cases/list-tenant-probes.use-case.test.ts`
 - Create: `apps/api/src/modules/tenancy/infrastructure/http/tenant-probe.controller.ts`
 - Modify: `apps/api/src/modules/tenancy/tenancy.module.ts`
+- Modify: `apps/api/src/app.module.ts`
 - Create: `apps/api/test/tenant-probe.e2e.test.ts`
 - Modify: `apps/api/test/tenant-isolation.e2e.test.ts`
 - Delete: `apps/api/src/tenancy/tenant-context.ts`
@@ -593,19 +602,33 @@ Preserve the existing internal route and test-only bearer authorization. Assert 
 
 The controller imports `RequestContextStorage`, `requireTenantExecutionContext`, and `ListTenantProbesUseCase`. It contains no Prisma or transaction code and is decorated with `@TenantRequired()`.
 
-- [ ] **Step 5: Wire use case, controller, and middleware route**
+- [ ] **Step 5: Wire use case, controller, middleware, and AppModule cutover**
 
 Construct `ListTenantProbesUseCase` from `TENANT_TRANSACTION_PORT`, register the controller, and apply tenant middleware only to this controller.
 
-- [ ] **Step 6: Replace old test imports and remove old module**
+Change `AppModule` import from:
+
+```ts
+import { TenancyModule } from "./tenancy/tenancy.module.js";
+```
+
+to:
+
+```ts
+import { TenancyModule } from "./modules/tenancy/tenancy.module.js";
+```
+
+Run the new E2E test before deleting old files.
+
+- [ ] **Step 6: Replace old imports and remove old module**
 
 ```bash
 rg 'src/tenancy|\.\/tenancy|\.\.\/tenancy' apps/api/src apps/api/test
 ```
 
-Update every result to `src/modules/tenancy` paths, then delete the old files.
+Update every remaining result to `src/modules/tenancy` paths, then delete the old files.
 
-- [ ] **Step 7: Run and commit**
+- [ ] **Step 7: Run full API regression and commit**
 
 ```bash
 pnpm --filter @booking-os/api exec node --test --import tsx \
@@ -614,6 +637,8 @@ pnpm --filter @booking-os/api exec node --test --import tsx \
   test/tenant-isolation.e2e.test.ts
 pnpm verify:architecture
 pnpm --filter @booking-os/api typecheck
+pnpm --filter @booking-os/api test
+pnpm --filter @booking-os/api test:e2e
 git add apps/api/src apps/api/test
 git commit -m "refactor: complete tenant probe hexagonal slice"
 ```
@@ -653,6 +678,7 @@ pnpm --filter @booking-os/api exec node --test --import tsx \
   test/health.e2e.test.ts
 pnpm verify:architecture
 pnpm --filter @booking-os/api typecheck
+pnpm --filter @booking-os/api test:e2e
 git add apps/api/test
 git commit -m "test: complete tenant isolation matrix"
 ```
