@@ -1,134 +1,68 @@
 #!/usr/bin/env python3
-"""Minimal Genesis knowledge CLI with no external dependencies."""
+"""Genesis knowledge artifact CLI with no external dependencies."""
 from __future__ import annotations
 
-from pathlib import Path
 import argparse
-import re
+from pathlib import Path
 import sys
-from datetime import date
-from typing import Optional
+
+from tools.genesis.artifact_types import ArtifactKind
+from tools.genesis.generator import GenerationError, generate_artifact
+from tools.genesis.validator import validate_repository
 
 ROOT = Path(__file__).resolve().parents[1]
-
-REQUIRED_SECTIONS = {
-    "ADR": ["## Context", "## Problem", "## Decision", "## Trade-offs", "## Consequences"],
-    "PATTERN": ["## Problem", "## Context", "## Solution", "## Trade-offs", "## Review Checklist"],
-    "FEATURE": ["## Problem", "## Goal", "## Non-goals", "## Business Rules", "## Acceptance Criteria", "## Test Plan"],
+COMMAND_TO_KIND = {
+    "new-adr": ArtifactKind.ADR,
+    "new-feature": ArtifactKind.FEATURE,
+    "new-pattern": ArtifactKind.PATTERN,
 }
 
-def parse_frontmatter(text: str) -> dict[str, str]:
-    if not text.startswith("---\n"):
-        return {}
-    end = text.find("\n---", 4)
-    if end == -1:
-        return {}
-    data = {}
-    for line in text[4:end].splitlines():
-        if ":" in line:
-            key, value = line.split(":", 1)
-            data[key.strip()] = value.strip()
-    return data
 
-def classify(path: Path) -> Optional[str]:
-    p = str(path).lower()
-    if "/adr/" in p or path.name.startswith("ADR-"):
-        return "ADR"
-    if "/patterns/" in p or path.name == "PATTERN.md":
-        return "PATTERN"
-    if path.name == "FEATURE.md" or "/features/" in p:
-        return "FEATURE"
-    return None
+class GenesisArgumentParser(argparse.ArgumentParser):
+    def error(self, message: str) -> None:
+        raise ValueError(message)
 
-def validate_file(path: Path) -> list[str]:
-    text = path.read_text(encoding="utf-8")
-    kind = classify(path)
-    errors = []
-    if not kind:
-        return errors
-    metadata = parse_frontmatter(text)
-    if not metadata:
-        errors.append("missing YAML-like front matter")
-    else:
-        for key in ("id", "status", "owner"):
-            if key not in metadata or not metadata[key]:
-                errors.append(f"missing metadata: {key}")
-    for section in REQUIRED_SECTIONS[kind]:
-        if section not in text:
-            errors.append(f"missing section: {section}")
-    return errors
 
 def validate() -> int:
-    failures = 0
-    for path in sorted(ROOT.rglob("*.md")):
-        errors = validate_file(path)
-        if errors:
-            failures += 1
-            print(f"FAIL {path.relative_to(ROOT)}")
-            for err in errors:
-                print(f"  - {err}")
-    if failures:
-        print(f"\n{failures} artifact(s) failed.")
-        return 1
-    print("Knowledge validation passed.")
-    return 0
+    failures = validate_repository(ROOT)
+    if not failures:
+        print("Knowledge validation passed.")
+        return 0
 
-def slugify(value: str) -> str:
-    value = re.sub(r"[^a-zA-Z0-9]+", "-", value).strip("-").lower()
-    return value or "decision"
+    current_path: Path | None = None
+    for failure in failures:
+        if failure.path != current_path:
+            current_path = failure.path
+            print(f"FAIL {failure.path.as_posix()}")
+        print(f"  - {failure.message}")
+    print(f"\n{len({failure.path for failure in failures})} artifact or template file(s) failed.")
+    return 1
 
-def new_adr(title: str) -> int:
-    adr_dir = ROOT / "docs" / "adr"
-    ids = []
-    for path in adr_dir.glob("ADR-*.md"):
-        match = re.match(r"ADR-(\d{4})", path.name)
-        if match:
-            ids.append(int(match.group(1)))
-    number = max(ids, default=0) + 1
-    adr_id = f"ADR-{number:04d}"
-    path = adr_dir / f"{adr_id}-{slugify(title)}.md"
-    content = f"""---
-id: {adr_id}
-title: {title}
-status: proposed
-owner: unassigned
-date: {date.today().isoformat()}
----
 
-# {title}
+def build_parser() -> GenesisArgumentParser:
+    parser = GenesisArgumentParser(prog="genesis")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers.add_parser("validate")
+    for command in COMMAND_TO_KIND:
+        artifact_parser = subparsers.add_parser(command)
+        artifact_parser.add_argument("title")
+    return parser
 
-## Context
 
-## Problem
+def main(argv: list[str] | None = None) -> int:
+    try:
+        args = build_parser().parse_args(argv)
+        if args.command == "validate":
+            return validate()
 
-## Options Considered
+        kind = COMMAND_TO_KIND[args.command]
+        path = generate_artifact(ROOT, kind, args.title)
+        print(path.relative_to(ROOT).as_posix())
+        return 0
+    except (GenerationError, ValueError, KeyError) as error:
+        print(f"genesis: {error}", file=sys.stderr)
+        return 2
 
-## Decision
-
-## Trade-offs
-
-## Consequences
-
-## Validation
-
-## References
-"""
-    path.write_text(content, encoding="utf-8")
-    print(path.relative_to(ROOT))
-    return 0
-
-def main() -> int:
-    parser = argparse.ArgumentParser(prog="genesis")
-    sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("validate")
-    adr = sub.add_parser("new-adr")
-    adr.add_argument("title")
-    args = parser.parse_args()
-    if args.command == "validate":
-        return validate()
-    if args.command == "new-adr":
-        return new_adr(args.title)
-    return 2
 
 if __name__ == "__main__":
     sys.exit(main())
