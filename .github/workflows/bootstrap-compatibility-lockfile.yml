@@ -11,6 +11,7 @@ on:
 permissions:
   contents: write
 
+# Temporary workflow: remove immediately after pnpm-lock.yaml is current.
 jobs:
   update-lockfile:
     runs-on: ubuntu-latest
