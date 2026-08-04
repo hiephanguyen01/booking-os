@@ -1,9 +1,5 @@
 import type { INestApplication } from "@nestjs/common";
-import {
-  DocumentBuilder,
-  type OpenAPIObject,
-  SwaggerModule,
-} from "@nestjs/swagger";
+import { DocumentBuilder, type OpenAPIObject, SwaggerModule } from "@nestjs/swagger";
 
 import { inspectApiRoutes } from "../api-visibility/api-route-inspector.js";
 
@@ -36,7 +32,9 @@ function normalizeValue(value: unknown): unknown {
 export function normalizeOpenApiDocument(document: OpenAPIObject): OpenAPIObject {
   const normalized = normalizeValue(document) as OpenAPIObject;
   if (Array.isArray(normalized.tags)) {
-    normalized.tags = [...normalized.tags].sort((left, right) => left.name.localeCompare(right.name));
+    normalized.tags = [...normalized.tags].sort((left, right) =>
+      left.name.localeCompare(right.name),
+    );
   }
   return normalized;
 }
@@ -57,7 +55,10 @@ function collectOperations(document: OpenAPIObject): ReadonlyMap<string, Record<
   return operations;
 }
 
-function validateSupportedOperations(document: OpenAPIObject, supportedKeys: ReadonlySet<string>): void {
+function validateSupportedOperations(
+  document: OpenAPIObject,
+  supportedKeys: ReadonlySet<string>,
+): void {
   const operationIds = new Map<string, string>();
   const operations = collectOperations(document);
 
@@ -83,10 +84,7 @@ function validateSupportedOperations(document: OpenAPIObject, supportedKeys: Rea
     }
 
     const responses = operation.responses;
-    if (
-      !isRecord(responses) ||
-      !Object.keys(responses).some((status) => /^2\d\d$/.test(status))
-    ) {
+    if (!isRecord(responses) || !Object.keys(responses).some((status) => /^2\d\d$/.test(status))) {
       throw new Error(`supported route is missing an explicit 2xx response: ${key}`);
     }
   }
