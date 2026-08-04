@@ -57,7 +57,12 @@ export class OutboxPollingService {
       const summary = await this.dispatcher.dispatchBatch(this.batchSize);
 
       if (summary.claimed > 0) {
-        this.logger.info("outbox.batch_dispatched", summary);
+        this.logger.info("outbox.batch_dispatched", {
+          claimed: summary.claimed,
+          dispatched: summary.dispatched,
+          failed: summary.failed,
+          deadLettered: summary.deadLettered,
+        });
       }
     } catch (error: unknown) {
       this.logger.error("outbox.dispatch_failed", error);
