@@ -1,20 +1,15 @@
 name: PR 5 conflict maintenance
 
 on:
-  issue_comment:
-    types:
-      - created
+  push:
+    branches:
+      - main
 
 permissions:
   contents: write
-  pull-requests: read
 
 jobs:
   diagnose:
-    if: >-
-      github.event.issue.pull_request &&
-      github.event.issue.number == 5 &&
-      github.event.comment.body == '/diagnose-pr5'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
