@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -19,9 +19,7 @@ async function writeModule(repositoryRoot, moduleName, files) {
 }
 
 async function withRepository(run) {
-  const repositoryRoot = await mkdtemp(
-    path.join(os.tmpdir(), "booking-os-architecture-"),
-  );
+  const repositoryRoot = await mkdtemp(path.join(os.tmpdir(), "booking-os-architecture-"));
   try {
     await run(repositoryRoot);
   } finally {
@@ -78,21 +76,18 @@ test("rejects forbidden dependencies and technology-specific ports", async () =>
 
     assert.ok(
       failures.some(
-        (failure) =>
-          failure.includes("domain/nest.ts") && failure.includes("@nestjs/common"),
+        (failure) => failure.includes("domain/nest.ts") && failure.includes("@nestjs/common"),
+      ),
+    );
+    assert.ok(
+      failures.some(
+        (failure) => failure.includes("domain/prisma.ts") && failure.includes("@prisma/client"),
       ),
     );
     assert.ok(
       failures.some(
         (failure) =>
-          failure.includes("domain/prisma.ts") && failure.includes("@prisma/client"),
-      ),
-    );
-    assert.ok(
-      failures.some(
-        (failure) =>
-          failure.includes("application/prisma.ts") &&
-          failure.includes("@prisma/client"),
+          failure.includes("application/prisma.ts") && failure.includes("@prisma/client"),
       ),
     );
     assert.ok(
@@ -104,8 +99,7 @@ test("rejects forbidden dependencies and technology-specific ports", async () =>
     assert.ok(
       failures.some(
         (failure) =>
-          failure.includes("unit-of-work.port.ts") &&
-          failure.includes("TransactionClient"),
+          failure.includes("unit-of-work.port.ts") && failure.includes("TransactionClient"),
       ),
     );
     assert.ok(
