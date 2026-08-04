@@ -36,7 +36,7 @@
 - Modify `apps/api/src/config/environment.schema.ts`: `READINESS_TIMEOUT_MS` validation and transform.
 - Modify `apps/api/src/config/environment.schema.test.ts`: default, valid, boundary, and invalid tests.
 - Modify `apps/api/src/config/environment.service.ts`: `readinessTimeoutMs` getter.
-- Modify `apps/api/src/health/health.service.test.ts`: keep the existing typed `Environment` fixture complete.
+- Modify `apps/api/src/health/health.service.test.ts`: keep the typed `Environment` fixture complete.
 - Modify `apps/api/.env.example`: readiness timeout example.
 
 ### HTTP observability
@@ -78,7 +78,7 @@
 - Modify `apps/api/test/health.e2e.test.ts`: deterministic full-HTTP behavior with provider overrides.
 - Modify `README.md`: runtime contract and smoke commands.
 - Modify `docs/backlog/SPRINT-0.md`: checkbox only after final evidence.
-- Temporarily create then delete `.github/workflows/api-runtime-smoke.yml`.
+- Temporarily create then delete `.github/workflows/api-runtime-smoke.yml` and `.github/scripts/api-runtime-smoke.sh`.
 
 ---
 
@@ -126,8 +126,6 @@ test("parseEnvironment rejects invalid readiness timeouts", () => {
 ```
 
 - [ ] **Step 2: Verify RED**
-
-Run:
 
 ```bash
 pnpm --filter @booking-os/api test -- src/config/environment.schema.test.ts
@@ -178,8 +176,6 @@ pnpm --filter @booking-os/api typecheck
 pnpm install --frozen-lockfile
 ```
 
-Expected: PASS.
-
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -207,8 +203,6 @@ git commit -m "feat(api): add readiness timeout configuration"
 
 - [ ] **Step 1: Write failing pure request-ID tests**
 
-Assert:
-
 ```ts
 assert.equal(isValidRequestId("gateway.id_1:part-2"), true);
 assert.equal(isValidRequestId("a".repeat(128)), true);
@@ -229,8 +223,6 @@ Also assert the generator is not called for an accepted value.
 ```bash
 pnpm --filter @booking-os/api test -- src/observability/request-id.test.ts
 ```
-
-Expected: module-not-found failure.
 
 - [ ] **Step 3: Implement tokens and pure selection**
 
@@ -364,21 +356,7 @@ Join `baseUrl` and string `route.path` when available. Otherwise use `new URL(re
 
 - [ ] **Step 4: Write failing interceptor tests**
 
-Use an `EventEmitter` response double. Set `statusCode`, emit `finish` twice, and assert one record containing:
-
-```ts
-{
-  message: "http.request_completed",
-  requestId: "request-1",
-  method: "GET",
-  route: "/api/bookings/:id",
-  statusCode: 200,
-  durationMs: 12,
-  level: "info",
-}
-```
-
-Add tests for `warn` at `>=500`, suppression of successful health/readiness, logging readiness `503`, safe fallback pathname, and no duplicate record.
+Use an `EventEmitter` response double. Set `statusCode`, emit `finish` twice, and assert one record containing request ID, method, route template, status, measured duration, and `info` level. Add tests for `warn` at `>=500`, suppression of successful health/readiness, logging readiness `503`, safe fallback pathname, and no duplicate record.
 
 - [ ] **Step 5: Implement and globally register the interceptor**
 
@@ -436,19 +414,7 @@ Assert a `BadRequestException("Invalid input")` maps to:
 }
 ```
 
-Also cover a validation message array, ignored extra object fields, a `503` whose internal message is hidden, and an unknown error mapping to:
-
-```ts
-{
-  statusCode: 500,
-  body: {
-    statusCode: 500,
-    error: "Internal Server Error",
-    message: "An unexpected error occurred",
-    requestId: "request-1",
-  },
-}
-```
+Also cover a validation message array, ignored extra fields, a `503` whose internal message is hidden, and an unknown error mapping to fixed `500` output.
 
 - [ ] **Step 2: Verify RED**
 
@@ -458,11 +424,11 @@ pnpm --filter @booking-os/api test -- src/observability/api-error-response.test.
 
 - [ ] **Step 3: Implement the mapper**
 
-Use `HttpException.getStatus()`, `getResponse()`, and `STATUS_CODES`. Return only string/string-array messages and a string `error`. For status `>=500`, ignore the payload and use the fixed public message.
+Use `HttpException.getStatus()`, `getResponse()`, and `STATUS_CODES`. Return only string/string-array messages and a string `error`. For status `>=500`, ignore the payload and return `"An unexpected error occurred"`.
 
 - [ ] **Step 4: Write failing filter tests**
 
-Use request/response/`ArgumentsHost` doubles and captured logger records. Assert status/body, matching request IDs, exactly one `http.request_failed`, original exception serialization, and absence of body/query/header/cookie/environment fields.
+Use request/response/`ArgumentsHost` doubles and captured records. Assert status/body, matching request IDs, exactly one `http.request_failed`, original exception serialization, and absence of body/query/header/cookie/environment fields.
 
 - [ ] **Step 5: Implement and register the filter**
 
@@ -527,11 +493,11 @@ git commit -m "feat(api): normalize and log HTTP failures"
 
 **Interfaces:**
 - Consumes: database/Redis URLs, readiness timeout, clocks, and logger.
-- Produces: module-internal client tokens and testable lazy factory functions.
+- Produces: module-internal client tokens and testable lazy factories.
 
 - [ ] **Step 1: Write failing factory tests**
 
-Define factory injection points:
+Define constructor injection points:
 
 ```ts
 type PostgresConstructor = (options: PoolConfig) => PostgresPoolPort;
@@ -541,17 +507,7 @@ createPostgresPool(environment, constructPostgres);
 createRedisClient(environment, constructRedis);
 ```
 
-Assert exact options:
-
-```ts
-{
-  connectionString: "postgresql://user:password@localhost:5432/db",
-  connectionTimeoutMillis: 750,
-  query_timeout: 750,
-}
-```
-
-and Redis options `lazyConnect: true`, `connectTimeout: 750`, `commandTimeout: 750`, `maxRetriesPerRequest: 1`. Assert neither factory calls `connect`, `query`, nor `ping`, and both register an `error` listener.
+Assert PostgreSQL options `connectionString`, `connectionTimeoutMillis: 750`, and `query_timeout: 750`. Assert Redis options `lazyConnect: true`, `connectTimeout: 750`, `commandTimeout: 750`, and `maxRetriesPerRequest: 1`. Assert neither factory calls `query` nor `ping`, and both register an `error` listener.
 
 - [ ] **Step 2: Verify RED**
 
@@ -563,9 +519,9 @@ pnpm --filter @booking-os/api test -- src/dependencies/dependency-clients.test.t
 
 ```ts
 export interface PostgresPoolPort {
-  query<T extends Record<string, unknown>>(text: string): Promise<{ rows: T[] }>;
+  query(text: string): Promise<{ rows: unknown[] }>;
   end(): Promise<void>;
-  on(event: "error", listener: (error: unknown) => void): this;
+  on(event: "error", listener: (error: Error) => void): this;
 }
 
 export interface RedisClientPort {
@@ -573,7 +529,7 @@ export interface RedisClientPort {
   ping(): Promise<string>;
   quit(): Promise<string>;
   disconnect(reconnect?: boolean): void;
-  on(event: "error", listener: (error: unknown) => void): this;
+  on(event: "error", listener: (error: Error) => void): this;
 }
 ```
 
@@ -581,13 +537,7 @@ Default constructors return `new Pool(options)` and `new Redis(url, options)`. R
 
 - [ ] **Step 4: Write failing lifecycle tests**
 
-Prove:
-
-- concurrent/repeated `close()` calls invoke `pool.end()` and `redis.quit()` once;
-- rejected `redis.quit()` triggers `disconnect(false)`;
-- rejected `pool.end()` does not prevent Redis cleanup;
-- each cleanup failure emits `dependency.shutdown_failed` with only `dependency` plus serialized error;
-- `onApplicationShutdown()` delegates to `close()`.
+Prove concurrent/repeated `close()` calls close once; rejected Redis `quit()` triggers `disconnect(false)`; rejected PostgreSQL close does not block Redis cleanup; cleanup failures emit `dependency.shutdown_failed` with only `dependency` plus logger-serialized error; and `onApplicationShutdown()` delegates to `close()`.
 
 - [ ] **Step 5: Implement lifecycle cleanup**
 
@@ -604,9 +554,7 @@ Attempt both resources independently. Log safe failures and complete without exp
 
 - [ ] **Step 6: Wire `DependenciesModule` without exporting raw clients**
 
-Provide PostgreSQL pool, Redis client, and lifecycle service. Import `ObservabilityModule` for the logger/clock providers. Export nothing yet; Task 6 adds and exports probe tokens.
-
-Import `DependenciesModule` once in `AppModule`.
+Provide pool, Redis client, and lifecycle service. Import `ObservabilityModule`. Export nothing yet; Task 6 exports probe tokens. Import `DependenciesModule` once in `AppModule`.
 
 - [ ] **Step 7: Verify GREEN and lazy construction**
 
@@ -659,7 +607,7 @@ assert.equal(classifyReadinessError(new Error("parser failure")), "unexpected_re
 pnpm --filter @booking-os/api test -- src/dependencies/readiness-failure.test.ts
 ```
 
-- [ ] **Step 3: Define probe contracts and classifier**
+- [ ] **Step 3: Define contracts and classifier**
 
 ```ts
 export type ReadinessDependency = "postgresql" | "redis";
@@ -671,7 +619,7 @@ export interface ReadinessProbe {
 }
 ```
 
-Classify Node/socket codes, PostgreSQL SQLSTATE classes `08` and `28`, and fixed Redis authentication prefixes. Never return the raw message.
+Classify Node/socket codes, PostgreSQL SQLSTATE classes `08` and `28`, and fixed Redis authentication prefixes. Never return raw messages.
 
 - [ ] **Step 4: Write PostgreSQL probe tests**
 
@@ -679,15 +627,13 @@ Assert one `query("SELECT 1 AS ready")`, expected row validation, injected-clock
 
 - [ ] **Step 5: Implement PostgreSQL probe**
 
-Return `ok` only for `{ rows: [{ ready: 1 }] }`. Catch client errors and use the classifier. Round latency to at most three decimals.
+Return `ok` only for one row whose `ready` property is `1`. Catch client errors and use the classifier. Round latency to at most three decimals.
 
 - [ ] **Step 6: Write Redis probe tests**
 
 Assert exact uppercase `PONG` success; lowercase/other replies become `unexpected_response`; coded rejection becomes `connection_failed`; latency is measured; raw messages are absent.
 
 - [ ] **Step 7: Implement Redis probe and module providers**
-
-Register:
 
 ```ts
 {
@@ -702,7 +648,7 @@ Register:
 },
 ```
 
-Export only the two probe tokens.
+Export only the probe tokens.
 
 - [ ] **Step 8: Verify GREEN**
 
@@ -746,27 +692,15 @@ pnpm --filter @booking-os/api test -- src/health/readiness-timeout.test.ts
 
 - [ ] **Step 3: Implement timeout helper**
 
-Use one timer. Attach both fulfillment and rejection handlers to the underlying promise, clear the timer in every path, and reject timeout with no client detail.
+Use one timer. Attach fulfillment and rejection handlers to the underlying promise, clear the timer in every path, and reject timeout with no client detail.
 
 - [ ] **Step 4: Write response-factory tests**
 
-With injected clocks, assert:
-
-```ts
-{
-  service: "api",
-  status: "ok",
-  version: "0.1.0-test",
-  timestamp: "2026-08-04T02:00:00.000Z",
-  uptimeSeconds: 12,
-}
-```
-
-Also test dependency maps and non-negative uptime.
+With injected clocks, assert service, status, version, deterministic ISO timestamp, integer uptime, dependency map, and non-negative uptime.
 
 - [ ] **Step 5: Implement `HealthResponseFactory`**
 
-Inject `EnvironmentService`, `MONOTONIC_CLOCK_TOKEN`, and `WALL_CLOCK_TOKEN`. Capture monotonic start time once. Do not read `process.env`.
+Inject `EnvironmentService`, `MONOTONIC_CLOCK_TOKEN`, and `WALL_CLOCK_TOKEN`. Capture monotonic start once. Do not read `process.env`.
 
 - [ ] **Step 6: Write coordinator tests**
 
@@ -774,14 +708,14 @@ Required cases:
 
 1. both probes begin before either resolves;
 2. both `ok` produce HTTP `200`;
-3. one/both unavailable produce HTTP `503` while preserving all actual statuses;
+3. one/both unavailable produce HTTP `503` while preserving statuses;
 4. never-resolving probes map independently to `timeout`;
-5. endpoint duration is near the slower timeout, not the sum;
-6. successful and unavailable results are cached for `1000ms`;
+5. duration is near the slower timeout, not the sum;
+6. success and failure are cached for `1000ms`;
 7. expiry triggers a new pair;
-8. simultaneous callers share one promise and one pair;
+8. simultaneous callers share one promise/pair;
 9. `inFlight` clears after success and unexpected rejection;
-10. each actual failed probe emits one `readiness.probe_failed` with request ID, dependency, duration, and reason;
+10. actual failed probes emit one `readiness.probe_failed` with request ID, dependency, duration, and reason;
 11. cache hits emit no additional failure event.
 
 - [ ] **Step 7: Implement coordinator**
@@ -871,13 +805,13 @@ Do not throw `ServiceUnavailableException`.
 
 - [ ] **Step 4: Wire modules**
 
-`HealthModule` imports `DependenciesModule`, provides response factory/coordinator/service, and injects the two probe tokens. `AppModule` imports:
+`HealthModule` imports `DependenciesModule`, provides response factory/coordinator/service, and injects probe tokens. `AppModule` imports:
 
 ```ts
 [EnvironmentModule, ObservabilityModule, DependenciesModule, HealthModule]
 ```
 
-Leave `main.ts` focused on dotenv, Nest bootstrap, shutdown hooks, global prefix, listen, and service events; no manual observability registration.
+Leave `main.ts` focused on dotenv, Nest bootstrap, shutdown hooks, global prefix, listen, and service events.
 
 - [ ] **Step 5: Verify GREEN**
 
@@ -908,8 +842,6 @@ git commit -m "feat(api): expose real readiness status"
 
 - [ ] **Step 1: Build the test application with overrides**
 
-Use mutable probe statuses and captured records:
-
 ```ts
 const postgresProbe = { dependency: "postgresql" as const, check: async () => postgresStatus };
 const redisProbe = { dependency: "redis" as const, check: async () => redisStatus };
@@ -929,19 +861,9 @@ The test-only controller throws at `GET /api/test/boom`.
 
 - [ ] **Step 2: Add failing e2e cases**
 
-Cover:
+Cover `/api/health` with generated header; valid ID preservation; invalid replacement; readiness `200`; Redis-unavailable `503` with PostgreSQL still `ok`; redacted `500` with matching IDs; successful-health log suppression; readiness-failure events; and error failure/completion events.
 
-- `/api/health` `200` plus generated header;
-- valid upstream ID preserved;
-- invalid upstream ID replaced;
-- `/api/ready` `200` with two `ok` statuses;
-- Redis unavailable gives `503`, PostgreSQL remains `ok`, and reason is safe;
-- test error gives redacted `500`, matching body/header IDs;
-- successful health/readiness create no completion event;
-- readiness `503` creates probe-failure and completion events;
-- error creates failure and completion events.
-
-Use a fresh Nest app/coordinator per test group so the one-second cache cannot make tests order-dependent.
+Use a fresh Nest app/coordinator per test group so cache cannot make tests order-dependent.
 
 - [ ] **Step 3: Verify RED**
 
@@ -951,7 +873,7 @@ pnpm --filter @booking-os/api test:e2e
 
 - [ ] **Step 4: Fix integration defects without weakening contracts**
 
-Keep fixes inside the defined modules. Do not add test routes to production modules.
+Keep fixes inside defined modules. Do not add test routes to production modules.
 
 - [ ] **Step 5: Enforce e2e in the standard test script**
 
@@ -959,7 +881,7 @@ Keep fixes inside the defined modules. Do not add test routes to production modu
 "test": "node --test --import tsx \"src/**/*.test.ts\" \"test/**/*.test.ts\""
 ```
 
-Keep the focused `test:e2e` script.
+Keep `test:e2e`.
 
 - [ ] **Step 6: Run twice to detect leaked listeners/state**
 
@@ -1000,8 +922,6 @@ State `SELECT 1`, `PING`, both required, and one-second cache.
 
 - [ ] **Step 2: Document request ID and error envelope**
 
-Include the accepted pattern and:
-
 ```json
 {
   "statusCode": 500,
@@ -1011,11 +931,11 @@ Include the accepted pattern and:
 }
 ```
 
-State that request IDs are correlation values, not authentication proof.
+State request IDs are correlation values, not authentication proof.
 
 - [ ] **Step 3: Document events and forbidden fields**
 
-List `http.request_completed`, `http.request_failed`, `readiness.probe_failed`, and `dependency.shutdown_failed`. State that bodies, raw query values, cookies, authorization, credentials, and URLs are excluded.
+List `http.request_completed`, `http.request_failed`, `readiness.probe_failed`, and `dependency.shutdown_failed`. State bodies, raw query values, cookies, authorization, credentials, and URLs are excluded.
 
 - [ ] **Step 4: Document configuration and smoke commands**
 
@@ -1032,7 +952,7 @@ curl -i http://localhost:3001/api/health
 curl -i http://localhost:3001/api/ready
 ```
 
-State that `apps/api/.env` is local-only and must not be committed.
+State `apps/api/.env` is local-only and must not be committed.
 
 - [ ] **Step 5: Verify and commit**
 
@@ -1049,7 +969,8 @@ git commit -m "docs: describe API readiness and request observability"
 
 **Files:**
 - Temporarily create: `.github/workflows/api-runtime-smoke.yml`
-- Delete before final tree: `.github/workflows/api-runtime-smoke.yml`
+- Temporarily create: `.github/scripts/api-runtime-smoke.sh`
+- Delete before final tree: both temporary files.
 - Modify after all evidence passes: `docs/backlog/SPRINT-0.md`
 
 **Interfaces:**
@@ -1073,9 +994,7 @@ pnpm infra:config
 
 All commands must PASS without relaxing gates.
 
-- [ ] **Step 2: Create a temporary workflow**
-
-Use this job skeleton:
+- [ ] **Step 2: Create the temporary workflow**
 
 ```yaml
 name: API Runtime Smoke
@@ -1108,13 +1027,24 @@ jobs:
       - run: docker compose --env-file .env.docker up -d postgres redis
       - run: pnpm --filter @booking-os/api build
       - name: Verify runtime behavior
-        run: |
-          # Insert the exact shell block from Step 3.
+        run: bash .github/scripts/api-runtime-smoke.sh
+      - name: Upload API log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-runtime-smoke-log
+          path: api.log
+      - name: Cleanup Compose
+        if: always()
+        run: docker compose --env-file .env.docker down --volumes --remove-orphans
 ```
 
-- [ ] **Step 3: Use this exact runtime assertion block**
+- [ ] **Step 3: Create the executable temporary smoke script**
+
+Create `.github/scripts/api-runtime-smoke.sh` with:
 
 ```bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 export NODE_ENV=test HOST=127.0.0.1 PORT=3001 API_PREFIX=api APP_VERSION=runtime-smoke LOG_LEVEL=debug
@@ -1132,7 +1062,6 @@ cleanup() {
     kill -TERM "$API_PID" 2>/dev/null || true
     wait "$API_PID" 2>/dev/null || true
   fi
-  docker compose --env-file .env.docker down --volumes --remove-orphans
 }
 trap cleanup EXIT
 
@@ -1184,27 +1113,27 @@ API_PID=0
 ! grep -Fiq 'unhandledrejection' api.log
 ```
 
-Add an `if: failure()` artifact-upload step for `api.log`, and an `if: always()` Compose cleanup step as a second safety net.
+Run `chmod +x .github/scripts/api-runtime-smoke.sh`.
 
 - [ ] **Step 4: Commit, push, and record a green smoke run**
 
 ```bash
-git add .github/workflows/api-runtime-smoke.yml
+git add .github/workflows/api-runtime-smoke.yml .github/scripts/api-runtime-smoke.sh
 git commit -m "test: add temporary API runtime smoke"
 git push
 ```
 
 Record run ID and commit SHA.
 
-- [ ] **Step 5: Remove the temporary workflow**
+- [ ] **Step 5: Remove both temporary files**
 
 ```bash
-git rm .github/workflows/api-runtime-smoke.yml
+git rm .github/workflows/api-runtime-smoke.yml .github/scripts/api-runtime-smoke.sh
 git commit -m "chore: remove temporary API runtime smoke"
 git push
 ```
 
-Confirm it is absent from the final tree.
+Confirm both are absent from the final tree.
 
 - [ ] **Step 6: Verify the six permanent CI jobs**
 
@@ -1240,10 +1169,10 @@ Record the final CI run ID.
 
 ```bash
 git status --short
-git ls-files .github/workflows
+git ls-files .github/workflows .github/scripts
 pnpm audit --audit-level high
 pnpm test
 pnpm build
 ```
 
-Expected: clean tree, no temporary workflow, no high/critical audit failure, tests/build PASS. No additional commit is needed when clean.
+Expected: clean tree, no temporary smoke files, no high/critical audit failure, tests/build PASS. No additional commit is needed when clean.
