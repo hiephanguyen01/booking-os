@@ -12,6 +12,7 @@ const validEnvironment = {
   LOG_LEVEL: "debug",
   DATABASE_URL: "postgresql://booking:booking@localhost:5432/booking_os_test",
   REDIS_URL: "redis://localhost:6379/1",
+  READINESS_TIMEOUT_MS: "900",
   SESSION_SECRET: "test-only-session-secret-at-least-32-characters",
   PAYMENT_PROVIDER: "mock",
 } as const;
@@ -28,6 +29,7 @@ test("parseEnvironment validates and normalizes environment variables", () => {
     logLevel: "debug",
     databaseUrl: "postgresql://booking:booking@localhost:5432/booking_os_test",
     redisUrl: "redis://localhost:6379/1",
+    readinessTimeoutMs: 900,
     sessionSecret: "test-only-session-secret-at-least-32-characters",
     paymentProvider: "mock",
   });
@@ -46,7 +48,28 @@ test("parseEnvironment applies safe defaults", () => {
   assert.equal(environment.apiPrefix, "api");
   assert.equal(environment.appVersion, "0.1.0");
   assert.equal(environment.logLevel, "info");
+  assert.equal(environment.readinessTimeoutMs, 750);
   assert.equal(environment.paymentProvider, "mock");
+});
+
+test("parseEnvironment accepts readiness timeout boundaries", () => {
+  assert.equal(
+    parseEnvironment({ ...validEnvironment, READINESS_TIMEOUT_MS: "100" }).readinessTimeoutMs,
+    100,
+  );
+  assert.equal(
+    parseEnvironment({ ...validEnvironment, READINESS_TIMEOUT_MS: "5000" }).readinessTimeoutMs,
+    5000,
+  );
+});
+
+test("parseEnvironment rejects invalid readiness timeouts", () => {
+  for (const value of ["99", "5001", "750.5", "not-a-number"]) {
+    assert.throws(
+      () => parseEnvironment({ ...validEnvironment, READINESS_TIMEOUT_MS: value }),
+      EnvironmentValidationError,
+    );
+  }
 });
 
 test("parseEnvironment rejects invalid configuration", () => {
