@@ -4,9 +4,9 @@ import test from "node:test";
 import type { StructuredLogger } from "@booking-os/observability";
 import { BadRequestException } from "@nestjs/common";
 
+import type { RequestContextStorage } from "../request-context/request-context.storage.js";
 import { ApiError } from "./api-error.js";
 import { ApiExceptionFilter } from "./api-exception.filter.js";
-import type { RequestContextStorage } from "../request-context/request-context.storage.js";
 
 function createLogger(errors: unknown[]): StructuredLogger {
   return {
