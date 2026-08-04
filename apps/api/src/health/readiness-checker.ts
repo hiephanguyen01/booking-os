@@ -8,7 +8,8 @@ import { EnvironmentService } from "../config/environment.service.js";
 
 const READINESS_TIMEOUT_MS = 1000;
 
-export interface ReadinessDependencies {
+export interface ReadinessDependencies
+  extends Readonly<Record<string, HealthDependencyStatus>> {
   readonly postgres: HealthDependencyStatus;
   readonly redis: HealthDependencyStatus;
 }
