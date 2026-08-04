@@ -78,10 +78,7 @@ function resolveRequestId(value: FetchTransportOptions["requestId"]): string | u
   return typeof value === "function" ? value() : value;
 }
 
-function buildHeaders(
-  options: FetchTransportOptions,
-  request: GeneratedRequest,
-): Headers {
+function buildHeaders(options: FetchTransportOptions, request: GeneratedRequest): Headers {
   const headers = new Headers({ accept: "application/json" });
   for (const [name, value] of Object.entries(options.defaultHeaders ?? {})) {
     headers.set(name, value);
