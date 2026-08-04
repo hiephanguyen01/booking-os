@@ -5,8 +5,8 @@ import { Controller, Get, Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 
-import { InternalApi, SupportedApi } from "./api-visibility.decorator.js";
 import { inspectApiRoutes } from "./api-route-inspector.js";
+import { InternalApi, SupportedApi } from "./api-visibility.decorator.js";
 
 @SupportedApi()
 @Controller("supported")
