@@ -29,7 +29,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: cp .env.docker.example .env.docker
       - run: docker compose --env-file .env.docker up -d postgres
-      - run: pnpm --filter @booking-os/api build
+      - run: pnpm build
       - name: Verify runtime behavior
         run: bash .github/scripts/api-runtime-smoke.sh
       - name: Upload API log on failure
