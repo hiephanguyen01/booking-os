@@ -15,6 +15,7 @@
     "test": "turbo run test",
     "test:e2e": "pnpm build && playwright test",
     "test:e2e:api": "turbo run test:e2e",
+    "genesis:validate": "python tools/genesis_cli.py validate",
     "verify:migrations": "node scripts/verify-migrations.mjs",
     "verify:production-config": "node scripts/assert-production-config.mjs",
     "verify:foundation": "pnpm check:ci && pnpm lint && pnpm typecheck && pnpm --filter @booking-os/api prisma:migrate:deploy && pnpm test && pnpm test:e2e:api && pnpm verify:migrations && pnpm build && pnpm test:e2e && pnpm verify:production-config",
