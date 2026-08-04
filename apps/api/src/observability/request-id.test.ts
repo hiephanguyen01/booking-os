@@ -26,7 +26,16 @@ test("preserves a valid upstream ID without calling the generator", () => {
 });
 
 test("generates an ID for missing or invalid headers", () => {
-  assert.equal(selectRequestId(undefined, () => "generated-id"), "generated-id");
-  assert.equal(selectRequestId("bad value", () => "generated-id"), "generated-id");
-  assert.equal(selectRequestId(["bad value", "valid-id"], () => "generated-id"), "generated-id");
+  assert.equal(
+    selectRequestId(undefined, () => "generated-id"),
+    "generated-id",
+  );
+  assert.equal(
+    selectRequestId("bad value", () => "generated-id"),
+    "generated-id",
+  );
+  assert.equal(
+    selectRequestId(["bad value", "valid-id"], () => "generated-id"),
+    "generated-id",
+  );
 });
