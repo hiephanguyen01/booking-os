@@ -1,14 +1,14 @@
 import type { ApiErrorDetails, ApiErrorEnvelope } from "@booking-os/contracts";
 import type { StructuredLogger } from "@booking-os/observability";
 import {
-  ArgumentsHost,
+  type ArgumentsHost,
   Catch,
   type ExceptionFilter,
   HttpException,
   HttpStatus,
 } from "@nestjs/common";
 
-import { RequestContextStorage } from "../request-context/request-context.storage.js";
+import type { RequestContextStorage } from "../request-context/request-context.storage.js";
 import { ApiError } from "./api-error.js";
 
 interface HttpResponse {
@@ -83,9 +83,12 @@ export class ApiExceptionFilter implements ExceptionFilter {
           };
         }
 
-        const code = typeof response.code === "string" ? response.code : httpErrorCode(exception.getStatus());
+        const code =
+          typeof response.code === "string" ? response.code : httpErrorCode(exception.getStatus());
         const message =
-          typeof response.message === "string" ? response.message : "The request could not be completed.";
+          typeof response.message === "string"
+            ? response.message
+            : "The request could not be completed.";
         const details = detailsFrom(response.details);
 
         return {
@@ -129,8 +132,8 @@ export class ApiExceptionFilter implements ExceptionFilter {
     if (!(exception instanceof ApiError) && !(exception instanceof HttpException)) {
       this.logger.error("http.request.failed", exception, {
         requestId,
-        traceId: context?.traceId,
         statusCode,
+        ...(context?.traceId === undefined ? {} : { traceId: context.traceId }),
       });
     }
 
