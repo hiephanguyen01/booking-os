@@ -1,12 +1,12 @@
 ---
-id: ADR-XXXX
-title: Decision title
-status: proposed
-owner: team-or-person
-date: YYYY-MM-DD
+id: {{ id }}
+title: {{ title }}
+status: {{ status }}
+owner: {{ owner }}
+date: {{ date }}
 ---
 
-# Decision title
+# {{ title }}
 
 ## Context
 
