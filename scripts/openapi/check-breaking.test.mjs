@@ -15,6 +15,8 @@ const BREAKING_REVISION = resolve("scripts/openapi/fixtures/breaking-revision.js
 const TODAY = "2026-08-04";
 const ERROR_FINDING = "ERR GET /api/example removed the success response with the status '200'";
 const WARNING_FINDING = "WARN GET /api/example removed the response property 'name'";
+const DEFAULT_BASE_HASH = await sha256File(BREAKING_BASE);
+const DEFAULT_REVISION_HASH = await sha256File(BREAKING_REVISION);
 
 async function withTemporaryDirectory(run) {
   const directory = await mkdtemp(join(tmpdir(), "booking-os-compatibility-"));
@@ -89,8 +91,8 @@ async function writeWaiver(
     expiresOn = "2026-08-31",
     severity = "ERR",
     fingerprint = ERROR_FINDING,
-    baseHash = await sha256File(BREAKING_BASE),
-    revisionHash = await sha256File(BREAKING_REVISION),
+    baseHash = DEFAULT_BASE_HASH,
+    revisionHash = DEFAULT_REVISION_HASH,
     id = "API-WAIVER-0001",
   } = {},
 ) {
