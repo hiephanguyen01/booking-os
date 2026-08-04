@@ -1,12 +1,12 @@
 import type { OpaqueSessionStore } from "@booking-os/auth";
 
-import { csrfOriginMismatchResponse, hasMatchingOrigin } from "../../../src/lib/session/csrf.js";
+import { csrfOriginMismatchResponse, hasMatchingOrigin } from "../../../src/lib/session/csrf";
 import {
   readSessionToken,
   serializeExpiredSessionCookie,
   serializeSessionCookie,
-} from "../../../src/lib/session/session-cookie.js";
-import { sessionStore } from "../../../src/lib/session/session-store.js";
+} from "../../../src/lib/session/session-cookie";
+import { sessionStore } from "../../../src/lib/session/session-store";
 
 export interface SessionRouteHandlers {
   readonly GET: (request: Request) => Promise<Response>;
