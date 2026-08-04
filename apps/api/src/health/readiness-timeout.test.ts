@@ -96,7 +96,9 @@ test("rejects at the deadline with a safe timeout error", async () => {
   assert.equal(timer.clearCount, 1);
 });
 
-test("handles a late underlying rejection after the timeout wins", { concurrency: false }, async () => {
+test("handles a late underlying rejection after the timeout wins", {
+  concurrency: false,
+}, async () => {
   const deferred = createDeferred<string>();
   const timer = createScheduler();
   const result = withReadinessTimeout(deferred.promise, 750, timer.scheduler);
