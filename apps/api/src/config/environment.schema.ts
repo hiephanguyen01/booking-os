@@ -14,6 +14,8 @@ const rawEnvironmentSchema = z
 
     HOST: z.string().trim().min(1).default("0.0.0.0"),
 
+    TRUST_PROXY: z.enum(["true", "false"]).default("false"),
+
     PORT: z.coerce.number().int().min(1).max(65_535).default(3001),
 
     API_PREFIX: apiPrefixSchema.default("api"),
@@ -59,6 +61,7 @@ const rawEnvironmentSchema = z
 export const environmentSchema = rawEnvironmentSchema.transform((values) => ({
   nodeEnvironment: values.NODE_ENV,
   host: values.HOST,
+  trustProxy: values.TRUST_PROXY === "true",
   port: values.PORT,
   apiPrefix: values.API_PREFIX,
   appVersion: values.APP_VERSION,
