@@ -28,13 +28,9 @@ test("uses a valid incoming request ID and creates a trace ID", () => {
   const response = createResponse();
   let observedContext: ReturnType<RequestContextStorage["require"]> | undefined;
 
-  middleware.use(
-    { headers: { "x-request-id": "req-client-123" } } as FakeRequest,
-    response,
-    () => {
-      observedContext = storage.require();
-    },
-  );
+  middleware.use({ headers: { "x-request-id": "req-client-123" } } as FakeRequest, response, () => {
+    observedContext = storage.require();
+  });
 
   assert.equal(observedContext?.requestId, "req-client-123");
   assert.match(observedContext?.traceId ?? "", /^[0-9a-f-]{36}$/);
