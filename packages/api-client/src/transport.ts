@@ -154,13 +154,19 @@ export function createFetchTransport(options: FetchTransportOptions): GeneratedT
     }, timeoutMs);
 
     try {
-      const response = await fetchImplementation(url, {
+      const init: RequestInit = {
         method: request.method,
         headers: buildHeaders(options, request),
-        body: request.body === undefined ? undefined : JSON.stringify(request.body),
-        credentials: options.credentials,
         signal: controller.signal,
-      });
+      };
+      if (request.body !== undefined) {
+        init.body = JSON.stringify(request.body);
+      }
+      if (options.credentials !== undefined) {
+        init.credentials = options.credentials;
+      }
+
+      const response = await fetchImplementation(url, init);
       return await parseResponse<TResponse>(response);
     } catch (error) {
       if (error instanceof ApiClientError) {
