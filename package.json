@@ -15,6 +15,9 @@
     "test": "turbo run test",
     "test:e2e": "playwright test",
     "test:e2e:api": "turbo run test:e2e",
+    "verify:migrations": "node scripts/verify-migrations.mjs",
+    "verify:production-config": "node scripts/assert-production-config.mjs",
+    "verify:foundation": "pnpm check:ci && pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e:api && pnpm verify:migrations && pnpm build && pnpm test:e2e && pnpm verify:production-config",
     "format": "biome format --write .",
     "check": "biome check .",
     "check:ci": "biome ci .",
@@ -29,7 +32,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.6",
-    "@playwright/test": "1.62.0",
+    "@playwright/test": "catalog:",
     "@types/node": "22.18.0",
     "rimraf": "6.0.1",
     "turbo": "2.10.7",
