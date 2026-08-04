@@ -1,7 +1,4 @@
-import type {
-  RequestContext,
-  TenantExecutionContext,
-} from "@booking-os/contracts";
+import type { RequestContext, TenantExecutionContext } from "@booking-os/contracts";
 
 import { isTenantId } from "../domain/tenant-id.js";
 import {
@@ -9,9 +6,7 @@ import {
   TenantContextUnavailableError,
 } from "./tenant-context.errors.js";
 
-export function requireTenantExecutionContext(
-  context: RequestContext,
-): TenantExecutionContext {
+export function requireTenantExecutionContext(context: RequestContext): TenantExecutionContext {
   if (!context.tenantId) {
     throw new TenantContextUnavailableError();
   }
