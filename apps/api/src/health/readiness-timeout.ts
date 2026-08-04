@@ -34,10 +34,7 @@ export function withReadinessTimeout<T>(
       action();
     };
 
-    timerHandle = scheduler.set(
-      () => settle(() => reject(new ReadinessTimeoutError())),
-      timeoutMs,
-    );
+    timerHandle = scheduler.set(() => settle(() => reject(new ReadinessTimeoutError())), timeoutMs);
 
     operation.then(
       (value) => settle(() => resolve(value)),
