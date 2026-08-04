@@ -3,7 +3,7 @@ id: FEATURE-0001
 title: Tenant Isolation Core
 status: active
 owner: tenancy
- date: 2026-08-05
+date: 2026-08-05
 ---
 
 # Tenant Isolation Core
