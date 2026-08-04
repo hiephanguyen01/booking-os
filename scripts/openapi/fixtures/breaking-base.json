@@ -1,0 +1,35 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Breaking fixture",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/example": {
+      "get": {
+        "operationId": "getExample",
+        "responses": {
+          "200": {
+            "description": "Example response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["id", "name"],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

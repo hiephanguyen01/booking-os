@@ -394,3 +394,55 @@ jobs:
 
       - name: Validate Docker Compose configuration
         run: pnpm infra:config
+
+  api-compatibility:
+    name: OpenAPI compatibility
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout complete comparison history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.x"
+          cache: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install pinned oasdiff
+        run: go install github.com/oasdiff/oasdiff@v1.17.0
+
+      - name: Verify compatibility fixtures
+        run: pnpm api:verify-compatibility-fixtures
+
+      - name: Materialize base OpenAPI contract
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          mkdir -p .tmp/openapi
+          git show "${BASE_SHA}:packages/contracts/openapi/openapi.json" > .tmp/openapi/base.json
+
+      - name: Reject unwaived breaking changes
+        run: >-
+          pnpm api:check-breaking
+          .tmp/openapi/base.json
+          packages/contracts/openapi/openapi.json
+          docs/api/compatibility-waivers

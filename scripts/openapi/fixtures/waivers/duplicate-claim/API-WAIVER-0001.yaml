@@ -1,0 +1,9 @@
+id: API-WAIVER-0001
+owner: hiephanguyen01
+reason: Prove that two active waivers cannot claim the same exact finding.
+expiresOn: 2026-08-31
+baseContractSha256: "c180974afe2add18dc075ed9ec047815b1202357faaccc8adf8e4be6f6be9ee5"
+revisionContractSha256: "f48105790e053e2a3b56c3c74b04a1f2015591c039288e2035994b21db708514"
+findings:
+  - severity: ERR
+    fingerprint: "error at scripts/openapi/fixtures/breaking-revision.json, in API GET /api/example removed the success response with the status `200` [response-success-status-removed]."

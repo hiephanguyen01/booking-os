@@ -30,6 +30,6 @@
 - [x] Outbox table and relay skeleton.
 - [x] Playwright smoke test across storefront, console and API.
 
-## Delivery note
+## Delivery status
 
-PR 1 thiết lập OpenAPI baseline deterministic, committed generated client và zero-diff gate. Sprint 0 chỉ được đóng hoàn toàn sau PR 2 kích hoạt fail-closed compatibility comparison cùng waiver có phạm vi và thời hạn.
+Sprint 0 đã hoàn tất khi PR 2 cung cấp fail-closed OpenAPI compatibility comparison trên đúng pull-request base SHA, `oasdiff@v1.17.0`, waiver versioned có hash/phạm vi/thời hạn chính xác và fixture verification cho toàn bộ ma trận exit code.

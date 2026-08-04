@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://booking-os.local/schemas/openapi-compatibility-waiver.schema.json",
+  "title": "OpenAPI compatibility waiver",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "owner",
+    "reason",
+    "expiresOn",
+    "baseContractSha256",
+    "revisionContractSha256",
+    "findings"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^API-WAIVER-[0-9]{4}$"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "enum": ["unassigned", ""]
+      }
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 20
+    },
+    "expiresOn": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "baseContractSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "revisionContractSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["severity", "fingerprint"],
+        "properties": {
+          "severity": {
+            "enum": ["ERR", "WARN"]
+          },
+          "fingerprint": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

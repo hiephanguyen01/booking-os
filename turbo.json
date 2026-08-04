@@ -5,6 +5,8 @@
   "globalPassThroughEnv": [
     "DATABASE_URL",
     "MIGRATION_DATABASE_URL",
+    "OASDIFF_BIN",
+    "OPENAPI_WAIVER_TODAY",
     "PREVIOUS_SCHEMA_DATABASE_URL",
     "REDIS_URL"
   ],

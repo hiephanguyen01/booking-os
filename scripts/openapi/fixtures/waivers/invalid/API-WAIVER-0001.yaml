@@ -1,0 +1,9 @@
+id: API-WAIVER-0001
+owner: unassigned
+reason: too short
+expiresOn: 2026-08-31
+baseContractSha256: "not-a-hash"
+revisionContractSha256: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+findings:
+  - severity: INFO
+    fingerprint: "unsupported severity"
