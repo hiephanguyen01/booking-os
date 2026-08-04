@@ -1,0 +1,59 @@
+name: Bootstrap codegen artifact
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  codegen-artifact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout pull request merge tree
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Refresh lockfile and install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Generate twice and prove byte stability
+        run: |
+          pnpm api:generate
+          first_spec="$(sha256sum packages/contracts/openapi/openapi.json | cut -d ' ' -f1)"
+          first_schema="$(sha256sum packages/api-client/src/generated/schema.ts | cut -d ' ' -f1)"
+          first_client="$(sha256sum packages/api-client/src/generated/client.ts | cut -d ' ' -f1)"
+          pnpm api:generate
+          second_spec="$(sha256sum packages/contracts/openapi/openapi.json | cut -d ' ' -f1)"
+          second_schema="$(sha256sum packages/api-client/src/generated/schema.ts | cut -d ' ' -f1)"
+          second_client="$(sha256sum packages/api-client/src/generated/client.ts | cut -d ' ' -f1)"
+          test "$first_spec" = "$second_spec"
+          test "$first_schema" = "$second_schema"
+          test "$first_client" = "$second_client"
+          echo "OpenAPI SHA-256: $second_spec"
+          echo "Schema SHA-256: $second_schema"
+          echo "Client SHA-256: $second_client"
+
+      - name: Upload generated files
+        uses: actions/upload-artifact@v4
+        with:
+          name: sprint-0-codegen-${{ github.event.pull_request.head.sha }}
+          if-no-files-found: error
+          retention-days: 1
+          path: |
+            pnpm-lock.yaml
+            packages/contracts/openapi/openapi.json
+            packages/api-client/src/generated/schema.ts
+            packages/api-client/src/generated/client.ts
