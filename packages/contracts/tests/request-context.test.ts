@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type {
-  RequestContext,
-  TenantExecutionContext,
-} from "../src/request-context.js";
+import type { RequestContext, TenantExecutionContext } from "../src/request-context.js";
 
 test("tenant execution context is assignable to request context", () => {
   const tenant: TenantExecutionContext = {
