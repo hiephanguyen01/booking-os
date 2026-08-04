@@ -1,7 +1,7 @@
 import "reflect-metadata";
 
 import { type INestApplication, RequestMethod } from "@nestjs/common";
-import { METHOD_METADATA, PATH_METADATA } from "@nestjs/common/constants";
+import { METHOD_METADATA, PATH_METADATA } from "@nestjs/common/constants.js";
 import { DiscoveryService } from "@nestjs/core";
 
 import type { ApiVisibility } from "./api-visibility.decorator.js";
@@ -26,7 +26,7 @@ function metadataPaths(target: object): readonly string[] {
   if (metadata === undefined) {
     return [""];
   }
-  return Array.isArray(metadata) ? metadata : [metadata];
+  return typeof metadata === "string" ? [metadata] : metadata;
 }
 
 function methodNames(prototype: object): readonly string[] {
@@ -65,9 +65,12 @@ export function inspectApiRoutes(app: INestApplication, globalPrefix: string): r
       continue;
     }
 
-    const prototype = Object.getPrototypeOf(instance) as Record<string, Handler>;
+    const prototype = Object.getPrototypeOf(instance) as Record<string, Handler | undefined>;
     for (const handlerName of methodNames(prototype)) {
       const handler = prototype[handlerName];
+      if (handler === undefined) {
+        continue;
+      }
       const requestMethod = Reflect.getMetadata(METHOD_METADATA, handler) as
         | RequestMethod
         | undefined;
