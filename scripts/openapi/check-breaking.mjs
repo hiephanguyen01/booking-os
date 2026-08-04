@@ -37,7 +37,9 @@ async function readOpenApiDocument(path, label) {
     typeof document.paths !== "object" ||
     Array.isArray(document.paths)
   ) {
-    throw new CompatibilityError(`${label} contract is not a supported OpenAPI 3 document: ${path}`);
+    throw new CompatibilityError(
+      `${label} contract is not a supported OpenAPI 3 document: ${path}`,
+    );
   }
 
   return document;
@@ -55,7 +57,9 @@ function executeOasdiff(binary, args) {
     });
   }
   if (result.status === null) {
-    throw new CompatibilityError(`oasdiff terminated without an exit code${result.signal ? ` (${result.signal})` : ""}`);
+    throw new CompatibilityError(
+      `oasdiff terminated without an exit code${result.signal ? ` (${result.signal})` : ""}`,
+    );
   }
   return result;
 }
@@ -81,9 +85,7 @@ function parseRawFindings(output) {
   for (const line of lines) {
     const match = FINDING_PATTERN.exec(line);
     if (match) {
-      findings.push(
-        Object.freeze({ severity: normalizeSeverity(match[1]), fingerprint: line }),
-      );
+      findings.push(Object.freeze({ severity: normalizeSeverity(match[1]), fingerprint: line }));
       continue;
     }
 
@@ -101,8 +103,7 @@ function parseRawFindings(output) {
 function selectWaivedFindings(waivers, baseHash, revisionHash, rawFindings) {
   const selected = waivers.filter(
     (waiver) =>
-      waiver.baseContractSha256 === baseHash &&
-      waiver.revisionContractSha256 === revisionHash,
+      waiver.baseContractSha256 === baseHash && waiver.revisionContractSha256 === revisionHash,
   );
   const rawByFingerprint = new Map(
     rawFindings.map((finding) => [finding.fingerprint, finding.severity]),
@@ -202,7 +203,9 @@ async function run() {
   ]);
 
   if (raw.status !== 0 && raw.status !== 1) {
-    throw new CompatibilityError(`unexpected oasdiff exit code ${raw.status} during raw comparison`);
+    throw new CompatibilityError(
+      `unexpected oasdiff exit code ${raw.status} during raw comparison`,
+    );
   }
   const rawFindings = parseRawFindings(raw.stdout);
   if (raw.status === 1 && rawFindings.length === 0) {
@@ -211,12 +214,7 @@ async function run() {
     );
   }
 
-  const waivedFindings = selectWaivedFindings(
-    waivers,
-    baseHash,
-    revisionHash,
-    rawFindings,
-  );
+  const waivedFindings = selectWaivedFindings(waivers, baseHash, revisionHash, rawFindings);
   const ignore = await createIgnoreArguments(waivedFindings);
 
   try {
