@@ -1,0 +1,9 @@
+id: API-WAIVER-0001
+owner: hiephanguyen01
+reason: Exercise deterministic expiry rejection for compatibility governance tests.
+expiresOn: 2026-08-04
+baseContractSha256: 0000000000000000000000000000000000000000000000000000000000000000
+revisionContractSha256: ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+findings:
+  - severity: ERR
+    fingerprint: "ERR GET /api/example removed the success response with the status '200'"
