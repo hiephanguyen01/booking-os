@@ -1,9 +1,12 @@
 import type { HealthResponse } from "@booking-os/contracts/health";
 import { Controller, Get, Inject, Req, Res } from "@nestjs/common";
-import type { Response } from "express";
 
 import type { RequestWithContext } from "../observability/request-context.js";
 import { HealthService } from "./health.service.js";
+
+interface HttpStatusResponse {
+  status(statusCode: number): unknown;
+}
 
 @Controller()
 export class HealthController {
@@ -17,7 +20,7 @@ export class HealthController {
   @Get("ready")
   async getReadiness(
     @Req() request: RequestWithContext,
-    @Res({ passthrough: true }) response: Response,
+    @Res({ passthrough: true }) response: HttpStatusResponse,
   ): Promise<HealthResponse> {
     const result = await this.healthService.getReadiness(request.requestId);
 
