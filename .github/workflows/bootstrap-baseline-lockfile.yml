@@ -16,7 +16,7 @@ permissions:
 jobs:
   update-lockfile:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - name: Checkout implementation branch
         uses: actions/checkout@v6
