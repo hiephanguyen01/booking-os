@@ -7,6 +7,7 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 
+import { InternalApi } from "../api-visibility/api-visibility.decorator.js";
 import { EnvironmentService } from "../config/environment.service.js";
 import { TenantContextService } from "./tenant-context.service.js";
 
@@ -18,6 +19,7 @@ interface TenantProbeResponse {
 
 const FOUNDATION_PROBE_AUTHORIZATION = "Bearer foundation-probe";
 
+@InternalApi()
 @Controller("foundation/tenant-probes")
 export class TenantProbeController {
   constructor(
