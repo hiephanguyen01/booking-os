@@ -61,7 +61,10 @@ function main() {
 
   const drift = status.stdout.trim();
   if (drift !== "") {
-    fail(`Generated artifacts are stale:\n${drift}\nRun pnpm api:generate and commit the result.`, 1);
+    fail(
+      `Generated artifacts are stale:\n${drift}\nRun pnpm api:generate and commit the result.`,
+      1,
+    );
     return;
   }
 
