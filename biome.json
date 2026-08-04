@@ -10,7 +10,8 @@
       "!**/.turbo",
       "!**/playwright-report",
       "!**/test-results",
-      "!pnpm-lock.yaml"
+      "!pnpm-lock.yaml",
+      "!packages/contracts/openapi/openapi.json"
     ]
   },
   "formatter": {
