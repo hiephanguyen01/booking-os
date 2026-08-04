@@ -7,7 +7,8 @@ import { ResolveTenantUseCase } from "./application/use-cases/resolve-tenant.use
 import { TenantRequiredGuard } from "./infrastructure/http/tenant-required.guard.js";
 import { TenantResolutionMiddleware } from "./infrastructure/http/tenant-resolution.middleware.js";
 import { PrismaTenantDirectoryAdapter } from "./infrastructure/persistence/prisma/prisma-tenant-directory.adapter.js";
-import { TENANT_DIRECTORY_PORT } from "./tenancy.tokens.js";
+import { PrismaTenantTransactionAdapter } from "./infrastructure/persistence/prisma/prisma-tenant-transaction.adapter.js";
+import { TENANT_DIRECTORY_PORT, TENANT_TRANSACTION_PORT } from "./tenancy.tokens.js";
 
 @Module({
   imports: [DatabaseModule],
@@ -15,6 +16,10 @@ import { TENANT_DIRECTORY_PORT } from "./tenancy.tokens.js";
     {
       provide: TENANT_DIRECTORY_PORT,
       useClass: PrismaTenantDirectoryAdapter,
+    },
+    {
+      provide: TENANT_TRANSACTION_PORT,
+      useClass: PrismaTenantTransactionAdapter,
     },
     {
       provide: ResolveTenantUseCase,
