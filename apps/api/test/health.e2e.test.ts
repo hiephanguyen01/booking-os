@@ -18,6 +18,8 @@ const originalEnvironment = {
   LOG_LEVEL: process.env.LOG_LEVEL,
   DATABASE_URL: process.env.DATABASE_URL,
   REDIS_URL: process.env.REDIS_URL,
+  SESSION_SECRET: process.env.SESSION_SECRET,
+  PAYMENT_PROVIDER: process.env.PAYMENT_PROVIDER,
 };
 
 function restoreEnvironmentValue(key: keyof typeof originalEnvironment): void {
@@ -38,10 +40,10 @@ before(async () => {
   process.env.API_PREFIX = "api";
   process.env.APP_VERSION = "0.1.0-e2e";
   process.env.LOG_LEVEL = "error";
-
   process.env.DATABASE_URL = "postgresql://booking:booking@localhost:5432/booking_os_test";
-
   process.env.REDIS_URL = "redis://localhost:6379/1";
+  process.env.SESSION_SECRET = "test-only-session-secret-at-least-32-characters";
+  process.env.PAYMENT_PROVIDER = "mock";
 
   const testingModule = await Test.createTestingModule({
     imports: [AppModule],
