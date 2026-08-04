@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 import sys
 
@@ -10,7 +11,7 @@ from tools.genesis.artifact_types import ArtifactKind
 from tools.genesis.generator import GenerationError, generate_artifact
 from tools.genesis.validator import validate_repository
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(os.environ.get("GENESIS_ROOT", Path(__file__).resolve().parents[1])).resolve()
 COMMAND_TO_KIND = {
     "new-adr": ArtifactKind.ADR,
     "new-feature": ArtifactKind.FEATURE,
