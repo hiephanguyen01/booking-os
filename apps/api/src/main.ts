@@ -6,13 +6,20 @@ import { config as loadDotenv } from "dotenv";
 
 import { AppModule } from "./app.module.js";
 import { logApiBootstrapFailure, logApiReady } from "./bootstrap-events.js";
+import { ApiExceptionFilter } from "./common/errors/api-exception.filter.js";
+import { RequestContextStorage } from "./common/request-context/request-context.storage.js";
 import { EnvironmentService } from "./config/environment.service.js";
 
 loadDotenv({
   path: process.env.ENV_FILE ?? ".env",
 });
 
-const logger = createStructuredLogger({ service: "api" });
+let requestContextStorage: RequestContextStorage | undefined;
+
+const logger = createStructuredLogger({
+  service: "api",
+  contextProvider: () => requestContextStorage?.get(),
+});
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
@@ -20,9 +27,11 @@ async function bootstrap(): Promise<void> {
   });
 
   const environment = app.get(EnvironmentService);
+  requestContextStorage = app.get(RequestContextStorage);
 
   app.enableShutdownHooks();
   app.setGlobalPrefix(environment.apiPrefix);
+  app.useGlobalFilters(new ApiExceptionFilter(requestContextStorage, logger));
 
   await app.listen(environment.port, environment.host);
 
