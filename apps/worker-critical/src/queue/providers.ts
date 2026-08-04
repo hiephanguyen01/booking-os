@@ -94,7 +94,7 @@ export const workerProviders: Provider[] = [
             logger.info("outbox.event_received", {
               eventId: job.data.eventId,
               eventType: job.name,
-              tenantId: job.data.tenantId,
+              ...(job.data.tenantId === null ? {} : { tenantId: job.data.tenantId }),
             });
             return { eventId: job.data.eventId, status: "accepted" };
           }
