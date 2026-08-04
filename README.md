@@ -138,9 +138,66 @@ When the API runs on the host, use:
 ```dotenv
 DATABASE_URL=postgresql://booking:booking@localhost:5432/booking_os
 REDIS_URL=redis://localhost:6379/0
+READINESS_TIMEOUT_MS=750
 ```
 
-The MinIO API is available at `http://localhost:9000`, and Mailpit accepts SMTP on `localhost:1025`.
+`READINESS_TIMEOUT_MS` is validated from `100` through `5000` milliseconds. Copy the complete local template before starting the API:
+
+```bash
+cp apps/api/.env.example apps/api/.env
+```
+
+`apps/api/.env` is local-only and must not be committed. The MinIO API is available at `http://localhost:9000`, and Mailpit accepts SMTP on `localhost:1025`.
+
+### API health and readiness
+
+```text
+GET http://localhost:3001/api/health  -> liveness, HTTP 200 while the API is serving
+GET http://localhost:3001/api/ready   -> PostgreSQL + Redis readiness, HTTP 200 or 503
+```
+
+`/api/health` does not depend on PostgreSQL or Redis. `/api/ready` runs PostgreSQL `SELECT 1 AS ready` and Redis `PING` in parallel; both dependencies are required. Results, including unavailable results, are cached for one second, and concurrent requests share the same in-flight probe pair.
+
+The API is allowed to start while PostgreSQL or Redis is unavailable. During an outage, liveness remains `200` while readiness returns `503`. The dependency clients reconnect and readiness recovers without restarting the API.
+
+Start the required infrastructure and verify both endpoints:
+
+```bash
+cp .env.docker.example .env.docker
+docker compose --env-file .env.docker up -d postgres redis
+cp apps/api/.env.example apps/api/.env
+pnpm --filter @booking-os/api dev
+curl -i http://localhost:3001/api/health
+curl -i http://localhost:3001/api/ready
+```
+
+### Request correlation and errors
+
+Every response contains `x-request-id`. A safe upstream value is preserved; a missing or invalid value is replaced with a generated UUID. Request IDs are correlation values only and are not authentication or authorization proof.
+
+Unhandled server errors return a minimal envelope and never expose the internal exception:
+
+```json
+{
+  "statusCode": 500,
+  "error": "Internal Server Error",
+  "message": "An unexpected error occurred",
+  "requestId": "43c2387d-98c8-4e73-9f67-a32f36c945df"
+}
+```
+
+Client-safe `4xx` messages are retained. The response header and body use the same request ID.
+
+### Structured API events
+
+The API emits these JSON events:
+
+- `http.request_completed`: final route template, status and duration.
+- `http.request_failed`: internal exception plus safe request context.
+- `readiness.probe_failed`: dependency, duration and safe failure reason.
+- `dependency.shutdown_failed`: dependency cleanup failure.
+
+Successful `/api/health` and `/api/ready` calls do not emit `http.request_completed`; unsuccessful readiness and unexpected errors remain visible. Logs exclude request/response bodies, raw query values, cookies, authorization headers, credentials, connection URLs and complete environment objects.
 
 ### Troubleshooting
 

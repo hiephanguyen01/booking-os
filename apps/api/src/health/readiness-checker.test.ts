@@ -16,6 +16,7 @@ const testEnvironment: Environment = {
   logLevel: "debug",
   databaseUrl: "postgresql://booking:booking@postgres:5432/booking_os_test",
   redisUrl: "redis://redis:6379/1",
+  readinessTimeoutMs: 750,
   sessionSecret: "test-only-session-secret-at-least-32-characters",
   paymentProvider: "mock",
 };
