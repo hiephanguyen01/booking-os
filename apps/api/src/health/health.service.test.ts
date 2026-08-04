@@ -3,9 +3,9 @@ import test from "node:test";
 
 import type { HealthResponse } from "@booking-os/contracts";
 
+import { HealthService } from "./health.service.js";
 import type { HealthResponseFactory } from "./health-response.factory.js";
 import type { ReadinessCoordinator, ReadinessResult } from "./readiness-coordinator.js";
-import { HealthService } from "./health.service.js";
 
 const healthResponse: HealthResponse = {
   service: "api",
