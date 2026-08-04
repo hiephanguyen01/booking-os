@@ -69,12 +69,11 @@ Rules:
 8. Existing Foundation code is migrated only when a slice touches it. All newly created business-module code must follow these rules immediately.
 9. Architecture tests scan module imports and fail CI on forbidden dependency directions.
 
-For tenant-scoped database work, the application port exposes a capability session rather than a Prisma transaction:
+For tenant-scoped work, a module-specific transaction port exposes only the capabilities required by that slice rather than a Prisma transaction or a universal repository registry:
 
 ```ts
 export interface TenantDataSession {
   readonly tenantProbes: TenantProbeRepositoryPort;
-  readonly outbox: OutboxWriterPort;
 }
 
 export interface TenantTransactionPort {
@@ -85,7 +84,7 @@ export interface TenantTransactionPort {
 }
 ```
 
-The Prisma adapter opens the database transaction, sets `booking_app` and transaction-local `app.tenant_id`, constructs transaction-bound repository adapters, and passes only `TenantDataSession` to the application callback.
+The Prisma adapter opens the database transaction, sets `booking_app` and transaction-local `app.tenant_id`, constructs transaction-bound repository adapters, and passes only the application-owned session to the callback. Later domains define or compose their own application-facing capabilities when a real atomic use case requires them; Sprint 1A does not create ports for domains that do not yet exist.
 
 ## Trade-offs
 
