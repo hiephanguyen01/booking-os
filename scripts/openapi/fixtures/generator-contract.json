@@ -7,9 +7,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "name"
-        ],
+        "required": ["name"],
         "type": "object"
       },
       "Widget": {
@@ -21,10 +19,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "id",
-          "name"
-        ],
+        "required": ["id", "name"],
         "type": "object"
       }
     }
@@ -88,9 +83,7 @@
             "description": "Updated widget"
           }
         },
-        "tags": [
-          "widgets"
-        ]
+        "tags": ["widgets"]
       }
     }
   }
