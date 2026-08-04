@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { HealthDependencyStatus } from "@booking-os/contracts/health";
+
 import type { Environment } from "../config/environment.schema.js";
 import { EnvironmentService } from "../config/environment.service.js";
 import {
   DependencyProbe,
+  PostgresDependencyProbe,
   ReadinessChecker,
-  type ReadinessDependencies,
 } from "./readiness-checker.js";
 
 const testEnvironment: Environment = {
@@ -22,26 +24,40 @@ const testEnvironment: Environment = {
   paymentProvider: "mock",
 };
 
-class FakeDependencyProbe extends DependencyProbe {
+class FakeRedisProbe extends DependencyProbe {
   readonly calls: Array<{ url: string; timeoutMs: number }> = [];
 
-  constructor(private readonly results: ReadinessDependencies) {
+  constructor(private readonly result: HealthDependencyStatus) {
     super();
   }
 
-  async check(url: string, timeoutMs: number) {
+  async check(url: string, timeoutMs: number): Promise<HealthDependencyStatus> {
     this.calls.push({ url, timeoutMs });
+    return this.result;
+  }
+}
 
-    return url.startsWith("postgresql:") ? this.results.postgres : this.results.redis;
+class FakePostgresProbe extends PostgresDependencyProbe {
+  readonly calls: number[] = [];
+
+  constructor(private readonly result: HealthDependencyStatus) {
+    super();
+  }
+
+  async check(timeoutMs: number): Promise<HealthDependencyStatus> {
+    this.calls.push(timeoutMs);
+    return this.result;
   }
 }
 
 test("ReadinessChecker checks Postgres and Redis with a one-second bound", async () => {
-  const probe = new FakeDependencyProbe({
-    postgres: { status: "ok", latencyMs: 8 },
-    redis: { status: "ok", latencyMs: 3 },
-  });
-  const checker = new ReadinessChecker(new EnvironmentService(testEnvironment), probe);
+  const redisProbe = new FakeRedisProbe({ status: "ok", latencyMs: 3 });
+  const postgresProbe = new FakePostgresProbe({ status: "ok", latencyMs: 8 });
+  const checker = new ReadinessChecker(
+    new EnvironmentService(testEnvironment),
+    redisProbe,
+    postgresProbe,
+  );
 
   const result = await checker.check();
 
@@ -49,18 +65,16 @@ test("ReadinessChecker checks Postgres and Redis with a one-second bound", async
     postgres: { status: "ok", latencyMs: 8 },
     redis: { status: "ok", latencyMs: 3 },
   });
-  assert.deepEqual(probe.calls, [
-    { url: testEnvironment.databaseUrl, timeoutMs: 1000 },
-    { url: testEnvironment.redisUrl, timeoutMs: 1000 },
-  ]);
+  assert.deepEqual(postgresProbe.calls, [1000]);
+  assert.deepEqual(redisProbe.calls, [{ url: testEnvironment.redisUrl, timeoutMs: 1000 }]);
 });
 
 test("ReadinessChecker preserves an unavailable dependency result", async () => {
-  const probe = new FakeDependencyProbe({
-    postgres: { status: "unavailable", message: "connection_failed" },
-    redis: { status: "ok" },
-  });
-  const checker = new ReadinessChecker(new EnvironmentService(testEnvironment), probe);
+  const checker = new ReadinessChecker(
+    new EnvironmentService(testEnvironment),
+    new FakeRedisProbe({ status: "ok" }),
+    new FakePostgresProbe({ status: "unavailable", message: "connection_failed" }),
+  );
 
   const result = await checker.check();
 
