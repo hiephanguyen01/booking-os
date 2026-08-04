@@ -1,5 +1,5 @@
-import { PrismaClient } from "@prisma/client";
 import { Inject, Injectable, type OnModuleDestroy } from "@nestjs/common";
+import { PrismaClient } from "@prisma/client";
 
 import { EnvironmentService } from "../config/environment.service.js";
 
