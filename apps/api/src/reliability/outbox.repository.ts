@@ -5,10 +5,7 @@ import type { AppendOutboxEvent } from "./outbox-event.js";
 
 @Injectable()
 export class OutboxRepository {
-  async append(
-    transaction: Prisma.TransactionClient,
-    event: AppendOutboxEvent,
-  ): Promise<void> {
+  async append(transaction: Prisma.TransactionClient, event: AppendOutboxEvent): Promise<void> {
     await transaction.outboxEvent.create({
       data: {
         id: event.id,
