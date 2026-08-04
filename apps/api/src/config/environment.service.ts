@@ -51,6 +51,10 @@ export class EnvironmentService {
     return this.values.redisUrl;
   }
 
+  get readinessTimeoutMs(): number {
+    return this.values.readinessTimeoutMs;
+  }
+
   get sessionSecret(): string {
     return this.values.sessionSecret;
   }
