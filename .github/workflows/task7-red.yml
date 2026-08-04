@@ -1,0 +1,37 @@
+name: Task 7 RED proof
+
+on:
+  push:
+    branches:
+      - feat/booking-os-pilot-foundation
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-red:
+    name: Foundation smoke must fail before webServer setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout implementation branch
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install dependencies for RED proof
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run foundation smoke without service startup
+        run: pnpm test:e2e
