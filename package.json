@@ -18,6 +18,7 @@
     "test:e2e:api": "turbo run test:e2e",
     "api:generate": "pnpm --filter @booking-os/contracts build && pnpm --filter @booking-os/observability build && pnpm --filter @booking-os/api openapi:generate && openapi-typescript packages/contracts/openapi/openapi.json --output packages/api-client/src/generated/schema.ts --immutable && node scripts/openapi/generate-thin-client.mjs packages/contracts/openapi/openapi.json packages/api-client/src/generated/client.ts",
     "api:check-generated": "node scripts/check-generated.mjs",
+    "api:check-breaking": "node scripts/openapi/check-breaking.mjs",
     "genesis:validate": "python tools/genesis_cli.py validate",
     "verify:migrations": "node scripts/verify-migrations.mjs",
     "verify:production-config": "node scripts/assert-production-config.mjs",
