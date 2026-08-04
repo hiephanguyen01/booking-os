@@ -1,9 +1,12 @@
-import { Module } from "@nestjs/common";
+import { type MiddlewareConsumer, Module, type NestModule } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 
 import { DatabaseModule } from "../../database/database.module.js";
 import type { TenantDirectoryPort } from "./application/ports/tenant-directory.port.js";
+import type { TenantTransactionPort } from "./application/ports/tenant-transaction.port.js";
+import { ListTenantProbesUseCase } from "./application/use-cases/list-tenant-probes.use-case.js";
 import { ResolveTenantUseCase } from "./application/use-cases/resolve-tenant.use-case.js";
+import { TenantProbeController } from "./infrastructure/http/tenant-probe.controller.js";
 import { TenantRequiredGuard } from "./infrastructure/http/tenant-required.guard.js";
 import { TenantResolutionMiddleware } from "./infrastructure/http/tenant-resolution.middleware.js";
 import { PrismaTenantDirectoryAdapter } from "./infrastructure/persistence/prisma/prisma-tenant-directory.adapter.js";
@@ -12,6 +15,7 @@ import { TENANT_DIRECTORY_PORT, TENANT_TRANSACTION_PORT } from "./tenancy.tokens
 
 @Module({
   imports: [DatabaseModule],
+  controllers: [TenantProbeController],
   providers: [
     {
       provide: TENANT_DIRECTORY_PORT,
@@ -27,6 +31,12 @@ import { TENANT_DIRECTORY_PORT, TENANT_TRANSACTION_PORT } from "./tenancy.tokens
       useFactory: (directory: TenantDirectoryPort): ResolveTenantUseCase =>
         new ResolveTenantUseCase(directory),
     },
+    {
+      provide: ListTenantProbesUseCase,
+      inject: [TENANT_TRANSACTION_PORT],
+      useFactory: (transactions: TenantTransactionPort): ListTenantProbesUseCase =>
+        new ListTenantProbesUseCase(transactions),
+    },
     TenantResolutionMiddleware,
     TenantRequiredGuard,
     {
@@ -35,4 +45,8 @@ import { TENANT_DIRECTORY_PORT, TENANT_TRANSACTION_PORT } from "./tenancy.tokens
     },
   ],
 })
-export class TenancyModule {}
+export class TenancyModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(TenantResolutionMiddleware).forRoutes(TenantProbeController);
+  }
+}
