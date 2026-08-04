@@ -2,10 +2,7 @@ import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import test from "node:test";
 
-import {
-  createStructuredLogger,
-  type StructuredLogRecord,
-} from "@booking-os/observability";
+import { createStructuredLogger, type StructuredLogRecord } from "@booking-os/observability";
 import type { CallHandler, ExecutionContext } from "@nestjs/common";
 import { of } from "rxjs";
 
