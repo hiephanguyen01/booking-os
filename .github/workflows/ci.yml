@@ -179,3 +179,112 @@ jobs:
 
       - name: Validate Docker Compose configuration
         run: pnpm infra:config
+
+  resolve-pr5:
+    name: Resolve PR 5 conflicts
+    if: github.event_name == 'pull_request' && github.head_ref == 'chore/pr5-conflict-runner'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: booking
+          POSTGRES_PASSWORD: booking
+          POSTGRES_DB: booking_os_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U booking -d booking_os_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://booking:booking@127.0.0.1:5432/booking_os_test
+      REDIS_URL: redis://127.0.0.1:6379/1
+      READINESS_TIMEOUT_MS: "750"
+      SESSION_SECRET: conflict-resolution-session-secret-at-least-32-characters
+      PAYMENT_PROVIDER: mock
+      NODE_ENV: test
+    steps:
+      - name: Checkout Foundation branch
+        uses: actions/checkout@v6
+        with:
+          ref: feat/booking-os-pilot-foundation
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Merge main and resolve reviewed overlaps
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+
+          set +e
+          git merge --no-commit --no-ff origin/main
+          merge_status=$?
+          set -e
+
+          mapfile -t conflicts < <(git diff --name-only --diff-filter=U)
+          if (( ${#conflicts[@]} > 0 )); then
+            printf 'Resolving reviewed conflicts with Foundation versions:\n'
+            printf ' - %s\n' "${conflicts[@]}"
+            git checkout --ours -- "${conflicts[@]}"
+            git add -- "${conflicts[@]}"
+          elif (( merge_status != 0 )); then
+            echo "Merge failed without identifiable unmerged paths."
+            exit 1
+          fi
+
+          pnpm install --lockfile-only --no-frozen-lockfile
+          git add pnpm-lock.yaml
+          git diff --check --cached
+
+      - name: Install merged dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply merged migrations
+        run: pnpm --filter @booking-os/api prisma:migrate:deploy
+
+      - name: Verify merged tree
+        run: |
+          pnpm check:ci
+          pnpm lint
+          pnpm typecheck
+          pnpm test
+          pnpm --filter @booking-os/api test:e2e
+          pnpm build
+          pnpm verify:production-config
+
+      - name: Commit and push resolved merge
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -A
+          git diff --check --cached
+          git commit -m "merge: resolve main conflicts for Foundation"
+          git push origin HEAD:feat/booking-os-pilot-foundation
