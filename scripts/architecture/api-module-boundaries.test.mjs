@@ -92,8 +92,7 @@ test("rejects forbidden dependencies and technology-specific ports", async () =>
     );
     assert.ok(
       failures.some(
-        (failure) =>
-          failure.includes("application/infra.ts") && failure.includes("infrastructure"),
+        (failure) => failure.includes("application/infra.ts") && failure.includes("infrastructure"),
       ),
     );
     assert.ok(
