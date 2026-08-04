@@ -134,7 +134,7 @@ A repository schema validates their structure. A waiver is data, not a shell fla
 
 ## 6. Genesis Artifact Model
 
-### 6.1 Artifact lifecycles
+### 6.1 Artifact lifecycles and locations
 
 Allowed states:
 
@@ -143,6 +143,14 @@ Allowed states:
 | ADR | `proposed` | `accepted` | `superseded`, `rejected` |
 | Feature | `draft` | `active` | `deprecated` |
 | Pattern | `draft` | `active` | `deprecated` |
+
+Canonical destinations and IDs:
+
+| Artifact | Destination | ID format | Initial status |
+| --- | --- | --- | --- |
+| ADR | `docs/adr/` | `ADR-0001` | `proposed` |
+| Feature | `docs/features/` | `FEATURE-0001` | `draft` |
+| Pattern | `docs/patterns/` | `PATTERN-0001` | `draft` |
 
 Every artifact requires YAML-like front matter with at least:
 
@@ -154,7 +162,7 @@ owner: hiephanguyen01
 date: 2026-08-04
 ```
 
-Feature and pattern IDs use stable, sequential prefixes defined by `artifact_types.py`. Generation scans only the artifact’s destination directory, selects the next numeric ID, and refuses to overwrite an existing path.
+Generation scans only the artifact’s canonical destination, selects the next numeric ID for that artifact type, and refuses to overwrite an existing path.
 
 ### 6.2 Lifecycle-aware validation
 
@@ -275,7 +283,7 @@ Each ADR references the approved Booking OS Pilot design and the concrete Founda
 
 ## 9. Supported API Classification
 
-Every HTTP route must be classified as exactly one of:
+Every HTTP route must resolve to exactly one of:
 
 - `public-supported`: included in the committed OpenAPI contract and protected by compatibility guarantees;
 - `internal`: excluded from the supported contract and free to evolve within repository review rules.
@@ -287,7 +295,7 @@ The implementation will provide explicit NestJS metadata decorators, conceptuall
 @InternalApi()
 ```
 
-The decorators may be applied at controller or method level. A method-level marker overrides inherited controller classification only when the implementation makes that override explicit and testable. A route with both markers or neither marker fails classification tests.
+A controller marker supplies the default classification for its methods. A method marker may explicitly override that controller default. A single controller or method declaration cannot carry both markers, and the resolved classification for every route must be exactly one value. Route-classification tests evaluate the resolved result, not merely the presence of decorators.
 
 Initial classification:
 
@@ -398,7 +406,7 @@ Handwritten code outside `src/generated/` provides a fetch-based transport and p
 - normalized API errors;
 - narrowly scoped retry behavior where explicitly enabled.
 
-Existing health-client exports should remain source-compatible where practical. When source compatibility is not practical, the implementation plan must identify and update all repository consumers in the same PR.
+Existing health-client public exports must remain source-compatible. The generated client is introduced behind adapters when necessary so repository consumers do not require a breaking import or call-site change in this PR.
 
 ### 11.4 Runtime validation
 
@@ -458,7 +466,7 @@ The gate blocks at least:
 
 Compatible additions, such as a new endpoint or an optional response field, are allowed but remain visible in the contract diff.
 
-The implementation pins the accepted `oasdiff` severity policy. At minimum, `ERR` changes fail. The implementation plan must explicitly decide whether `WARN` also fails after exercising the tool against repository fixtures; the default safety posture is to fail on both `ERR` and `WARN` unless a known false-positive fixture demonstrates otherwise.
+CI runs `oasdiff breaking` with failure threshold `WARN`; therefore both definite `ERR` changes and potential `WARN` compatibility breaks block merge. A breaking fingerprint may pass only through an exact active waiver. Changing the threshold or downgrading a check requires a reviewed architecture decision rather than an ad hoc CI edit.
 
 ### 13.3 Waiver schema
 
@@ -472,12 +480,14 @@ reason: Correct an incorrectly published response schema before external consume
 created_on: 2026-08-04
 expires_on: 2026-08-18
 changes:
-  - check_id: response-property-became-not-required
+  - rule_id: response-property-requiredness-changed
     method: GET
     path: /api/example
     operation_id: getExample
     location: responses.200.content.application/json.schema
 ```
+
+`rule_id` is the repository’s normalized identifier derived from structured `oasdiff` output. The normalizer and its fixtures define the stable mapping independently from human-readable tool messages.
 
 Required rules:
 
@@ -485,9 +495,10 @@ Required rules:
 - `status` is `active`, `expired`, or `revoked`;
 - owner is assigned;
 - reason is substantive;
-- `expires_on` is later than the CI evaluation date for an active waiver;
+- `expires_on` is on or after the CI evaluation date for an active waiver;
+- an active waiver is valid through the end of `expires_on` in UTC and expires at the next UTC date boundary;
 - every change entry identifies one normalized breaking-change fingerprint;
-- a waiver cannot use wildcards for all operations, paths, or checks;
+- a waiver cannot use wildcards for all operations, paths, or rules;
 - expired or revoked waivers never suppress a failure;
 - an active waiver entry that matches no current breaking change fails as stale configuration;
 - every reported breaking change must either be absent or match exactly one active waiver entry.
@@ -576,7 +587,7 @@ The handwritten transport maps network failures, timeouts, malformed responses, 
 
 - `/api/health` and `/api/ready` appear;
 - tenant probe and Foundation-only routes do not appear;
-- every Nest HTTP route has exactly one classification;
+- every Nest HTTP route has exactly one resolved classification;
 - operation IDs are unique and stable;
 - supported responses have schemas;
 - document validates as OpenAPI;
@@ -591,7 +602,7 @@ The handwritten transport maps network failures, timeouts, malformed responses, 
 - injected transport usage;
 - timeout and abort behavior in the handwritten wrapper;
 - normalized API error mapping;
-- existing health client consumer compatibility.
+- existing health-client public-export compatibility.
 
 ### 16.4 Compatibility tests
 
@@ -601,6 +612,7 @@ Fixtures prove that CI:
 - blocks endpoint removal;
 - blocks optional-to-required changes;
 - blocks enum narrowing;
+- blocks both `ERR` and `WARN` findings;
 - accepts an exact active waiver;
 - rejects expired, revoked, malformed, overbroad, unmatched, and partially matching waivers;
 - fails when the baseline or comparison tool is unavailable.
@@ -639,7 +651,7 @@ Reverting removes governance automation and generated-contract enforcement but d
 | API compatibility tool produces false positives. | Pin tool/config, exercise repository fixtures, use exact short-lived waivers rather than a global bypass. |
 | Waivers accumulate indefinitely. | Require expiry, reject stale entries, and keep every waiver versioned and owner-assigned. |
 | Governance validation becomes too strict for early drafts. | Apply completeness only to accepted/active and historical completed artifacts. |
-| Internal route is accidentally published. | Require exactly-one route classification and test internal-route absence. |
+| Internal route is accidentally published. | Require exactly-one resolved route classification and test internal-route absence. |
 | Client generator becomes a second framework. | Limit output to operation mapping and injected transport; keep policy in handwritten code. |
 
 ## 19. Definition of Done
@@ -657,7 +669,7 @@ Sprint 0 is complete only when all of the following are true:
 - `openapi.json`, generated types, and the thin client are committed.
 - Regeneration is deterministic and produces no diff.
 - Generated client and handwritten wrapper compile and pass tests.
-- A fixture breaking change is blocked by CI.
+- A fixture breaking change at both `ERR` and `WARN` levels is blocked by CI.
 - Exact active waiver fixtures pass; expired, stale, overbroad, and out-of-scope waiver fixtures fail.
 - Existing Foundation verification remains green.
 - Every remaining checkbox in `docs/backlog/SPRINT-0.md` is checked with corresponding implementation evidence.
@@ -666,13 +678,13 @@ Sprint 0 is complete only when all of the following are true:
 
 The closeout PR is acceptable when a reviewer can:
 
-1. Generate each knowledge artifact from a canonical template.
+1. Generate each knowledge artifact from a canonical template into its defined destination with its defined ID prefix.
 2. Observe lifecycle validation reject an incomplete accepted artifact while allowing an incomplete draft.
 3. Read the ownership, deployment naming, and five ADR decisions without consulting chat history.
 4. Regenerate the supported API contract and client from source with one command.
 5. Confirm the working tree remains clean after regeneration.
 6. Confirm internal routes never appear in the supported contract.
-7. Introduce a breaking fixture and see CI reject it.
+7. Introduce an `ERR` or `WARN` breaking fixture and see CI reject it.
 8. Add one exact, valid, short-lived waiver and see only that breaking fingerprint suppressed.
 9. Run the full Foundation suite successfully.
 
