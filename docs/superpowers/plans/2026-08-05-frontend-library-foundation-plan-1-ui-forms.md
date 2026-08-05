@@ -24,7 +24,9 @@
 
 ## Execution Order
 
-The following files are normative parts of this plan and must be executed in order:
+Read [`2026-08-05-frontend-library-foundation-plan-1-self-review-amendments.md`](./2026-08-05-frontend-library-foundation-plan-1-self-review-amendments.md) first. Its two command corrections are normative and override the matching task steps.
+
+Then execute these task files in order:
 
 1. [`2026-08-05-frontend-library-foundation-plan-1-task-1-dependencies-tailwind.md`](./2026-08-05-frontend-library-foundation-plan-1-task-1-dependencies-tailwind.md)
    - Exact dependency catalog.
@@ -42,7 +44,7 @@ The following files are normative parts of this plan and must be executed in ord
    - Playwright validation and keyboard contracts.
    - Complete fresh repository verification.
 
-Each task file includes exact files, produced interfaces, RED command, minimal implementation, GREEN command, and commit checkpoint. A later task may consume only interfaces explicitly produced by an earlier task.
+Each task file includes exact files, produced interfaces, RED command, implementation, GREEN command, and commit checkpoint. A later task may consume only interfaces explicitly produced by an earlier task.
 
 ## Locked File Map
 
