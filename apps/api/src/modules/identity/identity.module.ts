@@ -5,10 +5,6 @@ import { DatabaseModule } from "../../database/database.module.js";
 import type { ClockPort } from "./application/ports/clock.port.js";
 import type { OneTimeTokenPort } from "./application/ports/one-time-token.port.js";
 import type { SensitiveEnvelopePort } from "./application/ports/sensitive-envelope.port.js";
-import { AesSensitiveEnvelopeAdapter } from "./infrastructure/crypto/aes-sensitive-envelope.adapter.js";
-import { Argon2PasswordHasherAdapter } from "./infrastructure/crypto/argon2-password-hasher.adapter.js";
-import { HmacOneTimeTokenAdapter } from "./infrastructure/crypto/hmac-one-time-token.adapter.js";
-import { PrismaIdentityRepositoryAdapter } from "./infrastructure/persistence/prisma/prisma-identity-repository.adapter.js";
 import {
   CLOCK_PORT,
   IDENTITY_REPOSITORY_PORT,
@@ -16,6 +12,10 @@ import {
   PASSWORD_HASHER_PORT,
   SENSITIVE_ENVELOPE_PORT,
 } from "./identity.tokens.js";
+import { AesSensitiveEnvelopeAdapter } from "./infrastructure/crypto/aes-sensitive-envelope.adapter.js";
+import { Argon2PasswordHasherAdapter } from "./infrastructure/crypto/argon2-password-hasher.adapter.js";
+import { HmacOneTimeTokenAdapter } from "./infrastructure/crypto/hmac-one-time-token.adapter.js";
+import { PrismaIdentityRepositoryAdapter } from "./infrastructure/persistence/prisma/prisma-identity-repository.adapter.js";
 
 const systemClock: ClockPort = Object.freeze({
   now: (): Date => new Date(),
@@ -43,10 +43,7 @@ const systemClock: ClockPort = Object.freeze({
       inject: [EnvironmentService],
       useFactory: (environment: EnvironmentService): SensitiveEnvelopePort => {
         const security = environment.identitySecurity;
-        return new AesSensitiveEnvelopeAdapter(
-          security.activeEnvelopeKeyId,
-          security.envelopeKeys,
-        );
+        return new AesSensitiveEnvelopeAdapter(security.activeEnvelopeKeyId, security.envelopeKeys);
       },
     },
     {

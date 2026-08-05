@@ -1,8 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 
 import { ARGON2ID_BASELINE } from "@booking-os/auth";
-import type { User as PrismaUser } from "@prisma/client";
 import { Inject, Injectable } from "@nestjs/common";
+import type { User as PrismaUser } from "@prisma/client";
 
 import { PrismaService } from "../../../../../database/prisma.service.js";
 import type {
@@ -116,12 +116,7 @@ function mapUser(row: IdentityUserRow | PrismaUser): GlobalUser {
 }
 
 function isUniqueConstraintError(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    error.code === "P2002"
-  );
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
 }
 
 function tokenHashesEqual(actual: string, expected: string): boolean {
@@ -132,7 +127,10 @@ function tokenHashesEqual(actual: string, expected: string): boolean {
   const actualBytes = Buffer.from(actual, "hex");
   const expectedBytes = Buffer.from(expected, "hex");
 
-  return actualBytes.byteLength === expectedBytes.byteLength && timingSafeEqual(actualBytes, expectedBytes);
+  return (
+    actualBytes.byteLength === expectedBytes.byteLength &&
+    timingSafeEqual(actualBytes, expectedBytes)
+  );
 }
 
 function tokenMatchesBinding(

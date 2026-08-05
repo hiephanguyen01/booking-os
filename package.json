@@ -49,7 +49,9 @@
     "yaml": "2.9.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["argon2"],
+    "onlyBuiltDependencies": [
+      "argon2"
+    ],
     "overrides": {
       "@nestjs/swagger>js-yaml": "5.2.2",
       "ioredis": "5.11.1",

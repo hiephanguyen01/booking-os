@@ -1,8 +1,4 @@
-import {
-  createOneTimeToken,
-  parseOneTimeToken,
-  verifyOneTimeTokenSecret,
-} from "@booking-os/auth";
+import { createOneTimeToken, parseOneTimeToken, verifyOneTimeTokenSecret } from "@booking-os/auth";
 
 import type {
   IssuedOneTimeToken,
