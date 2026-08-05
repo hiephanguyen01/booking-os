@@ -78,8 +78,11 @@ async function insertSession(input: SessionInput): Promise<string> {
   const idleHours = input.idleHours ?? 24;
   const absoluteHours = input.absoluteHours ?? 48;
 
-  await runAsRole(input.role, input.tenantId, (transaction) =>
-    transaction.$executeRaw`
+  await runAsRole(
+    input.role,
+    input.tenantId,
+    (transaction) =>
+      transaction.$executeRaw`
       INSERT INTO "auth_sessions" (
         "id",
         "user_id",
@@ -123,8 +126,11 @@ async function insertToken(
 ): Promise<string> {
   const tokenId = randomUUID();
 
-  await runAsRole("booking_app", tenantId, (transaction) =>
-    transaction.$executeRaw`
+  await runAsRole(
+    "booking_app",
+    tenantId,
+    (transaction) =>
+      transaction.$executeRaw`
       INSERT INTO "auth_session_tokens" (
         "id",
         "session_id",
@@ -266,8 +272,11 @@ test("token history enforces selector uniqueness, family scope, and one active t
   await assert.rejects(insertToken(sessionId, tenantId));
 
   await assert.rejects(
-    runAsRole("booking_app", otherTenantId, (transaction) =>
-      transaction.$executeRaw`
+    runAsRole(
+      "booking_app",
+      otherTenantId,
+      (transaction) =>
+        transaction.$executeRaw`
         INSERT INTO "auth_session_tokens" (
           "id",
           "session_id",
@@ -292,8 +301,11 @@ test("token history enforces selector uniqueness, family scope, and one active t
     ),
   );
 
-  await runAsRole("booking_app", tenantId, (transaction) =>
-    transaction.$executeRaw`
+  await runAsRole(
+    "booking_app",
+    tenantId,
+    (transaction) =>
+      transaction.$executeRaw`
       UPDATE "auth_session_tokens"
       SET "replaced_at" = CURRENT_TIMESTAMP,
           "overlap_until" = CURRENT_TIMESTAMP + INTERVAL '30 seconds'

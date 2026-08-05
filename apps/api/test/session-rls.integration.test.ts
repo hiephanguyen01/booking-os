@@ -68,8 +68,11 @@ async function insertSession(input: {
   readonly role: "booking_app" | "booking_platform_app";
 }): Promise<string> {
   const sessionId = randomUUID();
-  await runAsRole(input.role, input.tenantId, (transaction) =>
-    transaction.$executeRaw`
+  await runAsRole(
+    input.role,
+    input.tenantId,
+    (transaction) =>
+      transaction.$executeRaw`
       INSERT INTO "auth_sessions" (
         "id",
         "user_id",
@@ -112,8 +115,11 @@ async function insertToken(input: {
   readonly role: "booking_app" | "booking_platform_app";
 }): Promise<string> {
   const tokenId = randomUUID();
-  await runAsRole(input.role, input.tenantId, (transaction) =>
-    transaction.$executeRaw`
+  await runAsRole(
+    input.role,
+    input.tenantId,
+    (transaction) =>
+      transaction.$executeRaw`
       INSERT INTO "auth_session_tokens" (
         "id",
         "session_id",
@@ -283,8 +289,11 @@ test("tenant, missing-context, cross-tenant, and platform paths are isolated", a
     role: "booking_platform_app",
   });
 
-  const tenantARows = await runAsRole("booking_app", tenantAId, (transaction) =>
-    transaction.$queryRaw<readonly { id: string; tenant_id: string | null }[]>`
+  const tenantARows = await runAsRole(
+    "booking_app",
+    tenantAId,
+    (transaction) =>
+      transaction.$queryRaw<readonly { id: string; tenant_id: string | null }[]>`
       SELECT "id", "tenant_id"
       FROM "auth_sessions"
       ORDER BY "id"
@@ -292,8 +301,11 @@ test("tenant, missing-context, cross-tenant, and platform paths are isolated", a
   );
   assert.deepEqual(tenantARows, [{ id: tenantASessionId, tenant_id: tenantAId }]);
 
-  const tenantATokens = await runAsRole("booking_app", tenantAId, (transaction) =>
-    transaction.$queryRaw<readonly { session_id: string; tenant_id: string | null }[]>`
+  const tenantATokens = await runAsRole(
+    "booking_app",
+    tenantAId,
+    (transaction) =>
+      transaction.$queryRaw<readonly { session_id: string; tenant_id: string | null }[]>`
       SELECT "session_id", "tenant_id"
       FROM "auth_session_tokens"
       ORDER BY "session_id"
@@ -301,16 +313,22 @@ test("tenant, missing-context, cross-tenant, and platform paths are isolated", a
   );
   assert.deepEqual(tenantATokens, [{ session_id: tenantASessionId, tenant_id: tenantAId }]);
 
-  const missingContextRows = await runAsRole("booking_app", undefined, (transaction) =>
-    transaction.$queryRaw<readonly { id: string }[]>`
+  const missingContextRows = await runAsRole(
+    "booking_app",
+    undefined,
+    (transaction) =>
+      transaction.$queryRaw<readonly { id: string }[]>`
       SELECT "id" FROM "auth_sessions"
     `,
   );
   assert.deepEqual(missingContextRows, []);
 
   await assert.rejects(
-    runAsRole("booking_app", tenantAId, (transaction) =>
-      transaction.$executeRaw`
+    runAsRole(
+      "booking_app",
+      tenantAId,
+      (transaction) =>
+        transaction.$executeRaw`
         UPDATE "auth_sessions"
         SET "state" = 'revoked'::auth_session_state,
             "revoked_at" = CURRENT_TIMESTAMP,
@@ -322,8 +340,11 @@ test("tenant, missing-context, cross-tenant, and platform paths are isolated", a
     }),
   );
 
-  const platformRows = await runAsRole("booking_platform_app", undefined, (transaction) =>
-    transaction.$queryRaw<readonly { id: string; tenant_id: string | null }[]>`
+  const platformRows = await runAsRole(
+    "booking_platform_app",
+    undefined,
+    (transaction) =>
+      transaction.$queryRaw<readonly { id: string; tenant_id: string | null }[]>`
       SELECT "id", "tenant_id"
       FROM "auth_sessions"
       ORDER BY "id"
@@ -332,8 +353,11 @@ test("tenant, missing-context, cross-tenant, and platform paths are isolated", a
   assert.deepEqual(platformRows, [{ id: platformSessionId, tenant_id: null }]);
 
   await assert.rejects(
-    runAsRole("booking_platform_app", undefined, (transaction) =>
-      transaction.$executeRaw`
+    runAsRole(
+      "booking_platform_app",
+      undefined,
+      (transaction) =>
+        transaction.$executeRaw`
         UPDATE "auth_sessions"
         SET "state" = 'revoked'::auth_session_state,
             "revoked_at" = CURRENT_TIMESTAMP,
