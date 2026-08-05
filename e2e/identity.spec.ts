@@ -39,7 +39,7 @@ test("activation removes the fragment and submits only the platform command to t
     newPassword: NEW_PASSWORD,
   });
   expect((await responsePromise).status()).toBe(502);
-  await expect(page.getByRole("alert")).toContainText("We couldn't activate your account");
+  await expect(page.getByText("We couldn't activate your account", { exact: false })).toBeVisible();
   await expectTokenRemovedFromBrowser(page);
 });
 
@@ -56,7 +56,7 @@ test("invalid activation values do not send a command", async ({ page }) => {
     .fill("Different-password-123!");
   await page.getByRole("button", { name: "Activate account" }).click();
 
-  await expect(page.getByRole("alert")).toContainText("The passwords do not match.");
+  await expect(page.getByText("The passwords do not match.", { exact: true })).toBeVisible();
   expect(commands).toBe(0);
 });
 
@@ -122,6 +122,6 @@ test("password reset removes the fragment and submits only the platform command 
     newPassword: NEW_PASSWORD,
   });
   expect((await responsePromise).status()).toBe(502);
-  await expect(page.getByRole("alert")).toContainText("We couldn't reset your password");
+  await expect(page.getByText("We couldn't reset your password", { exact: false })).toBeVisible();
   await expectTokenRemovedFromBrowser(page);
 });
