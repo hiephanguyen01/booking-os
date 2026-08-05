@@ -8,9 +8,8 @@ interface FetchCall {
   readonly init: RequestInit | undefined;
 }
 
-test("password-forgot performs a server-side CSRF handshake and returns only a neutral response", async () => {
-  const calls: FetchCall[] = [];
-  const fetchImpl: typeof fetch = async (input, init) => {
+function createIdentityFetch(calls: FetchCall[], finalStatus: number): typeof fetch {
+  return async (input, init) => {
     const url = typeof input === "string" ? input : input.toString();
     calls.push({ url, init });
 
@@ -25,14 +24,18 @@ test("password-forgot performs a server-side CSRF handshake and returns only a n
       });
     }
 
-    return new Response(JSON.stringify({ accepted: true }), {
-      status: 202,
+    return new Response(JSON.stringify(finalStatus === 202 ? { accepted: true } : { completed: true }), {
+      status: finalStatus,
       headers: { "content-type": "application/json" },
     });
   };
+}
+
+test("password-forgot performs a server-side CSRF handshake and returns only a neutral response", async () => {
+  const calls: FetchCall[] = [];
   const handlers = createIdentityBffHandlers({
     apiBaseUrl: "https://api.example.test/api",
-    fetch: fetchImpl,
+    fetch: createIdentityFetch(calls, 202),
   });
   const response = await handlers.passwordForgot(
     new Request("https://console.example.test/api/auth/password/forgot", {
@@ -41,7 +44,7 @@ test("password-forgot performs a server-side CSRF handshake and returns only a n
         "content-type": "application/json",
         origin: "https://console.example.test",
       },
-      body: JSON.stringify({ email: "pilot@example.com" }),
+      body: JSON.stringify({ email: "pilot@example.com", scopeType: "platform" }),
     }),
   );
   const responseText = await response.clone().text();
@@ -62,7 +65,78 @@ test("password-forgot performs a server-side CSRF handshake and returns only a n
   assert.equal(headers.get("cookie"), "__Host-booking_pre_auth_csrf=opaque-nonce");
   assert.equal(headers.get("x-csrf-token"), "opaque-proof");
   assert.equal(headers.get("origin"), "https://api.example.test");
-  assert.deepEqual(JSON.parse(String(post?.init?.body)), { email: "pilot@example.com" });
+  assert.deepEqual(JSON.parse(String(post?.init?.body)), {
+    email: "pilot@example.com",
+    scopeType: "platform",
+  });
+});
+
+test("activation consumes the token only on the server-side API call", async () => {
+  const calls: FetchCall[] = [];
+  const handlers = createIdentityBffHandlers({
+    apiBaseUrl: "https://api.example.test/api",
+    fetch: createIdentityFetch(calls, 200),
+  });
+  const response = await handlers.activationComplete(
+    new Request("https://console.example.test/api/auth/activation/complete", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: "https://console.example.test",
+      },
+      body: JSON.stringify({
+        token: "selector.secret",
+        newPassword: "correct horse battery staple",
+        scopeType: "platform",
+      }),
+    }),
+  );
+  const responseText = await response.clone().text();
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { completed: true });
+  assert.doesNotMatch(responseText, /selector|secret|opaque-proof|opaque-nonce/iu);
+  assert.equal(
+    calls[0]?.url,
+    "https://api.example.test/api/auth/csrf?purpose=activation",
+  );
+  assert.equal(calls[1]?.url, "https://api.example.test/api/auth/activation/complete");
+  assert.deepEqual(JSON.parse(String(calls[1]?.init?.body)), {
+    token: "selector.secret",
+    newPassword: "correct horse battery staple",
+    scopeType: "platform",
+  });
+});
+
+test("password reset uses its own CSRF purpose and neutral completion response", async () => {
+  const calls: FetchCall[] = [];
+  const handlers = createIdentityBffHandlers({
+    apiBaseUrl: "https://api.example.test/api",
+    fetch: createIdentityFetch(calls, 200),
+  });
+  const response = await handlers.passwordReset(
+    new Request("https://console.example.test/api/auth/password/reset", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: "https://console.example.test",
+      },
+      body: JSON.stringify({
+        token: "selector.secret",
+        newPassword: "correct horse battery staple",
+        scopeType: "tenant",
+        tenantId: "11111111-1111-4111-8111-111111111111",
+      }),
+    }),
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { completed: true });
+  assert.equal(
+    calls[0]?.url,
+    "https://api.example.test/api/auth/csrf?purpose=password_reset",
+  );
+  assert.equal(calls[1]?.url, "https://api.example.test/api/auth/password/reset");
 });
 
 test("cross-origin requests are rejected before contacting the identity API", async () => {
@@ -75,17 +149,23 @@ test("cross-origin requests are rejected before contacting the identity API", as
     },
   });
 
-  const response = await handlers.passwordForgot(
-    new Request("https://console.example.test/api/auth/password/forgot", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        origin: "https://attacker.example.test",
-      },
-      body: JSON.stringify({ email: "pilot@example.com" }),
-    }),
-  );
+  for (const handler of [
+    handlers.passwordForgot,
+    handlers.activationComplete,
+    handlers.passwordReset,
+  ]) {
+    const response = await handler(
+      new Request("https://console.example.test/api/auth/identity", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "https://attacker.example.test",
+        },
+        body: JSON.stringify({ token: "selector.secret" }),
+      }),
+    );
+    assert.equal(response.status, 403);
+  }
 
-  assert.equal(response.status, 403);
   assert.equal(fetchCalls, 0);
 });
