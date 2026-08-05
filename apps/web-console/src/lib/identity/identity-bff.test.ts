@@ -52,10 +52,7 @@ test("password-forgot performs a server-side CSRF handshake and returns only a n
   assert.equal(response.headers.has("set-cookie"), false);
   assert.equal(JSON.stringify(await response.clone().text()).includes("opaque-proof"), false);
   assert.equal(calls.length, 2);
-  assert.equal(
-    calls[0]?.url,
-    "https://api.example.test/api/auth/csrf?purpose=password_forgot",
-  );
+  assert.equal(calls[0]?.url, "https://api.example.test/api/auth/csrf?purpose=password_forgot");
   assert.equal(calls[0]?.init?.cache, "no-store");
 
   const post = calls[1];

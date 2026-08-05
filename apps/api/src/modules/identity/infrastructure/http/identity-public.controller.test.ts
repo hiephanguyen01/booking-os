@@ -162,7 +162,10 @@ test("activation completes without creating a session or returning the user ID",
   ]);
   assert.deepEqual(body, { completed: true });
   assert.equal(JSON.stringify(body).includes("11111111-1111-4111-8111-111111111111"), false);
-  assert.equal(response.cookies.some((cookie) => /session/iu.test(cookie.name)), false);
+  assert.equal(
+    response.cookies.some((cookie) => /session/iu.test(cookie.name)),
+    false,
+  );
 });
 
 test("CSRF rejection occurs before an identity use case is invoked", async () => {

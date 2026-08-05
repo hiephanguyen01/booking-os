@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  PRE_AUTH_CSRF_COOKIE_NAME,
-  PreAuthCsrfService,
-} from "./pre-auth-csrf.js";
+import { PRE_AUTH_CSRF_COOKIE_NAME, PreAuthCsrfService } from "./pre-auth-csrf.js";
 
 const SECRET = Buffer.alloc(32, 7);
 const NONCE = Buffer.alloc(32, 9);

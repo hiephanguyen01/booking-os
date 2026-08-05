@@ -41,8 +41,6 @@ test("rejects ambiguous fragments and never moves a token into the query string"
     ),
     null,
   );
-  assert.deepEqual(history.calls, [
-    { data: null, unused: "", url: "/password/reset?locale=vi" },
-  ]);
+  assert.deepEqual(history.calls, [{ data: null, unused: "", url: "/password/reset?locale=vi" }]);
   assert.equal(JSON.stringify(history.calls).includes("token="), false);
 });

@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  PlatformAdminAlreadyBootstrappedError,
   bootstrapPlatformAdmin,
+  PlatformAdminAlreadyBootstrappedError,
   type PlatformAdminBootstrapStore,
 } from "./bootstrap-platform-admin.js";
 
