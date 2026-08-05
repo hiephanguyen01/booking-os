@@ -39,9 +39,7 @@ test("activation removes the fragment and submits only the platform command to t
     newPassword: NEW_PASSWORD,
   });
   expect((await responsePromise).status()).toBe(502);
-  await expect(page.locator('p[role="alert"]')).toContainText(
-    "We couldn't activate your account",
-  );
+  await expect(page.locator('p[role="alert"]')).toContainText("We couldn't activate your account");
   await expectTokenRemovedFromBrowser(page);
 });
 
@@ -99,8 +97,6 @@ test("password reset removes the fragment and submits only the platform command 
     newPassword: NEW_PASSWORD,
   });
   expect((await responsePromise).status()).toBe(502);
-  await expect(page.locator('p[role="alert"]')).toContainText(
-    "We couldn't reset your password",
-  );
+  await expect(page.locator('p[role="alert"]')).toContainText("We couldn't reset your password");
   await expectTokenRemovedFromBrowser(page);
 });
