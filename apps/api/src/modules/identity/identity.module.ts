@@ -42,7 +42,7 @@ const systemClock: ClockPort = Object.freeze({
 });
 
 const externalPasswordDenylist: PasswordDenylistPort = Object.freeze({
-  isDenied: async (): Promise<boolean> => false,
+  contains: async (): Promise<boolean> => false,
 });
 
 const preSessionRevocation: SessionRevocationPort = Object.freeze({
@@ -100,7 +100,9 @@ const preSessionRevocation: SessionRevocationPort = Object.freeze({
       provide: PreAuthCsrfService,
       inject: [EnvironmentService],
       useFactory: (environment: EnvironmentService): PreAuthCsrfService =>
-        new PreAuthCsrfService({ secret: environment.sessionSecret }),
+        new PreAuthCsrfService({
+          secret: new TextEncoder().encode(environment.sessionSecret),
+        }),
     },
     {
       provide: IdentityPublicCsrfAdapter,
