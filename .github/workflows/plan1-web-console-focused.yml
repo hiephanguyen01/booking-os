@@ -1,0 +1,44 @@
+name: Plan 1 web console focused gate
+
+on:
+  pull_request:
+    branches:
+      - docs/frontend-library-foundation-design
+    paths:
+      - ".github/workflows/plan1-web-console-focused.yml"
+      - "apps/web-console/**"
+
+permissions:
+  contents: read
+
+jobs:
+  web-console:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build shared contracts and UI
+        run: pnpm --filter @booking-os/contracts build && pnpm --filter @booking-os/ui build
+      - name: Check formatting and static rules
+        run: pnpm check:ci
+      - name: Run web console component tests
+        run: pnpm --filter @booking-os/web-console exec vitest run
+      - name: Run web console package tests
+        run: pnpm --filter @booking-os/web-console test
+      - name: Typecheck web console
+        run: pnpm --filter @booking-os/web-console typecheck
+      - name: Build web console
+        run: pnpm --filter @booking-os/web-console build
