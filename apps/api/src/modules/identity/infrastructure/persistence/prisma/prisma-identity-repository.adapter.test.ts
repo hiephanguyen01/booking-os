@@ -140,7 +140,7 @@ test("locks and consumes a valid activation token before activating the user", a
     updatedAt: NOW,
   };
   const transaction = {
-    async $queryRawUnsafe(query: string, selector: string): Promise<typeof tokenRow[]> {
+    async $queryRawUnsafe(query: string, selector: string): Promise<(typeof tokenRow)[]> {
       operations.push({ name: "lock", input: { query, selector } });
       return [tokenRow];
     },
@@ -251,7 +251,7 @@ test("replaces the password, consumes reset state, and increments authorization 
     createdAt: NOW,
   };
   const transaction = {
-    async $queryRawUnsafe(query: string, selector: string): Promise<typeof resetRow[]> {
+    async $queryRawUnsafe(query: string, selector: string): Promise<(typeof resetRow)[]> {
       operations.push({ name: "lock", input: { query, selector } });
       return [resetRow];
     },
