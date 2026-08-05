@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { Label } from "./label.js";
+import { Label } from "./label";
 
 type ControlAccessibilityProps = {
   "aria-describedby"?: string;

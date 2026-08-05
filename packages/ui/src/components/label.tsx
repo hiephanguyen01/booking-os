@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 
-import { cn } from "../lib/cn.js";
+import { cn } from "../lib/cn";
 
 export function Label({ className, children, htmlFor, ref, ...props }: ComponentProps<"label">) {
   return (

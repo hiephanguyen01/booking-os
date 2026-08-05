@@ -1,4 +1,4 @@
-import { Button, type ButtonProps } from "./button.js";
+import { Button, type ButtonProps } from "./button";
 
 interface SubmitButtonProps extends Omit<ButtonProps, "children" | "type"> {
   idleLabel: string;

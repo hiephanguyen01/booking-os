@@ -1,7 +1,7 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentProps } from "react";
 
-import { cn } from "../lib/cn.js";
+import { cn } from "../lib/cn";
 
 const alertVariants = cva("rounded-md border p-3 text-sm", {
   variants: {
