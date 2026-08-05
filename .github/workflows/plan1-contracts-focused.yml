@@ -1,0 +1,40 @@
+name: Plan 1 contracts focused gate
+
+on:
+  pull_request:
+    branches:
+      - docs/frontend-library-foundation-design
+    paths:
+      - ".github/workflows/plan1-contracts-focused.yml"
+      - "packages/contracts/**"
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check formatting and static rules
+        run: pnpm check:ci
+      - name: Test contracts
+        run: pnpm --filter @booking-os/contracts test
+      - name: Typecheck contracts
+        run: pnpm --filter @booking-os/contracts typecheck
+      - name: Build contracts
+        run: pnpm --filter @booking-os/contracts build
