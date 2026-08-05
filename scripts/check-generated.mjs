@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import process from "node:process";
 
 const GENERATED_PATHS = [
@@ -29,6 +30,14 @@ function fail(message, exitCode) {
   process.exitCode = exitCode;
 }
 
+function printGeneratedArtifacts() {
+  for (const path of GENERATED_PATHS) {
+    process.stdout.write(`\n===== GENERATED ${path} BEGIN =====\n`);
+    process.stdout.write(readFileSync(path, "utf8"));
+    process.stdout.write(`===== GENERATED ${path} END =====\n`);
+  }
+}
+
 function main() {
   const generation = run("pnpm", ["api:generate"]);
   writeCapturedOutput(generation);
@@ -41,6 +50,8 @@ function main() {
     fail(`api:generate failed with exit code ${generation.status ?? 2}`, generation.status ?? 2);
     return;
   }
+
+  printGeneratedArtifacts();
 
   const status = run("git", [
     "status",
