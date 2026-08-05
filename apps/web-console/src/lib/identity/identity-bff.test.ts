@@ -44,13 +44,14 @@ test("password-forgot performs a server-side CSRF handshake and returns only a n
       body: JSON.stringify({ email: "pilot@example.com" }),
     }),
   );
+  const responseText = await response.clone().text();
 
   assert.equal(response.status, 202);
   assert.deepEqual(await response.json(), { accepted: true });
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal(response.headers.get("referrer-policy"), "no-referrer");
   assert.equal(response.headers.has("set-cookie"), false);
-  assert.equal(JSON.stringify(await response.clone().text()).includes("opaque-proof"), false);
+  assert.equal(responseText.includes("opaque-proof"), false);
   assert.equal(calls.length, 2);
   assert.equal(calls[0]?.url, "https://api.example.test/api/auth/csrf?purpose=password_forgot");
   assert.equal(calls[0]?.init?.cache, "no-store");
