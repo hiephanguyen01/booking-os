@@ -35,6 +35,13 @@ interface RoleRow extends QueryResultRow {
   readonly rolbypassrls: boolean;
 }
 
+interface MembershipRow extends QueryResultRow {
+  readonly granted_role: string;
+  readonly inherit_option: boolean;
+  readonly set_option: boolean;
+  readonly admin_option: boolean;
+}
+
 function normalizeIdentifier(value: string): string {
   return value.replaceAll('"', "").toLowerCase();
 }
@@ -275,6 +282,28 @@ async function inspectRole(
   if (role.rolbypassrls) {
     failures.push(`${applicationRole}: application database role must not have BYPASSRLS`);
   }
+
+  const membershipResult = await client.query<MembershipRow>(
+    `SELECT granted_role.rolname AS granted_role,
+            membership.inherit_option,
+            membership.set_option,
+            membership.admin_option
+       FROM pg_auth_members membership
+       JOIN pg_roles member_role ON member_role.oid = membership.member
+       JOIN pg_roles granted_role ON granted_role.oid = membership.roleid
+      WHERE member_role.rolname = $1
+      ORDER BY granted_role.rolname`,
+    [applicationRole],
+  );
+  for (const membership of membershipResult.rows) {
+    failures.push(
+      `${applicationRole}: application database role must not be a member of role ${membership.granted_role} ` +
+        `(INHERIT=${String(membership.inherit_option)}, SET=${String(
+          membership.set_option,
+        )}, ADMIN=${String(membership.admin_option)})`,
+    );
+  }
+
   return failures;
 }
 

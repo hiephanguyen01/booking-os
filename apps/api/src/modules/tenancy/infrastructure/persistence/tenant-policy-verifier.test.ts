@@ -22,6 +22,7 @@ interface CatalogFixture {
   readonly policies: readonly QueryResultRow[];
   readonly grants: readonly QueryResultRow[];
   readonly roles: readonly QueryResultRow[];
+  readonly memberships: readonly QueryResultRow[];
 }
 
 const validPolicy = {
@@ -45,6 +46,7 @@ const validFixture: CatalogFixture = {
     { grantee: "booking_app", privilege_type: "DELETE" },
   ],
   roles: [{ rolsuper: false, rolbypassrls: false }],
+  memberships: [],
 };
 
 function fixture(overrides: Partial<CatalogFixture> = {}): CatalogFixture {
@@ -67,6 +69,8 @@ function fakeClient(catalog: CatalogFixture): Pick<PoolClient, "query"> {
         rows = catalog.policies;
       } else if (text.includes("information_schema.table_privileges")) {
         rows = catalog.grants;
+      } else if (text.includes("FROM pg_auth_members")) {
+        rows = catalog.memberships;
       } else if (text.includes("FROM pg_roles")) {
         rows = catalog.roles;
       } else {
@@ -283,3 +287,21 @@ test("rejects a policy on a similarly named non-tenant column", async () => {
   );
 });
 
+
+
+test("rejects application-role membership in another role", async () => {
+  assert.ok(
+    (
+      await failures({
+        memberships: [
+          {
+            granted_role: "tenant_admin",
+            inherit_option: false,
+            set_option: true,
+            admin_option: false,
+          },
+        ],
+      })
+    ).some((failure) => failure.includes("must not be a member of role tenant_admin")),
+  );
+});
