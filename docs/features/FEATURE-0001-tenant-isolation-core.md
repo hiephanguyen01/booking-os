@@ -1,7 +1,7 @@
 ---
 id: FEATURE-0001
 title: Tenant Isolation Core
-status: active
+status: draft
 owner: tenancy
 date: 2026-08-05
 ---
