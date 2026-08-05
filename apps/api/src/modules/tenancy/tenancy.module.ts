@@ -1,6 +1,7 @@
 import { type MiddlewareConsumer, Module, type NestModule } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 
+import { EnvironmentService } from "../../config/environment.service.js";
 import { DatabaseModule } from "../../database/database.module.js";
 import type { TenantDirectoryPort } from "./application/ports/tenant-directory.port.js";
 import type { TenantTransactionPort } from "./application/ports/tenant-transaction.port.js";
@@ -27,9 +28,11 @@ import { TENANT_DIRECTORY_PORT, TENANT_TRANSACTION_PORT } from "./tenancy.tokens
     },
     {
       provide: ResolveTenantUseCase,
-      inject: [TENANT_DIRECTORY_PORT],
-      useFactory: (directory: TenantDirectoryPort): ResolveTenantUseCase =>
-        new ResolveTenantUseCase(directory),
+      inject: [TENANT_DIRECTORY_PORT, EnvironmentService],
+      useFactory: (
+        directory: TenantDirectoryPort,
+        environment: EnvironmentService,
+      ): ResolveTenantUseCase => new ResolveTenantUseCase(directory, environment.tenantBaseDomain),
     },
     {
       provide: ListTenantProbesUseCase,

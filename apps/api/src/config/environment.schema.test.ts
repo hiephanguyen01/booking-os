@@ -7,6 +7,7 @@ const validEnvironment = {
   NODE_ENV: "test",
   HOST: "127.0.0.1",
   TRUST_PROXY: "true",
+  TENANT_BASE_DOMAIN: "Example.COM",
   PORT: "3101",
   API_PREFIX: "api",
   APP_VERSION: "0.1.0-test",
@@ -25,6 +26,7 @@ test("parseEnvironment validates and normalizes environment variables", () => {
     nodeEnvironment: "test",
     host: "127.0.0.1",
     trustProxy: true,
+    tenantBaseDomain: "example.com",
     port: 3101,
     apiPrefix: "api",
     appVersion: "0.1.0-test",
@@ -47,6 +49,7 @@ test("parseEnvironment applies safe defaults", () => {
   assert.equal(environment.nodeEnvironment, "development");
   assert.equal(environment.host, "0.0.0.0");
   assert.equal(environment.trustProxy, false);
+  assert.equal(environment.tenantBaseDomain, "example.com");
   assert.equal(environment.port, 3001);
   assert.equal(environment.apiPrefix, "api");
   assert.equal(environment.appVersion, "0.1.0");
@@ -125,6 +128,19 @@ test("parseEnvironment rejects mock payments in production", () => {
         PAYMENT_PROVIDER: "mock",
       }),
     /PAYMENT_PROVIDER/,
+  );
+});
+
+test("parseEnvironment rejects a missing tenant base domain in production", () => {
+  assert.throws(
+    () =>
+      parseEnvironment({
+        ...validEnvironment,
+        NODE_ENV: "production",
+        TENANT_BASE_DOMAIN: undefined,
+        PAYMENT_PROVIDER: "payos",
+      }),
+    /TENANT_BASE_DOMAIN/,
   );
 });
 

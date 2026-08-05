@@ -2,11 +2,23 @@ import { z } from "zod";
 
 import { LOG_LEVELS, NODE_ENVIRONMENTS } from "./environment.constants.js";
 
+const hostLabelPattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
+
 const apiPrefixSchema = z
   .string()
   .trim()
   .min(1, "API_PREFIX cannot be empty")
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "API_PREFIX must use lowercase kebab-case without slashes");
+
+const tenantBaseDomainSchema = z
+  .string()
+  .trim()
+  .refine(
+    (value) =>
+      value.includes(".") && value.split(".").every((label) => hostLabelPattern.test(label)),
+    "TENANT_BASE_DOMAIN must be a valid multi-label hostname",
+  )
+  .transform((value) => value.toLowerCase());
 
 const rawEnvironmentSchema = z
   .object({
@@ -15,6 +27,8 @@ const rawEnvironmentSchema = z
     HOST: z.string().trim().min(1).default("0.0.0.0"),
 
     TRUST_PROXY: z.enum(["true", "false"]).default("false"),
+
+    TENANT_BASE_DOMAIN: tenantBaseDomainSchema.optional(),
 
     PORT: z.coerce.number().int().min(1).max(65_535).default(3001),
 
@@ -49,6 +63,14 @@ const rawEnvironmentSchema = z
     PAYMENT_PROVIDER: z.enum(["mock", "payos"]).default("mock"),
   })
   .superRefine((values, context) => {
+    if (values.NODE_ENV === "production" && !values.TENANT_BASE_DOMAIN) {
+      context.addIssue({
+        code: "custom",
+        path: ["TENANT_BASE_DOMAIN"],
+        message: "TENANT_BASE_DOMAIN is required in production",
+      });
+    }
+
     if (values.NODE_ENV === "production" && values.PAYMENT_PROVIDER === "mock") {
       context.addIssue({
         code: "custom",
@@ -62,6 +84,7 @@ export const environmentSchema = rawEnvironmentSchema.transform((values) => ({
   nodeEnvironment: values.NODE_ENV,
   host: values.HOST,
   trustProxy: values.TRUST_PROXY === "true",
+  tenantBaseDomain: values.TENANT_BASE_DOMAIN ?? "example.com",
   port: values.PORT,
   apiPrefix: values.API_PREFIX,
   appVersion: values.APP_VERSION,

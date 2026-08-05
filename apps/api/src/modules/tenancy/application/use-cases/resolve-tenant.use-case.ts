@@ -4,13 +4,15 @@ import type { TenantDirectoryPort } from "../ports/tenant-directory.port.js";
 
 export class ResolveTenantUseCase {
   private readonly tenants: TenantDirectoryPort;
+  private readonly tenantBaseDomain: string;
 
-  constructor(tenants: TenantDirectoryPort) {
+  constructor(tenants: TenantDirectoryPort, tenantBaseDomain: string) {
     this.tenants = tenants;
+    this.tenantBaseDomain = tenantBaseDomain;
   }
 
   async execute(hostname: string): Promise<ResolvedTenant | null> {
-    const slug = tenantSlugFromHostname(hostname);
+    const slug = tenantSlugFromHostname(hostname, this.tenantBaseDomain);
     if (!slug) {
       return null;
     }

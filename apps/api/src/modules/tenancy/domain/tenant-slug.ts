@@ -2,8 +2,8 @@ import { isIP } from "node:net";
 
 const HOST_LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
-export function tenantSlugFromHostname(hostname: string): string | undefined {
-  const normalized = hostname.trim().toLowerCase();
+function normalizedDomain(value: string): string | undefined {
+  const normalized = value.trim().toLowerCase();
   if (!normalized.includes(".") || isIP(normalized) !== 0) {
     return undefined;
   }
@@ -13,5 +13,24 @@ export function tenantSlugFromHostname(hostname: string): string | undefined {
     return undefined;
   }
 
-  return labels[0];
+  return normalized;
+}
+
+export function tenantSlugFromHostname(
+  hostname: string,
+  tenantBaseDomain: string,
+): string | undefined {
+  const normalizedHostname = normalizedDomain(hostname);
+  const normalizedBaseDomain = normalizedDomain(tenantBaseDomain);
+  if (!normalizedHostname || !normalizedBaseDomain) {
+    return undefined;
+  }
+
+  const suffix = `.${normalizedBaseDomain}`;
+  if (!normalizedHostname.endsWith(suffix)) {
+    return undefined;
+  }
+
+  const slug = normalizedHostname.slice(0, -suffix.length);
+  return HOST_LABEL_PATTERN.test(slug) ? slug : undefined;
 }
