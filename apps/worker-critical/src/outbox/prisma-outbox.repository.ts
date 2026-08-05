@@ -1,8 +1,7 @@
-import type { PrismaClient } from "@prisma/client";
+import type { WorkerDatabase } from "../database/worker-database.js";
 import type { OutboxDispatchRepository } from "./outbox-dispatcher.js";
 import type { DispatchableOutboxEvent } from "./outbox-event.js";
 
-const WORKER_DATABASE_ROLE = "booking_worker";
 const CLAIM_TIMEOUT_MINUTES = 5;
 const MAX_BACKOFF_SECONDS = 60 * 60;
 
@@ -21,13 +20,15 @@ function retryDelaySeconds(attempts: number): number {
 }
 
 export class PrismaOutboxRepository implements OutboxDispatchRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+  private readonly database: WorkerDatabase;
 
-  async claimBatch(limit: number): Promise<readonly DispatchableOutboxEvent[]> {
-    return this.prisma.$transaction(async (transaction) => {
-      await transaction.$executeRawUnsafe(`SET LOCAL ROLE ${WORKER_DATABASE_ROLE}`);
+  constructor(database: WorkerDatabase) {
+    this.database = database;
+  }
 
-      return transaction.$queryRaw<ClaimedOutboxRow[]>`
+  claimBatch(limit: number): Promise<readonly DispatchableOutboxEvent[]> {
+    return this.database.run((transaction) =>
+      transaction.$queryRaw<ClaimedOutboxRow[]>`
         WITH candidates AS (
           SELECT "id"
           FROM "outbox_events"
@@ -56,13 +57,12 @@ export class PrismaOutboxRepository implements OutboxDispatchRepository {
           event."aggregate_id" AS "aggregateId",
           event."payload",
           event."attempts"
-      `;
-    });
+      `,
+    );
   }
 
   async markDispatched(eventId: string): Promise<void> {
-    await this.prisma.$transaction(async (transaction) => {
-      await transaction.$executeRawUnsafe(`SET LOCAL ROLE ${WORKER_DATABASE_ROLE}`);
+    await this.database.run(async (transaction) => {
       await transaction.outboxEvent.update({
         where: { id: eventId },
         data: {
@@ -74,13 +74,12 @@ export class PrismaOutboxRepository implements OutboxDispatchRepository {
     });
   }
 
-  async markFailed(
+  markFailed(
     eventId: string,
     sanitizedError: string,
     maxAttempts: number,
   ): Promise<"retryable" | "dead-lettered"> {
-    return this.prisma.$transaction(async (transaction) => {
-      await transaction.$executeRawUnsafe(`SET LOCAL ROLE ${WORKER_DATABASE_ROLE}`);
+    return this.database.run(async (transaction) => {
       const event = await transaction.outboxEvent.findUniqueOrThrow({
         where: { id: eventId },
         select: { attempts: true, firstFailedAt: true },
