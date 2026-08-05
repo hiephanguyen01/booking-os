@@ -125,3 +125,26 @@ test("fails closed when a module directory is not registered", async () => {
     ]);
   });
 });
+
+test("rejects dynamic application imports of infrastructure", async () => {
+  await withRepository(async (repositoryRoot) => {
+    const catalog = await writeModule(repositoryRoot, "catalog", {
+      "application/lazy.ts":
+        'export const load = () => import("../infrastructure/adapter.js");',
+      "infrastructure/adapter.ts": "export class Adapter {}",
+    });
+
+    const failures = await verifyApiModuleBoundaries({
+      repositoryRoot,
+      modules: [catalog],
+    });
+
+    assert.ok(
+      failures.some(
+        (failure) =>
+          failure.includes("application/lazy.ts") &&
+          failure.includes("application must not import infrastructure"),
+      ),
+    );
+  });
+});

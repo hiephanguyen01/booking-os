@@ -25,6 +25,7 @@ const PORT_FORBIDDEN_TYPES = [
 ];
 const IMPORT_PATTERN =
   /\b(?:import|export)\s+(?:type\s+)?(?:[^"'`;]*?\s+from\s*)?["']([^"']+)["']/g;
+const DYNAMIC_IMPORT_PATTERN = /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g;
 
 function toPosix(value) {
   return value.split(path.sep).join("/");
@@ -42,7 +43,13 @@ function packageIsForbidden(specifier, forbiddenPrefixes) {
 }
 
 function importedSpecifiers(source) {
-  return [...source.matchAll(IMPORT_PATTERN)].map((match) => match[1]);
+  return [
+    ...new Set(
+      [...source.matchAll(IMPORT_PATTERN), ...source.matchAll(DYNAMIC_IMPORT_PATTERN)].map(
+        (match) => match[1],
+      ),
+    ),
+  ];
 }
 
 function zoneFor(filePath, moduleRoot) {
