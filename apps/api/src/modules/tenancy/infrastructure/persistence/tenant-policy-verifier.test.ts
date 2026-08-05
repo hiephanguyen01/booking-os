@@ -36,13 +36,7 @@ const validPolicy = {
 const validFixture: CatalogFixture = {
   tables: [{ rls_enabled: true, rls_forced: true }],
   columns: [{ column_name: "tenant_id", is_nullable: "NO" }],
-  indexes: [
-    {
-      indexdef:
-        "CREATE INDEX tenant_probes_tenant_id_idx " +
-        'ON public.tenant_probes USING btree ("tenant_id")',
-    },
-  ],
+  indexes: [{ has_tenant_index: true }],
   policies: [validPolicy],
   grants: [
     { grantee: "booking_app", privilege_type: "SELECT" },
@@ -67,7 +61,7 @@ function fakeClient(catalog: CatalogFixture): Pick<PoolClient, "query"> {
         rows = catalog.tables;
       } else if (text.includes("information_schema.columns")) {
         rows = catalog.columns;
-      } else if (text.includes("FROM pg_indexes")) {
+      } else if (text.includes("FROM pg_index i")) {
         rows = catalog.indexes;
       } else if (text.includes("FROM pg_policies")) {
         rows = catalog.policies;
@@ -260,3 +254,14 @@ test("rejects table privileges granted to PUBLIC", async () => {
     ).some((failure) => failure.includes("PUBLIC has table privileges SELECT")),
   );
 });
+
+test("rejects an index on a similarly named non-tenant column", async () => {
+  assert.ok(
+    (
+      await failures({
+        indexes: [{ has_tenant_index: false }],
+      })
+    ).some((failure) => failure.includes("index is missing")),
+  );
+});
+

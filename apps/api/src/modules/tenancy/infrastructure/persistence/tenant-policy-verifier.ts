@@ -15,7 +15,7 @@ interface ColumnRow extends QueryResultRow {
 }
 
 interface IndexRow extends QueryResultRow {
-  readonly indexdef: string;
+  readonly has_tenant_index: boolean;
 }
 
 interface PolicyRow extends QueryResultRow {
@@ -116,17 +116,26 @@ async function inspectTable(
   }
 
   const indexResult = await client.query<IndexRow>(
-    `SELECT indexdef
-       FROM pg_indexes
-      WHERE schemaname = 'public'
-        AND tablename = $1`,
-    [policy.table],
+    `SELECT EXISTS (
+       SELECT 1
+         FROM pg_index i
+         JOIN pg_class table_class ON table_class.oid = i.indrelid
+         JOIN pg_namespace n ON n.oid = table_class.relnamespace
+         JOIN LATERAL unnest(i.indkey::smallint[]) WITH ORDINALITY
+           AS indexed_column(attnum, position)
+           ON indexed_column.position <= i.indnkeyatts
+         JOIN pg_attribute a
+           ON a.attrelid = table_class.oid
+          AND a.attnum = indexed_column.attnum
+        WHERE n.nspname = 'public'
+          AND table_class.relname = $1
+          AND a.attname = $2
+          AND i.indisvalid
+          AND i.indisready
+     ) AS has_tenant_index`,
+    [policy.table, policy.tenantColumn],
   );
-  if (
-    !indexResult.rows.some((row) =>
-      normalizeIdentifier(row.indexdef).includes(policy.tenantColumn.toLowerCase()),
-    )
-  ) {
+  if (indexResult.rows[0]?.has_tenant_index !== true) {
     failures.push(`${policy.table}.${policy.tenantColumn}: tenant column index is missing`);
   }
 
