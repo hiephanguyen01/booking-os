@@ -1,0 +1,120 @@
+name: Fix raw UUID test queries
+
+on:
+  push:
+    branches:
+      - feat/sprint-1a-tenant-isolation
+    paths:
+      - .github/workflows/fix-raw-uuid-tests.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: booking
+          POSTGRES_PASSWORD: booking
+          POSTGRES_DB: booking_os_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U booking -d booking_os_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://booking:booking@127.0.0.1:5432/booking_os_test
+      REDIS_URL: redis://127.0.0.1:6379/1
+      SESSION_SECRET: test-only-session-secret-at-least-32-characters
+      PAYMENT_PROVIDER: mock
+      NODE_ENV: test
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          ref: feat/sprint-1a-tenant-isolation
+
+      - name: Apply explicit UUID casts
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              Path("apps/api/src/reliability/outbox.repository.integration.test.ts"): [
+                  (
+                      "WHERE id = ${TENANT_B_EVENT_ID}\n",
+                      "WHERE id = ${TENANT_B_EVENT_ID}::uuid\n",
+                  ),
+              ],
+              Path("apps/api/test/tenant-isolation.e2e.test.ts"): [
+                  (
+                      "WHERE id = ${tenantBProbeId}\n",
+                      "WHERE id = ${tenantBProbeId}::uuid\n",
+                  ),
+              ],
+          }
+
+          for path, path_replacements in replacements.items():
+              content = path.read_text()
+              for old, new in path_replacements:
+                  expected = 2 if path.name == "tenant-isolation.e2e.test.ts" else 1
+                  if content.count(old) != expected:
+                      raise SystemExit(
+                          f"Expected {expected} raw UUID predicates in {path}, found {content.count(old)}"
+                      )
+                  content = content.replace(old, new)
+              path.write_text(content)
+          PY
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Format changed tests
+        run: >-
+          pnpm exec biome check --write
+          apps/api/src/reliability/outbox.repository.integration.test.ts
+          apps/api/test/tenant-isolation.e2e.test.ts
+
+      - name: Apply database migrations
+        run: pnpm --filter @booking-os/api prisma:migrate:deploy
+
+      - name: Run workspace unit tests
+        run: pnpm test
+
+      - name: Commit fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/api/src/reliability/outbox.repository.integration.test.ts \
+            apps/api/test/tenant-isolation.e2e.test.ts
+          git commit -m "fix: cast raw test identifiers to UUID"
+          git push origin HEAD:feat/sprint-1a-tenant-isolation
