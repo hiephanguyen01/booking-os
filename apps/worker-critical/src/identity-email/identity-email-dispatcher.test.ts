@@ -52,15 +52,12 @@ test("preserves retry classification while keeping token and transport details o
   });
   const job = createIdentityEmailJob();
 
-  await assert.rejects(
-    dispatcher.dispatch(job.name, job.data),
-    (error: unknown) => {
-      assert.ok(error instanceof IdentityEmailDeliveryError);
-      assert.equal(error.retryable, true);
-      assert.equal(error.code, "identity_email.smtp_temporary");
-      assert.doesNotMatch(error.message, new RegExp(TOKEN, "u"));
-      assert.doesNotMatch(error.message, /ECONNREFUSED|smtp\.internal|ciphertext/iu);
-      return true;
-    },
-  );
+  await assert.rejects(dispatcher.dispatch(job.name, job.data), (error: unknown) => {
+    assert.ok(error instanceof IdentityEmailDeliveryError);
+    assert.equal(error.retryable, true);
+    assert.equal(error.code, "identity_email.smtp_temporary");
+    assert.doesNotMatch(error.message, new RegExp(TOKEN, "u"));
+    assert.doesNotMatch(error.message, /ECONNREFUSED|smtp\.internal|ciphertext/iu);
+    return true;
+  });
 });

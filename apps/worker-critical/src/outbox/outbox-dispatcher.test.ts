@@ -45,11 +45,7 @@ class MemoryOutboxRepository implements OutboxDispatchRepository {
 class RecordingQueue implements OutboxQueue {
   readonly calls: Array<{ name: string; data: unknown; options: Record<string, unknown> }> = [];
 
-  async add(
-    name: string,
-    data: unknown,
-    options: { readonly jobId: string },
-  ): Promise<void> {
+  async add(name: string, data: unknown, options: { readonly jobId: string }): Promise<void> {
     this.calls.push({ name, data, options });
   }
 }
