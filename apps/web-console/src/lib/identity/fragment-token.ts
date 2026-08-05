@@ -12,14 +12,18 @@ export function consumeIdentityTokenFragment(
   location: IdentityTokenLocation,
   history: IdentityTokenHistory,
 ): string | null {
-  if (location.hash.length === 0) {
+  const hash = location.hash;
+  const pathname = location.pathname;
+  const search = location.search;
+
+  if (hash.length === 0) {
     return null;
   }
 
-  history.replaceState(null, "", `${location.pathname}${location.search}`);
+  history.replaceState(null, "", `${pathname}${search}`);
 
   try {
-    const fragment = location.hash.startsWith("#") ? location.hash.slice(1) : location.hash;
+    const fragment = hash.startsWith("#") ? hash.slice(1) : hash;
     const parameters = new URLSearchParams(fragment);
     const entries = [...parameters.entries()];
     const tokens = parameters.getAll("token");
