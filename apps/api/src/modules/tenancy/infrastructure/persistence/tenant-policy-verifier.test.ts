@@ -232,3 +232,18 @@ test("rejects split tenant enforcement across separate policies", async () => {
     ),
   );
 });
+
+test("rejects an additional broad applicable policy", async () => {
+  const broadPolicy = {
+    ...validPolicy,
+    policyname: "broad_access",
+    qual: "true",
+    with_check: "true",
+  };
+
+  assert.ok(
+    (await failures({ policies: [validPolicy, broadPolicy] })).some((failure) =>
+      failure.includes("applicable RLS policy"),
+    ),
+  );
+});

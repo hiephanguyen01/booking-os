@@ -153,6 +153,11 @@ async function inspectTable(
         expressionReferencesTenant(row.qual, policy.tenantColumn) &&
         expressionReferencesTenant(row.with_check, policy.tenantColumn),
     );
+    const unsafeApplicablePolicies = applicablePolicies.filter(
+      (row) =>
+        !expressionReferencesTenant(row.qual, policy.tenantColumn) ||
+        !expressionReferencesTenant(row.with_check, policy.tenantColumn),
+    );
 
     if (!hasTenantUsing) {
       failures.push(`${policy.table}: RLS USING expression does not enforce app.tenant_id`);
@@ -163,6 +168,11 @@ async function inspectTable(
     if (hasTenantUsing && hasTenantWithCheck && !hasCompleteTenantPolicy) {
       failures.push(
         `${policy.table}: no single RLS policy enforces app.tenant_id in both USING and WITH CHECK`,
+      );
+    }
+    if (hasCompleteTenantPolicy && unsafeApplicablePolicies.length > 0) {
+      failures.push(
+        `${policy.table}: an applicable RLS policy does not enforce app.tenant_id in both USING and WITH CHECK`,
       );
     }
   }
