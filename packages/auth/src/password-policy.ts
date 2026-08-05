@@ -46,10 +46,7 @@ function containsCanonicalPassword(
   return false;
 }
 
-export function assertPasswordPolicy(
-  input: string,
-  options: PasswordPolicyOptions = {},
-): string {
+export function assertPasswordPolicy(input: string, options: PasswordPolicyOptions = {}): string {
   const normalized = normalizePassword(input);
 
   if ([...normalized].length < MIN_PASSWORD_CODE_POINTS) {
