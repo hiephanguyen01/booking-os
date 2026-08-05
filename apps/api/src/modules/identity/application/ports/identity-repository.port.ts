@@ -1,0 +1,67 @@
+import type { GlobalUser, IdentityScopeType } from "../../domain/user.js";
+
+export interface PendingUserInput {
+  readonly normalizedEmail: string;
+  readonly displayEmail: string;
+  readonly now: Date;
+}
+
+export interface PasswordCredentialInput {
+  readonly userId: string;
+  readonly passwordHash: string;
+  readonly changedAt: Date;
+}
+
+export interface StoredActivationToken {
+  readonly id: string;
+  readonly userId: string;
+  readonly scopeType: IdentityScopeType;
+  readonly tenantId: string | null;
+  readonly invitationId: string | null;
+  readonly hostname: string;
+  readonly selector: string;
+  readonly tokenHash: string;
+  readonly expiresAt: Date;
+  readonly createdAt: Date;
+}
+
+export interface StoredResetToken {
+  readonly id: string;
+  readonly userId: string;
+  readonly scopeType: IdentityScopeType;
+  readonly tenantId: string | null;
+  readonly hostname: string;
+  readonly selector: string;
+  readonly tokenHash: string;
+  readonly expiresAt: Date;
+  readonly createdAt: Date;
+}
+
+export interface ConsumeActivationInput {
+  readonly selector: string;
+  readonly tokenHash: string;
+  readonly hostname: string;
+  readonly scopeType: IdentityScopeType;
+  readonly tenantId: string | null;
+  readonly now: Date;
+}
+
+export interface CompleteResetInput {
+  readonly selector: string;
+  readonly tokenHash: string;
+  readonly hostname: string;
+  readonly scopeType: IdentityScopeType;
+  readonly tenantId: string | null;
+  readonly passwordHash: string;
+  readonly now: Date;
+}
+
+export interface IdentityRepositoryPort {
+  findUserByNormalizedEmail(email: string): Promise<GlobalUser | null>;
+  createPendingUser(input: PendingUserInput): Promise<GlobalUser>;
+  storePasswordCredential(input: PasswordCredentialInput): Promise<void>;
+  issueActivationToken(input: StoredActivationToken): Promise<void>;
+  issuePasswordResetToken(input: StoredResetToken): Promise<void>;
+  consumeActivationToken(input: ConsumeActivationInput): Promise<GlobalUser>;
+  replacePasswordAndConsumeReset(input: CompleteResetInput): Promise<void>;
+}

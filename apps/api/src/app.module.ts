@@ -6,6 +6,7 @@ import { EnvironmentModule } from "./config/environment.module.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { DependenciesModule } from "./dependencies/dependencies.module.js";
 import { HealthModule } from "./health/health.module.js";
+import { IdentityModule } from "./modules/identity/identity.module.js";
 import { TenancyModule } from "./modules/tenancy/tenancy.module.js";
 import { ObservabilityModule } from "./observability/observability.module.js";
 import { ReliabilityModule } from "./reliability/reliability.module.js";
@@ -19,6 +20,7 @@ import { ReliabilityModule } from "./reliability/reliability.module.js";
     DependenciesModule,
     DatabaseModule,
     HealthModule,
+    IdentityModule,
     TenancyModule,
     ReliabilityModule,
   ],
