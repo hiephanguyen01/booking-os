@@ -43,6 +43,7 @@ export interface ConsumeActivationInput {
   readonly hostname: string;
   readonly scopeType: IdentityScopeType;
   readonly tenantId: string | null;
+  readonly passwordHash: string;
   readonly now: Date;
 }
 
@@ -56,6 +57,10 @@ export interface CompleteResetInput {
   readonly now: Date;
 }
 
+export interface PasswordResetResult {
+  readonly userId: string;
+}
+
 export interface IdentityRepositoryPort {
   findUserByNormalizedEmail(email: string): Promise<GlobalUser | null>;
   createPendingUser(input: PendingUserInput): Promise<GlobalUser>;
@@ -63,5 +68,5 @@ export interface IdentityRepositoryPort {
   issueActivationToken(input: StoredActivationToken): Promise<void>;
   issuePasswordResetToken(input: StoredResetToken): Promise<void>;
   consumeActivationToken(input: ConsumeActivationInput): Promise<GlobalUser>;
-  replacePasswordAndConsumeReset(input: CompleteResetInput): Promise<void>;
+  replacePasswordAndConsumeReset(input: CompleteResetInput): Promise<PasswordResetResult>;
 }

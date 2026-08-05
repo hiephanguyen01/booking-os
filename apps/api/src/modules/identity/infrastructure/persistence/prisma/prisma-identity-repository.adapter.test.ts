@@ -13,6 +13,7 @@ const TOKEN_ID = "22222222-2222-4222-8222-222222222222";
 const NOW = new Date("2026-08-05T08:00:00.000Z");
 const EXPIRES_AT = new Date("2026-08-06T08:00:00.000Z");
 const TOKEN_HASH = "a".repeat(64);
+const PASSWORD_HASH = "$argon2id$v=19$m=65536,t=3,p=1$test$hash";
 const HOSTNAME = "console.example.com";
 
 const userRow = {
@@ -149,6 +150,11 @@ test("locks and consumes a valid activation token before activating the user", a
       operations.push({ name: "lock", input: { query, selector } });
       return [tokenRow];
     },
+    passwordCredential: {
+      async upsert(input: unknown): Promise<void> {
+        operations.push({ name: "password", input });
+      },
+    },
     accountActivationToken: {
       async update(input: unknown): Promise<void> {
         operations.push({ name: "consume", input });
@@ -169,13 +175,14 @@ test("locks and consumes a valid activation token before activating the user", a
     hostname: HOSTNAME,
     scopeType: "platform",
     tenantId: null,
+    passwordHash: PASSWORD_HASH,
     now: NOW,
   });
 
   assert.equal(result.status, "active");
   assert.deepEqual(
     operations.map((operation) => operation.name),
-    ["lock", "consume", "activate"],
+    ["lock", "password", "consume", "activate"],
   );
   const lock = operations[0]?.input as { query: string; selector: string };
   assert.match(lock.query, /account_activation_tokens/i);
@@ -212,6 +219,11 @@ test("rejects activation token binding and lifecycle failures with one generic e
       async $queryRawUnsafe(): Promise<(typeof row)[]> {
         return [row];
       },
+      passwordCredential: {
+        async upsert(): Promise<never> {
+          throw new Error("invalid tokens must not store passwords");
+        },
+      },
       accountActivationToken: {
         async update(): Promise<never> {
           throw new Error("invalid tokens must not be consumed");
@@ -232,6 +244,7 @@ test("rejects activation token binding and lifecycle failures with one generic e
         hostname: HOSTNAME,
         scopeType: "platform",
         tenantId: null,
+        passwordHash: PASSWORD_HASH,
         now: NOW,
       }),
       (error: unknown) =>
@@ -281,18 +294,18 @@ test("replaces the password, consumes reset state, and increments authorization 
     },
   };
   const adapter = new PrismaIdentityRepositoryAdapter(createTransactionPrisma(transaction));
-  const passwordHash = "$argon2id$v=19$m=65536,t=3,p=1$test$hash";
 
-  await adapter.replacePasswordAndConsumeReset({
+  const result = await adapter.replacePasswordAndConsumeReset({
     selector: resetRow.selector,
     tokenHash: TOKEN_HASH,
     hostname: HOSTNAME,
     scopeType: "platform",
     tenantId: null,
-    passwordHash,
+    passwordHash: PASSWORD_HASH,
     now: NOW,
   });
 
+  assert.deepEqual(result, { userId: USER_ID });
   assert.deepEqual(
     operations.map((operation) => operation.name),
     ["lock", "password", "consume", "revoke-other-resets", "version"],

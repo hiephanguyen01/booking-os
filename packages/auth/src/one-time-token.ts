@@ -26,10 +26,13 @@ export interface CreateOneTimeTokenOptions {
   readonly randomBytes?: (size: number) => Uint8Array;
 }
 
-export interface VerifyOneTimeTokenSecretOptions {
+export interface DeriveOneTimeTokenDigestOptions {
   readonly pepper: Uint8Array;
   readonly purpose: string;
   readonly secret: string;
+}
+
+export interface VerifyOneTimeTokenSecretOptions extends DeriveOneTimeTokenDigestOptions {
   readonly expectedDigest: string;
 }
 
@@ -65,6 +68,17 @@ function digestSecret(pepper: Uint8Array, purpose: string, secret: string): Buff
     .update("\0", "utf8")
     .update(secret, "utf8")
     .digest();
+}
+
+export function deriveOneTimeTokenDigest(options: DeriveOneTimeTokenDigestOptions): string {
+  assertPepper(options.pepper);
+  const purpose = normalizePurpose(options.purpose);
+
+  if (typeof options.secret !== "string" || !BASE64URL_PATTERN.test(options.secret)) {
+    throw new TypeError("One-time token secret is malformed.");
+  }
+
+  return digestSecret(options.pepper, purpose, options.secret).toString("hex");
 }
 
 export function createOneTimeToken(options: CreateOneTimeTokenOptions): OneTimeToken {
@@ -115,15 +129,13 @@ export function verifyOneTimeTokenSecret(options: VerifyOneTimeTokenSecretOption
   }
 
   try {
-    assertPepper(options.pepper);
-    const purpose = normalizePurpose(options.purpose);
     const expected = Buffer.from(options.expectedDigest, "hex");
 
     if (expected.byteLength !== DIGEST_BYTES) {
       return false;
     }
 
-    const actual = digestSecret(options.pepper, purpose, options.secret);
+    const actual = Buffer.from(deriveOneTimeTokenDigest(options), "hex");
     return timingSafeEqual(actual, expected);
   } catch {
     return false;

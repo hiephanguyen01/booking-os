@@ -1,6 +1,12 @@
-import { createOneTimeToken, parseOneTimeToken, verifyOneTimeTokenSecret } from "@booking-os/auth";
+import {
+  createOneTimeToken,
+  deriveOneTimeTokenDigest,
+  parseOneTimeToken,
+  verifyOneTimeTokenSecret,
+} from "@booking-os/auth";
 
 import type {
+  DerivedOneTimeToken,
   IssuedOneTimeToken,
   OneTimeTokenPort,
   VerifiedOneTimeToken,
@@ -21,6 +27,27 @@ export class HmacOneTimeTokenAdapter implements OneTimeTokenPort {
       serialized: token.serialized,
       tokenHash: token.secretDigest,
     });
+  }
+
+  derive(serialized: string, purpose: string): DerivedOneTimeToken | null {
+    const parsed = parseOneTimeToken(serialized);
+
+    if (!parsed) {
+      return null;
+    }
+
+    try {
+      return Object.freeze({
+        selector: parsed.selector,
+        tokenHash: deriveOneTimeTokenDigest({
+          pepper: this.pepper,
+          purpose,
+          secret: parsed.secret,
+        }),
+      });
+    } catch {
+      return null;
+    }
   }
 
   verify(

@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type { PrismaService } from "../../../../../database/prisma.service.js";
 import { OutboxRepository } from "../../../../../reliability/outbox.repository.js";
-import type { IssueIdentityEmailInput } from "../../../application/ports/identity-outbox.port.js";
+import type { IssueActivationEmailInput } from "../../../application/ports/identity-outbox.port.js";
 import { PrismaIdentityOutboxAdapter } from "./prisma-identity-outbox.adapter.js";
 
 const NOW = new Date("2026-08-05T09:00:00.000Z");
@@ -11,7 +11,7 @@ const USER_ID = "11111111-1111-4111-8111-111111111111";
 const TOKEN_ID = "22222222-2222-4222-8222-222222222222";
 const EVENT_ID = "33333333-3333-4333-8333-333333333333";
 
-function activationInput(): IssueIdentityEmailInput {
+function activationInput(): IssueActivationEmailInput {
   return {
     token: {
       id: TOKEN_ID,

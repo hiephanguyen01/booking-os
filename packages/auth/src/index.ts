@@ -7,6 +7,8 @@ export { normalizeEmail } from "./email-normalization.js";
 export {
   type CreateOneTimeTokenOptions,
   createOneTimeToken,
+  type DeriveOneTimeTokenDigestOptions,
+  deriveOneTimeTokenDigest,
   type OneTimeToken,
   type ParsedOneTimeToken,
   parseOneTimeToken,

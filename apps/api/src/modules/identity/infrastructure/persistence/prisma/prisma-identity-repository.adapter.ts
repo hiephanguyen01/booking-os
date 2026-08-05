@@ -10,6 +10,7 @@ import type {
   ConsumeActivationInput,
   IdentityRepositoryPort,
   PasswordCredentialInput,
+  PasswordResetResult,
   PendingUserInput,
   StoredActivationToken,
   StoredResetToken,
@@ -275,7 +276,27 @@ export class PrismaIdentityRepositoryAdapter implements IdentityRepositoryPort {
         input.selector,
       );
       const token = requireValidToken(rows, input);
+      const parameters = credentialParameters();
 
+      await transaction.passwordCredential.upsert({
+        where: { userId: token.userId },
+        create: {
+          userId: token.userId,
+          passwordHash: input.passwordHash,
+          algorithm: "argon2id",
+          parameters,
+          passwordChangedAt: input.now,
+          createdAt: input.now,
+          updatedAt: input.now,
+        },
+        update: {
+          passwordHash: input.passwordHash,
+          algorithm: "argon2id",
+          parameters,
+          passwordChangedAt: input.now,
+          updatedAt: input.now,
+        },
+      });
       await transaction.accountActivationToken.update({
         where: { id: token.id },
         data: { consumedAt: input.now },
@@ -293,8 +314,8 @@ export class PrismaIdentityRepositoryAdapter implements IdentityRepositoryPort {
     });
   }
 
-  async replacePasswordAndConsumeReset(input: CompleteResetInput): Promise<void> {
-    await this.prisma.$transaction(async (transaction) => {
+  async replacePasswordAndConsumeReset(input: CompleteResetInput): Promise<PasswordResetResult> {
+    return this.prisma.$transaction(async (transaction) => {
       const rows = await transaction.$queryRawUnsafe<LockedTokenRow[]>(
         LOCK_PASSWORD_RESET_TOKEN_SQL,
         input.selector,
@@ -344,6 +365,8 @@ export class PrismaIdentityRepositoryAdapter implements IdentityRepositoryPort {
           updatedAt: input.now,
         },
       });
+
+      return Object.freeze({ userId: token.userId });
     });
   }
 }
