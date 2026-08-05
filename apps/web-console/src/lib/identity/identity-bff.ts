@@ -7,10 +7,21 @@ export interface IdentityBffOptions {
 
 export interface IdentityBffHandlers {
   passwordForgot(request: Request): Promise<Response>;
+  activationComplete(request: Request): Promise<Response>;
+  passwordReset(request: Request): Promise<Response>;
 }
 
 interface CsrfResponseBody {
   readonly csrfToken: string;
+}
+
+type IdentityCsrfPurpose = "password_forgot" | "activation" | "password_reset";
+
+interface IdentityCommand {
+  readonly purpose: IdentityCsrfPurpose;
+  readonly path: string;
+  readonly successStatus: 200 | 202;
+  readonly successBody: Readonly<Record<string, boolean>>;
 }
 
 function securityHeaders(): Headers {
@@ -96,79 +107,103 @@ async function parseJsonBody(request: Request): Promise<unknown | null> {
   }
 }
 
+function originMismatchResponse(): Response {
+  return jsonResponse(403, {
+    error: {
+      code: "CSRF_ORIGIN_MISMATCH",
+      message: "The request origin does not match the console origin.",
+    },
+  });
+}
+
+function invalidRequestResponse(): Response {
+  return jsonResponse(400, {
+    error: { code: "INVALID_REQUEST", message: "The request body is invalid." },
+  });
+}
+
+function upstreamUnavailableResponse(): Response {
+  return jsonResponse(502, {
+    error: {
+      code: "IDENTITY_UPSTREAM_UNAVAILABLE",
+      message: "Identity service unavailable.",
+    },
+  });
+}
+
 export function createIdentityBffHandlers(options: IdentityBffOptions): IdentityBffHandlers {
   const apiBaseUrl = resolveApiBaseUrl(options.apiBaseUrl);
   const fetchImpl = options.fetch ?? fetch;
 
-  return Object.freeze({
-    passwordForgot: async (request: Request): Promise<Response> => {
-      if (!hasMatchingOrigin(request)) {
-        return jsonResponse(403, {
-          error: {
-            code: "CSRF_ORIGIN_MISMATCH",
-            message: "The request origin does not match the console origin.",
-          },
-        });
-      }
+  async function executeCommand(request: Request, command: IdentityCommand): Promise<Response> {
+    if (!hasMatchingOrigin(request)) {
+      return originMismatchResponse();
+    }
 
-      const payload = await parseJsonBody(request);
-      if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-        return jsonResponse(400, {
-          error: { code: "INVALID_REQUEST", message: "The request body is invalid." },
-        });
-      }
+    const payload = await parseJsonBody(request);
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      return invalidRequestResponse();
+    }
 
-      try {
-        const csrfResponse = await fetchImpl(
-          `${endpoint(apiBaseUrl, "/auth/csrf")}?purpose=password_forgot`,
-          {
-            method: "GET",
-            headers: { accept: "application/json" },
-            cache: "no-store",
-          },
-        );
-        const csrfBody = csrfResponse.ok ? parseCsrfBody(await csrfResponse.json()) : null;
-        const cookie = extractPreAuthCookie(csrfResponse.headers.get("set-cookie"));
-        if (!csrfBody || !cookie) {
-          return jsonResponse(502, {
-            error: {
-              code: "IDENTITY_UPSTREAM_UNAVAILABLE",
-              message: "Identity service unavailable.",
-            },
-          });
-        }
-
-        const upstream = await fetchImpl(endpoint(apiBaseUrl, "/auth/password/forgot"), {
-          method: "POST",
-          headers: {
-            accept: "application/json",
-            "content-type": "application/json",
-            cookie,
-            origin: apiBaseUrl.origin,
-            "x-csrf-token": csrfBody.csrfToken,
-          },
-          body: JSON.stringify(payload),
+    try {
+      const csrfResponse = await fetchImpl(
+        `${endpoint(apiBaseUrl, "/auth/csrf")}?purpose=${command.purpose}`,
+        {
+          method: "GET",
+          headers: { accept: "application/json" },
           cache: "no-store",
-        });
-
-        if (!upstream.ok) {
-          return jsonResponse(502, {
-            error: {
-              code: "IDENTITY_UPSTREAM_UNAVAILABLE",
-              message: "Identity service unavailable.",
-            },
-          });
-        }
-
-        return jsonResponse(202, { accepted: true });
-      } catch {
-        return jsonResponse(502, {
-          error: {
-            code: "IDENTITY_UPSTREAM_UNAVAILABLE",
-            message: "Identity service unavailable.",
-          },
-        });
+        },
+      );
+      const csrfBody = csrfResponse.ok ? parseCsrfBody(await csrfResponse.json()) : null;
+      const cookie = extractPreAuthCookie(csrfResponse.headers.get("set-cookie"));
+      if (!csrfBody || !cookie) {
+        return upstreamUnavailableResponse();
       }
-    },
+
+      const upstream = await fetchImpl(endpoint(apiBaseUrl, command.path), {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "content-type": "application/json",
+          cookie,
+          origin: apiBaseUrl.origin,
+          "x-csrf-token": csrfBody.csrfToken,
+        },
+        body: JSON.stringify(payload),
+        cache: "no-store",
+      });
+
+      if (!upstream.ok) {
+        return upstreamUnavailableResponse();
+      }
+
+      return jsonResponse(command.successStatus, command.successBody);
+    } catch {
+      return upstreamUnavailableResponse();
+    }
+  }
+
+  return Object.freeze({
+    passwordForgot: (request: Request): Promise<Response> =>
+      executeCommand(request, {
+        purpose: "password_forgot",
+        path: "/auth/password/forgot",
+        successStatus: 202,
+        successBody: { accepted: true },
+      }),
+    activationComplete: (request: Request): Promise<Response> =>
+      executeCommand(request, {
+        purpose: "activation",
+        path: "/auth/activation/complete",
+        successStatus: 200,
+        successBody: { completed: true },
+      }),
+    passwordReset: (request: Request): Promise<Response> =>
+      executeCommand(request, {
+        purpose: "password_reset",
+        path: "/auth/password/reset",
+        successStatus: 200,
+        successBody: { completed: true },
+      }),
   });
 }
