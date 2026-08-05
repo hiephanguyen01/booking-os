@@ -37,6 +37,6 @@ export class RequestContextMiddleware implements NestMiddleware {
     response.setHeader("x-request-id", requestId);
     response.setHeader("x-trace-id", traceId);
 
-    this.storage.run({ requestId, traceId }, next);
+    this.storage.run({ requestId, traceId, source: "internal" }, next);
   }
 }

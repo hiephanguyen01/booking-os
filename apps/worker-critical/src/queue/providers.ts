@@ -5,6 +5,7 @@ import { type Job, Queue, Worker } from "bullmq";
 import { Redis } from "ioredis";
 
 import { parseWorkerConfig, type WorkerConfig } from "../config/worker-config.js";
+import { WorkerDatabase } from "../database/worker-database.js";
 import { OutboxDispatcher } from "../outbox/outbox-dispatcher.js";
 import type { OutboxJobPayload } from "../outbox/outbox-event.js";
 import { OutboxPollingService } from "../outbox/outbox-polling.service.js";
@@ -121,7 +122,7 @@ export const workerProviders: Provider[] = [
       logger: StructuredLogger,
     ): OutboxPollingService =>
       new OutboxPollingService(
-        new OutboxDispatcher(new PrismaOutboxRepository(prisma), queue),
+        new OutboxDispatcher(new PrismaOutboxRepository(new WorkerDatabase(prisma)), queue),
         logger,
       ),
   },

@@ -66,6 +66,7 @@ run(
   ],
   migrationEnvironment,
 );
+run(["--filter", "@booking-os/api", "verify:tenant-policies"], migrationEnvironment);
 
 if (existsSync(previousSchemaFixture)) {
   const previousSchemaDatabaseUrl = process.env.PREVIOUS_SCHEMA_DATABASE_URL?.trim();
@@ -107,6 +108,9 @@ if (existsSync(previousSchemaFixture)) {
     ],
     { DATABASE_URL: previousSchemaDatabaseUrl },
   );
+  run(["--filter", "@booking-os/api", "verify:tenant-policies"], {
+    DATABASE_URL: previousSchemaDatabaseUrl,
+  });
 } else {
   console.log("No previous-schema fixture found; upgrade-path verification is not yet applicable.");
 }

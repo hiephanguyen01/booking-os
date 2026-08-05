@@ -17,6 +17,7 @@
     "prisma:studio": "prisma studio",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:seed": "prisma generate && prisma db seed",
+    "verify:tenant-policies": "tsx scripts/verify-tenant-policies.ts",
     "clean": "rimraf dist tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo"
   },
   "prisma": {

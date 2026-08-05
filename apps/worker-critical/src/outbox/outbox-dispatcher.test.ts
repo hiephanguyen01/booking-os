@@ -11,6 +11,7 @@ import type { DispatchableOutboxEvent } from "./outbox-event.js";
 const EVENT_ID = "44444444-4444-4444-8444-444444444444";
 
 class MemoryOutboxRepository implements OutboxDispatchRepository {
+  readonly failedErrors: string[] = [];
   private dispatched = false;
   private attempts = 0;
 
@@ -30,7 +31,13 @@ class MemoryOutboxRepository implements OutboxDispatchRepository {
     this.dispatched = true;
   }
 
-  async markFailed(): Promise<"retryable" | "dead-lettered"> {
+  async markFailed(
+    eventId: string,
+    sanitizedError: string,
+  ): Promise<"retryable" | "dead-lettered"> {
+    assert.equal(eventId, this.event.id);
+    this.failedErrors.push(sanitizedError);
+    this.dispatched = true;
     return "retryable";
   }
 }
@@ -43,16 +50,28 @@ class RecordingQueue implements OutboxQueue {
   }
 }
 
-test("dispatches the same event at most once", async () => {
-  const repository = new MemoryOutboxRepository({
+class FailingQueue implements OutboxQueue {
+  constructor(private readonly error: Error) {}
+
+  async add(): Promise<void> {
+    throw this.error;
+  }
+}
+
+function eventFixture(payload: unknown = { value: "created" }): DispatchableOutboxEvent {
+  return {
     id: EVENT_ID,
     tenantId: "11111111-1111-4111-8111-111111111111",
     type: "FoundationProbeCreated",
     aggregateType: "tenant_probe",
     aggregateId: "33333333-3333-4333-8333-333333333333",
-    payload: { value: "created" },
+    payload,
     attempts: 0,
-  });
+  };
+}
+
+test("dispatches the same event at most once", async () => {
+  const repository = new MemoryOutboxRepository(eventFixture());
   const queue = new RecordingQueue();
   const dispatcher = new OutboxDispatcher(repository, queue);
 
@@ -74,4 +93,21 @@ test("dispatches the same event at most once", async () => {
       jobId: EVENT_ID,
     },
   ]);
+});
+
+test("persists only a sanitized error name when queue delivery fails", async () => {
+  const repository = new MemoryOutboxRepository(
+    eventFixture({ password: "payload-secret", databaseUrl: "postgresql://user:secret@db" }),
+  );
+  const dispatcher = new OutboxDispatcher(
+    repository,
+    new FailingQueue(new Error("credential-secret payload-secret")),
+  );
+
+  const summary = await dispatcher.dispatchBatch(10);
+
+  assert.deepEqual(summary, { claimed: 1, dispatched: 0, failed: 1, deadLettered: 0 });
+  assert.deepEqual(repository.failedErrors, ["Error"]);
+  assert.equal(JSON.stringify(repository.failedErrors).includes("credential-secret"), false);
+  assert.equal(JSON.stringify(repository.failedErrors).includes("payload-secret"), false);
 });

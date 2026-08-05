@@ -25,6 +25,7 @@ class ResponseDouble extends EventEmitter {
 const environment: Environment = {
   nodeEnvironment: "test",
   host: "127.0.0.1",
+  trustProxy: false,
   port: 3101,
   apiPrefix: "api",
   appVersion: "0.1.0-test",
