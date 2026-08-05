@@ -219,12 +219,10 @@ ON "auth_sessions"
 FOR ALL
 TO booking_app
 USING (
-  "scope_type" = 'tenant'
-  AND "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+  "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
 )
 WITH CHECK (
-  "scope_type" = 'tenant'
-  AND "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+  "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
 );
 
 CREATE POLICY "auth_sessions_platform_scope"
@@ -243,12 +241,10 @@ ON "auth_session_tokens"
 FOR ALL
 TO booking_app
 USING (
-  "scope_type" = 'tenant'
-  AND "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+  "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
 )
 WITH CHECK (
-  "scope_type" = 'tenant'
-  AND "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+  "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
 );
 
 CREATE POLICY "auth_session_tokens_platform_scope"
