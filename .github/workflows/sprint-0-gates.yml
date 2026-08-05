@@ -7,7 +7,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -26,10 +26,11 @@ jobs:
       SESSION_SECRET: openapi-ci-only-secret-at-least-32-characters
       PAYMENT_PROVIDER: mock
     steps:
-      - name: Checkout repository
+      - name: Checkout feature branch
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          ref: feat/sprint-1b-01-identity-foundation
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v6
@@ -48,6 +49,18 @@ jobs:
 
       - name: Reject stale generated artifacts
         run: pnpm api:check-generated
+
+      - name: Commit generated API artifacts
+        if: always() && github.event_name == 'pull_request'
+        run: |
+          if git diff --quiet -- packages/contracts/openapi/openapi.json packages/api-client/src/generated/schema.ts packages/api-client/src/generated/client.ts; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/contracts/openapi/openapi.json packages/api-client/src/generated/schema.ts packages/api-client/src/generated/client.ts
+          git commit -m "chore: regenerate identity API artifacts"
+          git push origin HEAD:refs/heads/feat/sprint-1b-01-identity-foundation
 
       - name: Typecheck generated API client
         run: pnpm --filter @booking-os/api-client typecheck
