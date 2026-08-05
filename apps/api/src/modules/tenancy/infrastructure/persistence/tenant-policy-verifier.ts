@@ -51,10 +51,6 @@ function normalizeIdentifier(value: string): string {
   return value.replaceAll('"', "").toLowerCase();
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 function stripOuterParentheses(value: string): string {
   let result = value.trim();
 
