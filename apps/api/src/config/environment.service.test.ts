@@ -24,10 +24,7 @@ const legacyEnvironment: Environment = {
 test("identity security access fails closed for legacy test fixtures", () => {
   const service = new EnvironmentService(legacyEnvironment);
 
-  assert.throws(
-    () => service.identitySecurity,
-    /Identity security configuration is unavailable/,
-  );
+  assert.throws(() => service.identitySecurity, /Identity security configuration is unavailable/);
 });
 
 test("identity security access exposes a validated configuration", () => {
