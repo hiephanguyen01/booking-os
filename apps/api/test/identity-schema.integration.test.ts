@@ -385,11 +385,7 @@ test("platform administrator catalog is deterministic", async () => {
 
   assert.deepEqual(
     rows.map((row) => row.permission_key),
-    [
-      "platform.security.audit.read",
-      "platform.tenants.provision",
-      "platform.users.provision",
-    ],
+    ["platform.security.audit.read", "platform.tenants.provision", "platform.users.provision"],
   );
 });
 
