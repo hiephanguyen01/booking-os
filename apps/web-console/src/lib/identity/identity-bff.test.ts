@@ -24,10 +24,13 @@ function createIdentityFetch(calls: FetchCall[], finalStatus: number): typeof fe
       });
     }
 
-    return new Response(JSON.stringify(finalStatus === 202 ? { accepted: true } : { completed: true }), {
-      status: finalStatus,
-      headers: { "content-type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify(finalStatus === 202 ? { accepted: true } : { completed: true }),
+      {
+        status: finalStatus,
+        headers: { "content-type": "application/json" },
+      },
+    );
   };
 }
 
@@ -96,10 +99,7 @@ test("activation consumes the token only on the server-side API call", async () 
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { completed: true });
   assert.doesNotMatch(responseText, /selector|secret|opaque-proof|opaque-nonce/iu);
-  assert.equal(
-    calls[0]?.url,
-    "https://api.example.test/api/auth/csrf?purpose=activation",
-  );
+  assert.equal(calls[0]?.url, "https://api.example.test/api/auth/csrf?purpose=activation");
   assert.equal(calls[1]?.url, "https://api.example.test/api/auth/activation/complete");
   assert.deepEqual(JSON.parse(String(calls[1]?.init?.body)), {
     token: "selector.secret",
@@ -132,10 +132,7 @@ test("password reset uses its own CSRF purpose and neutral completion response",
 
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { completed: true });
-  assert.equal(
-    calls[0]?.url,
-    "https://api.example.test/api/auth/csrf?purpose=password_reset",
-  );
+  assert.equal(calls[0]?.url, "https://api.example.test/api/auth/csrf?purpose=password_reset");
   assert.equal(calls[1]?.url, "https://api.example.test/api/auth/password/reset");
 });
 
