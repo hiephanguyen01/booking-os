@@ -67,9 +67,14 @@ test("maps concurrent normalized-email collisions to a stable domain error", asy
 
   assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
   const rejected = results.find((result) => result.status === "rejected");
-  assert.ok(rejected?.status === "rejected");
-  assert.ok(rejected.reason instanceof IdentityEmailConflictError);
-  assert.equal(rejected.reason.code, "identity.email_conflict");
+  if (rejected?.status !== "rejected") {
+    assert.fail("expected one concurrent create to be rejected");
+  }
+  const reason: unknown = rejected.reason;
+  if (!(reason instanceof IdentityEmailConflictError)) {
+    assert.fail("expected the normalized-email collision domain error");
+  }
+  assert.equal(reason.code, "identity.email_conflict");
 });
 
 test("reissuing an activation token revokes the prior active token atomically", async () => {
