@@ -12,6 +12,7 @@ import type { IssuedPreAuthCsrf, PreAuthCsrfPurpose } from "./pre-auth-csrf.js";
 
 export interface IdentityPublicHttpRequest {
   readonly hostname: string;
+  readonly expectedOrigin: string;
   readonly origin: string | null;
   readonly csrfCookie: string | null;
   readonly csrfToken: string | null;
