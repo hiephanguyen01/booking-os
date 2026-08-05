@@ -18,6 +18,11 @@ function fixedIv(size: number): Uint8Array {
   return Uint8Array.from({ length: size }, (_, index) => index + 1);
 }
 
+function tamperBase64Url(value: string): string {
+  const replacement = value.startsWith("A") ? "B" : "A";
+  return `${replacement}${value.slice(1)}`;
+}
+
 test("encrypts and decrypts an AES-256-GCM envelope with bound AAD", () => {
   const plaintext = encoder.encode('{"recipient":"owner@example.com","token":"secret"}');
   const envelope = encryptSensitiveEnvelope({
@@ -89,13 +94,13 @@ test("rejects wrong AAD, unknown keys, and tampering with a generic error", () =
     () => decryptSensitiveEnvelope({ envelope, keyring: {}, aad: AAD }),
     () =>
       decryptSensitiveEnvelope({
-        envelope: { ...envelope, ciphertext: `${envelope.ciphertext.slice(0, -1)}A` },
+        envelope: { ...envelope, ciphertext: tamperBase64Url(envelope.ciphertext) },
         keyring: { "identity-v1": KEY_V1 },
         aad: AAD,
       }),
     () =>
       decryptSensitiveEnvelope({
-        envelope: { ...envelope, tag: `${envelope.tag.slice(0, -1)}A` },
+        envelope: { ...envelope, tag: tamperBase64Url(envelope.tag) },
         keyring: { "identity-v1": KEY_V1 },
         aad: AAD,
       }),
