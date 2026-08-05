@@ -5,8 +5,8 @@ export {
 } from "./authorization.js";
 export { normalizeEmail } from "./email-normalization.js";
 export {
-  createOneTimeToken,
   type CreateOneTimeTokenOptions,
+  createOneTimeToken,
   type OneTimeToken,
   type ParsedOneTimeToken,
   parseOneTimeToken,
@@ -28,8 +28,8 @@ export {
   countPasswordCodePoints,
   MIN_PASSWORD_CODE_POINTS,
   normalizePassword,
-  type PasswordPolicyErrorCode,
   PasswordPolicyError,
+  type PasswordPolicyErrorCode,
   type PasswordPolicyOptions,
 } from "./password-policy.js";
 export { PERMISSIONS, type Permission } from "./permissions.js";
