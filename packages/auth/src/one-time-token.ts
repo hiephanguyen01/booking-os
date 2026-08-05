@@ -47,10 +47,7 @@ function normalizePurpose(purpose: string): string {
   return purpose.trim();
 }
 
-function drawBytes(
-  size: number,
-  randomBytes: (size: number) => Uint8Array,
-): Uint8Array {
+function drawBytes(size: number, randomBytes: (size: number) => Uint8Array): Uint8Array {
   const bytes = randomBytes(size);
 
   if (!(bytes instanceof Uint8Array) || bytes.byteLength !== size) {
@@ -112,9 +109,7 @@ export function parseOneTimeToken(serialized: string): ParsedOneTimeToken | null
   return Object.freeze({ selector, secret });
 }
 
-export function verifyOneTimeTokenSecret(
-  options: VerifyOneTimeTokenSecretOptions,
-): boolean {
+export function verifyOneTimeTokenSecret(options: VerifyOneTimeTokenSecretOptions): boolean {
   if (!HEX_DIGEST_PATTERN.test(options.expectedDigest)) {
     return false;
   }
