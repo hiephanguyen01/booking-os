@@ -35,7 +35,7 @@ const validPolicy = {
 } as const;
 
 const validFixture: CatalogFixture = {
-  tables: [{ rls_enabled: true, rls_forced: true }],
+  tables: [{ rls_enabled: true, rls_forced: true, table_owner: "booking" }],
   columns: [{ column_name: "tenant_id", is_nullable: "NO" }],
   indexes: [{ has_tenant_index: true }],
   policies: [validPolicy],
@@ -369,5 +369,22 @@ test("rejects broad OR tenant policy expressions", async () => {
         policies: [broadOrPolicy],
       })
     ).some((failure) => failure.includes("USING expression")),
+  );
+});
+
+
+test("rejects tenant tables owned by the application role", async () => {
+  assert.ok(
+    (
+      await failures({
+        tables: [
+          {
+            rls_enabled: true,
+            rls_forced: true,
+            table_owner: "booking_app",
+          },
+        ],
+      })
+    ).some((failure) => failure.includes("must not own tenant table")),
   );
 });

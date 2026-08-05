@@ -7,6 +7,7 @@ const REQUIRED_PRIVILEGES = Object.freeze(["DELETE", "INSERT", "SELECT", "UPDATE
 interface TableRow extends QueryResultRow {
   readonly rls_enabled: boolean;
   readonly rls_forced: boolean;
+  readonly table_owner: string;
 }
 
 interface ColumnRow extends QueryResultRow {
@@ -194,9 +195,12 @@ async function inspectTable(
 ): Promise<readonly string[]> {
   const failures: string[] = [];
   const tableResult = await client.query<TableRow>(
-    `SELECT c.relrowsecurity AS rls_enabled, c.relforcerowsecurity AS rls_forced
+    `SELECT c.relrowsecurity AS rls_enabled,
+            c.relforcerowsecurity AS rls_forced,
+            owner_role.rolname AS table_owner
        FROM pg_class c
        JOIN pg_namespace n ON n.oid = c.relnamespace
+       JOIN pg_roles owner_role ON owner_role.oid = c.relowner
       WHERE n.nspname = 'public'
         AND c.relname = $1
         AND c.relkind = 'r'`,
@@ -213,6 +217,9 @@ async function inspectTable(
   }
   if (!table.rls_forced) {
     failures.push(`${policy.table}: FORCE ROW LEVEL SECURITY is not enabled`);
+  }
+  if (table.table_owner === policy.applicationRole) {
+    failures.push(`${policy.table}: ${policy.applicationRole} must not own tenant table`);
   }
 
   const columnResult = await client.query<ColumnRow>(
