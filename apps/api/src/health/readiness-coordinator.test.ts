@@ -84,6 +84,7 @@ function createHarness(options?: {
     nodeEnvironment: "test",
     host: "127.0.0.1",
     trustProxy: false,
+    tenantBaseDomain: "example.com",
     port: 3101,
     apiPrefix: "api",
     appVersion: "0.1.0-test",

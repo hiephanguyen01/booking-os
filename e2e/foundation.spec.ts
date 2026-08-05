@@ -24,7 +24,7 @@ test("storefront, console, readiness, and tenant isolation are reachable", async
   const tenantProbe = await request.get(`${API_BASE_URL}/foundation/tenant-probes`, {
     headers: {
       authorization: "Bearer foundation-probe",
-      host: "tenant-a.localhost:3001",
+      host: "tenant-a.example.com:3001",
     },
   });
 

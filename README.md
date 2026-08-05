@@ -160,9 +160,10 @@ DATABASE_URL=postgresql://booking:booking@localhost:5432/booking_os
 REDIS_URL=redis://localhost:6379/0
 READINESS_TIMEOUT_MS=750
 TRUST_PROXY=false
+TENANT_BASE_DOMAIN=example.com
 ```
 
-`READINESS_TIMEOUT_MS` is validated from `100` through `5000` milliseconds. `TRUST_PROXY` defaults to `false` and accepts only the literal strings `true` or `false`. Enable it only when the API is behind a configured trusted proxy. Copy the complete local template before starting the API:
+`READINESS_TIMEOUT_MS` is validated from `100` through `5000` milliseconds. `TRUST_PROXY` defaults to `false` and accepts only the literal strings `true` or `false`. Enable it only when the API is behind a configured trusted proxy. `TENANT_BASE_DOMAIN` defaults to `example.com` in development and test, and must be explicitly configured in production. Copy the complete local template before starting the API:
 
 ```bash
 cp apps/api/.env.example apps/api/.env
@@ -194,7 +195,7 @@ curl -i http://localhost:3001/api/ready
 
 ### Tenant isolation and API module boundaries
 
-Tenant identity is resolved only from the effective hostname. Request bodies, query parameters, and client-provided tenant, actor, or source headers are never authorization inputs. With `TRUST_PROXY=false`, `Host` is authoritative; with `TRUST_PROXY=true`, only the first `x-forwarded-host` value is considered.
+Tenant identity is resolved only from an allowlisted effective hostname of the form `<tenant>.<TENANT_BASE_DOMAIN>`. Foreign parent domains and nested subdomains fail closed. Request bodies, query parameters, and client-provided tenant, actor, or source headers are never authorization inputs. With `TRUST_PROXY=false`, `Host` is considered only after the base-domain check; with `TRUST_PROXY=true`, only the first `x-forwarded-host` value is considered and it must pass the same check.
 
 The tenancy module follows a Hexagonal boundary:
 

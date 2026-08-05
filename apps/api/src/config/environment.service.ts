@@ -31,6 +31,10 @@ export class EnvironmentService {
     return this.values.trustProxy;
   }
 
+  get tenantBaseDomain(): string {
+    return this.values.tenantBaseDomain;
+  }
+
   get port(): number {
     return this.values.port;
   }

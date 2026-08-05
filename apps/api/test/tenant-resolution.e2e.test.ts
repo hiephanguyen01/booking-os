@@ -21,6 +21,7 @@ const originalEnvironment = {
   NODE_ENV: process.env.NODE_ENV,
   HOST: process.env.HOST,
   TRUST_PROXY: process.env.TRUST_PROXY,
+  TENANT_BASE_DOMAIN: process.env.TENANT_BASE_DOMAIN,
   PORT: process.env.PORT,
   API_PREFIX: process.env.API_PREFIX,
   APP_VERSION: process.env.APP_VERSION,
@@ -54,6 +55,7 @@ function configureEnvironment(trustProxy: boolean): void {
   process.env.NODE_ENV = "test";
   process.env.HOST = "127.0.0.1";
   process.env.TRUST_PROXY = String(trustProxy);
+  process.env.TENANT_BASE_DOMAIN = "example.com";
   process.env.PORT = "3101";
   process.env.API_PREFIX = "api";
   process.env.APP_VERSION = "0.1.0-e2e";
@@ -166,8 +168,10 @@ test("body query and client headers cannot override the resolved tenant", async 
   ]);
 });
 
-test("unknown and non-tenant hosts fail closed", async () => {
+test("unknown, foreign-domain, and non-tenant hosts fail closed", async () => {
   await probeRequest(directHostApp, "unknown.example.com").expect(404);
+  await probeRequest(directHostApp, "resolution-a.attacker.test").expect(404);
+  await probeRequest(directHostApp, "resolution-a.eu.example.com").expect(404);
   await probeRequest(directHostApp, "localhost").expect(404);
 });
 
@@ -181,7 +185,7 @@ test("disabled proxy trust ignores x-forwarded-host", async () => {
   ]);
 });
 
-test("enabled proxy trust uses only the first forwarded host", async () => {
+test("enabled proxy trust uses only the first allowlisted forwarded host", async () => {
   const response = await probeRequest(trustedProxyApp, "api.internal")
     .set("x-forwarded-host", "resolution-b.example.com, proxy.internal")
     .expect(200);
@@ -189,6 +193,10 @@ test("enabled proxy trust uses only the first forwarded host", async () => {
   assert.deepEqual(probePairs(response.body as ProbeResponse[]), [
     [TENANT_B_ID, "resolution-visible-to-b"],
   ]);
+
+  await probeRequest(trustedProxyApp, "api.internal")
+    .set("x-forwarded-host", "resolution-b.attacker.test, proxy.internal")
+    .expect(404);
 });
 
 test("health and readiness remain global for unknown tenant hosts", async () => {

@@ -16,7 +16,7 @@ test("resolves a valid hostname through the directory port", async () => {
       return expected;
     },
   };
-  const useCase = new ResolveTenantUseCase(directory);
+  const useCase = new ResolveTenantUseCase(directory, "example.com");
 
   const result = await useCase.execute("tenant-a.example.com");
 
@@ -32,9 +32,25 @@ test("does not query the directory for an invalid hostname", async () => {
       return null;
     },
   };
-  const useCase = new ResolveTenantUseCase(directory);
+  const useCase = new ResolveTenantUseCase(directory, "example.com");
 
   const result = await useCase.execute("localhost");
+
+  assert.equal(result, null);
+  assert.equal(calls, 0);
+});
+
+test("does not query the directory for a foreign parent domain", async () => {
+  let calls = 0;
+  const directory: TenantDirectoryPort = {
+    async findActiveBySlug() {
+      calls += 1;
+      return null;
+    },
+  };
+  const useCase = new ResolveTenantUseCase(directory, "example.com");
+
+  const result = await useCase.execute("tenant-a.attacker.test");
 
   assert.equal(result, null);
   assert.equal(calls, 0);
