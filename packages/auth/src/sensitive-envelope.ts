@@ -1,8 +1,4 @@
-import {
-  createCipheriv,
-  createDecipheriv,
-  randomBytes as cryptoRandomBytes,
-} from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes as cryptoRandomBytes } from "node:crypto";
 
 const AES_KEY_BYTES = 32;
 const GCM_IV_BYTES = 12;
@@ -101,10 +97,7 @@ export function encryptSensitiveEnvelope(
     authTagLength: GCM_TAG_BYTES,
   });
   cipher.setAAD(Buffer.from(options.aad));
-  const ciphertext = Buffer.concat([
-    cipher.update(Buffer.from(options.plaintext)),
-    cipher.final(),
-  ]);
+  const ciphertext = Buffer.concat([cipher.update(Buffer.from(options.plaintext)), cipher.final()]);
   const tag = cipher.getAuthTag();
 
   return Object.freeze({
@@ -116,9 +109,7 @@ export function encryptSensitiveEnvelope(
   });
 }
 
-export function decryptSensitiveEnvelope(
-  options: DecryptSensitiveEnvelopeOptions,
-): Uint8Array {
+export function decryptSensitiveEnvelope(options: DecryptSensitiveEnvelopeOptions): Uint8Array {
   try {
     assertAad(options.aad);
 
