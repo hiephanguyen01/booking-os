@@ -3,11 +3,7 @@ import type {
   IdentityPublicCsrfPort,
   IdentityPublicHttpRequest,
 } from "./identity-public.controller.js";
-import type {
-  IssuedPreAuthCsrf,
-  PreAuthCsrfPurpose,
-  PreAuthCsrfService,
-} from "./pre-auth-csrf.js";
+import type { IssuedPreAuthCsrf, PreAuthCsrfPurpose, PreAuthCsrfService } from "./pre-auth-csrf.js";
 
 const IDENTITY_CSRF_ERROR_MESSAGE = "The identity request could not be verified.";
 
