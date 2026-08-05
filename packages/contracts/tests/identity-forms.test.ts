@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  forgotPasswordFormSchema,
-  passwordCommandFormSchema,
-} from "../src/identity/index.js";
+import { forgotPasswordFormSchema, passwordCommandFormSchema } from "../src/identity/index.js";
 
 test("normalizes valid email and emits stable email codes", () => {
   assert.deepEqual(forgotPasswordFormSchema.parse({ email: " User@Example.Test " }), {
