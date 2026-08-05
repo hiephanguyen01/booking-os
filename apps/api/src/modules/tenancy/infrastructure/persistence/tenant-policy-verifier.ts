@@ -39,6 +39,10 @@ function normalizeIdentifier(value: string): string {
   return value.replaceAll('"', "").toLowerCase();
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function expressionReferencesTenant(expression: string | null, tenantColumn: string): boolean {
   if (!expression) {
     return false;
@@ -47,8 +51,19 @@ function expressionReferencesTenant(expression: string | null, tenantColumn: str
   const normalized = normalizeIdentifier(expression);
   const settingPattern =
     /current_setting\s*\(\s*'app\.tenant_id'(?:::[a-z0-9_ ]+)?\s*,\s*true\s*\)/i;
+  if (!settingPattern.test(normalized)) {
+    return false;
+  }
 
-  return settingPattern.test(normalized) && normalized.includes(tenantColumn.toLowerCase());
+  const expressionWithoutSettings = normalized.replace(
+    /current_setting\s*\(\s*'app\.tenant_id'(?:::[a-z0-9_ ]+)?\s*,\s*true\s*\)/gi,
+    "",
+  );
+  const tenantColumnPattern = new RegExp(
+    `(?:^|[^a-z0-9_$])${escapeRegExp(tenantColumn.toLowerCase())}(?:[^a-z0-9_$]|$)`,
+  );
+
+  return tenantColumnPattern.test(expressionWithoutSettings);
 }
 
 function policyAppliesToRole(roles: readonly string[] | string, applicationRole: string): boolean {

@@ -265,3 +265,21 @@ test("rejects an index on a similarly named non-tenant column", async () => {
   );
 });
 
+test("rejects a policy on a similarly named non-tenant column", async () => {
+  const wrongColumnPolicy = {
+    ...validPolicy,
+    qual:
+      "(tenant_id_backup = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)",
+    with_check:
+      "(tenant_id_backup = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)",
+  };
+
+  assert.ok(
+    (
+      await failures({
+        policies: [wrongColumnPolicy],
+      })
+    ).some((failure) => failure.includes("USING expression")),
+  );
+});
+
