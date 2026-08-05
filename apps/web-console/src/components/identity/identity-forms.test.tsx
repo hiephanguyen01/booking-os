@@ -21,15 +21,10 @@ it("blocks mismatched activation passwords without a request", async () => {
   const submit = screen.getByRole("button", { name: "Activate account" });
   await waitFor(() => expect((submit as HTMLButtonElement).disabled).toBe(false));
   await user.type(screen.getByLabelText("New password"), NEW_PASSWORD);
-  await user.type(
-    screen.getByLabelText("Confirm new password"),
-    "Different-password-123!",
-  );
+  await user.type(screen.getByLabelText("Confirm new password"), "Different-password-123!");
   await user.click(submit);
 
-  expect((await screen.findByRole("alert")).textContent).toContain(
-    "The passwords do not match.",
-  );
+  expect((await screen.findByRole("alert")).textContent).toContain("The passwords do not match.");
   expect(fetchMock).not.toHaveBeenCalled();
 });
 
@@ -88,9 +83,7 @@ it("blocks malformed forgot-password email without a request", async () => {
   await user.type(screen.getByLabelText("Email address"), "not-an-email");
   await user.click(screen.getByRole("button", { name: "Send reset link" }));
 
-  expect((await screen.findByRole("alert")).textContent).toContain(
-    "Enter a valid email address.",
-  );
+  expect((await screen.findByRole("alert")).textContent).toContain("Enter a valid email address.");
   expect(fetchMock).not.toHaveBeenCalled();
 });
 
