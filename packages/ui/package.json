@@ -10,6 +10,38 @@
       "types": "./dist/index.d.ts",
       "import": "./src/index.ts"
     },
+    "./alert": {
+      "types": "./dist/components/alert.d.ts",
+      "import": "./src/components/alert.tsx"
+    },
+    "./button": {
+      "types": "./dist/components/button.d.ts",
+      "import": "./src/components/button.tsx"
+    },
+    "./card": {
+      "types": "./dist/components/card.d.ts",
+      "import": "./src/components/card.tsx"
+    },
+    "./cn": {
+      "types": "./dist/lib/cn.d.ts",
+      "import": "./src/lib/cn.ts"
+    },
+    "./form-field": {
+      "types": "./dist/components/form-field.d.ts",
+      "import": "./src/components/form-field.tsx"
+    },
+    "./input": {
+      "types": "./dist/components/input.d.ts",
+      "import": "./src/components/input.tsx"
+    },
+    "./label": {
+      "types": "./dist/components/label.d.ts",
+      "import": "./src/components/label.tsx"
+    },
+    "./submit-button": {
+      "types": "./dist/components/submit-button.d.ts",
+      "import": "./src/components/submit-button.tsx"
+    },
     "./styles.css": "./src/styles/index.css"
   },
   "files": [
