@@ -100,7 +100,7 @@ test("concurrent bootstrap creates one pending platform admin and one encrypted 
     where: { normalizedEmail: EMAIL },
   });
   assert.equal(user.status, UserStatus.pendingActivation);
-  assert.equal(user.passwordCredential, undefined);
+  assert.equal(await prisma.passwordCredential.count({ where: { userId: user.id } }), 0);
 
   const assignments = await prisma.roleAssignment.findMany({
     where: { userId: user.id, revokedAt: null },
