@@ -1,10 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@booking-os/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@booking-os/ui/card";
 
 import { PasswordResetForm } from "../../../src/components/identity-forms";
 

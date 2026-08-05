@@ -51,9 +51,7 @@ test("invalid activation values do not send a command", async ({ page }) => {
   });
 
   await page.getByLabel("New password", { exact: true }).fill(NEW_PASSWORD);
-  await page
-    .getByLabel("Confirm new password", { exact: true })
-    .fill("Different-password-123!");
+  await page.getByLabel("Confirm new password", { exact: true }).fill("Different-password-123!");
   await page.getByRole("button", { name: "Activate account" }).click();
 
   await expect(page.getByText("The passwords do not match.", { exact: true })).toBeVisible();
