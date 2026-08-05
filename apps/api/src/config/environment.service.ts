@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 
 import { ENVIRONMENT_TOKEN } from "./environment.constants.js";
-import type { Environment } from "./environment.schema.js";
+import type { Environment, IdentitySecurityConfig } from "./environment.schema.js";
 
 @Injectable()
 export class EnvironmentService {
@@ -69,5 +69,15 @@ export class EnvironmentService {
 
   get paymentProvider(): Environment["paymentProvider"] {
     return this.values.paymentProvider;
+  }
+
+  get identitySecurity(): IdentitySecurityConfig {
+    const identitySecurity = this.values.identitySecurity;
+
+    if (!identitySecurity) {
+      throw new Error("Identity security configuration is unavailable.");
+    }
+
+    return identitySecurity;
   }
 }

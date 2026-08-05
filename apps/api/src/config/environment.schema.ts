@@ -233,6 +233,11 @@ export const environmentSchema = rawEnvironmentSchema.transform((values) => ({
   }),
 }));
 
-export type Environment = z.output<typeof environmentSchema>;
+export type ValidatedEnvironment = z.output<typeof environmentSchema>;
+
+export type IdentitySecurityConfig = ValidatedEnvironment["identitySecurity"];
+
+export type Environment = Omit<ValidatedEnvironment, "identitySecurity"> &
+  Partial<Pick<ValidatedEnvironment, "identitySecurity">>;
 
 export type RawEnvironment = z.input<typeof environmentSchema>;
