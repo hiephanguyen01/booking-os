@@ -1,4 +1,4 @@
-name: Plan 1 lockfile artifact
+name: Plan 1 lockfile sync
 
 on:
   pull_request:
@@ -6,18 +6,12 @@ on:
       - docs/frontend-library-foundation-design
     paths:
       - ".github/workflows/plan1-lockfile-artifact.yml"
-      - "pnpm-workspace.yaml"
-      - "package.json"
-      - "apps/web-console/package.json"
-      - "packages/api-client/package.json"
-      - "packages/contracts/package.json"
-      - "packages/ui/package.json"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  generate:
+  sync:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout PR head
@@ -34,9 +28,12 @@ jobs:
           node-version: 22
       - name: Generate lockfile
         run: pnpm install --lockfile-only --no-frozen-lockfile
-      - name: Upload generated lockfile
-        uses: actions/upload-artifact@v4
-        with:
-          name: plan1-pnpm-lock
-          path: pnpm-lock.yaml
-          if-no-files-found: error
+      - name: Commit generated lockfile
+        env:
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pnpm-lock.yaml
+          git commit -m "build(frontend): sync generated lockfile"
+          git push origin "HEAD:${HEAD_BRANCH}"
