@@ -1,0 +1,42 @@
+name: Plan 1 lockfile artifact
+
+on:
+  pull_request:
+    branches:
+      - docs/frontend-library-foundation-design
+    paths:
+      - ".github/workflows/plan1-lockfile-artifact.yml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - "apps/web-console/package.json"
+      - "packages/api-client/package.json"
+      - "packages/contracts/package.json"
+      - "packages/ui/package.json"
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Generate lockfile
+        run: pnpm install --lockfile-only --no-frozen-lockfile
+      - name: Upload generated lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: plan1-pnpm-lock
+          path: pnpm-lock.yaml
+          if-no-files-found: error

@@ -26,6 +26,9 @@
     "test": "node --test --import tsx tests/**/*.test.ts",
     "clean": "rimraf dist tsconfig.tsbuildinfo"
   },
+  "dependencies": {
+    "zod": "catalog:"
+  },
   "devDependencies": {
     "@booking-os/typescript-config": "workspace:*",
     "@types/node": "catalog:",
