@@ -5,6 +5,7 @@ export {
   type HealthResponse,
   type HealthStatus,
 } from "./health/index.js";
+export * from "./identity/index.js";
 export type {
   ExecutionSource,
   RequestContext,
