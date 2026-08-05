@@ -11,7 +11,7 @@ import { TenantRequiredGuard } from "./tenant-required.guard.js";
 const executionContext = {
   getHandler: () => () => undefined,
   getClass: () => class TestController {},
-} as ExecutionContext;
+} as unknown as ExecutionContext;
 
 function reflector(required: boolean | undefined): Reflector {
   return {
