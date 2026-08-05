@@ -1,6 +1,8 @@
 import type { DispatchableOutboxEvent, DispatchSummary, OutboxJobPayload } from "./outbox-event.js";
 
 const DEFAULT_MAX_ATTEMPTS = 5;
+const IDENTITY_EMAIL_MAX_ATTEMPTS = 5;
+const IDENTITY_EMAIL_RETRY_DELAY_MS = 1_000;
 
 export interface OutboxDispatchRepository {
   claimBatch(limit: number): Promise<readonly DispatchableOutboxEvent[]>;
@@ -12,8 +14,18 @@ export interface OutboxDispatchRepository {
   ): Promise<"retryable" | "dead-lettered">;
 }
 
+export interface OutboxJobOptions {
+  readonly jobId: string;
+  readonly attempts?: number;
+  readonly backoff?: {
+    readonly type: "exponential";
+    readonly delay: number;
+  };
+  readonly removeOnComplete?: boolean;
+}
+
 export interface OutboxQueue {
-  add(name: string, data: OutboxJobPayload, options: { readonly jobId: string }): Promise<unknown>;
+  add(name: string, data: OutboxJobPayload, options: OutboxJobOptions): Promise<unknown>;
 }
 
 export interface OutboxDispatcherOptions {
@@ -31,6 +43,26 @@ function jobPayload(event: DispatchableOutboxEvent): OutboxJobPayload {
     aggregateType: event.aggregateType,
     aggregateId: event.aggregateId,
     payload: event.payload,
+  };
+}
+
+function isIdentityEmailEvent(type: string): boolean {
+  return (
+    type === "identity.activation.requested.v1" ||
+    type === "identity.password_reset.requested.v1"
+  );
+}
+
+function jobOptions(event: DispatchableOutboxEvent): OutboxJobOptions {
+  if (!isIdentityEmailEvent(event.type)) {
+    return { jobId: event.id };
+  }
+
+  return {
+    jobId: event.id,
+    attempts: IDENTITY_EMAIL_MAX_ATTEMPTS,
+    backoff: { type: "exponential", delay: IDENTITY_EMAIL_RETRY_DELAY_MS },
+    removeOnComplete: true,
   };
 }
 
@@ -61,7 +93,7 @@ export class OutboxDispatcher {
 
     for (const event of events) {
       try {
-        await this.queue.add(event.type, jobPayload(event), { jobId: event.id });
+        await this.queue.add(event.type, jobPayload(event), jobOptions(event));
         await this.repository.markDispatched(event.id);
         dispatched += 1;
       } catch (error: unknown) {
