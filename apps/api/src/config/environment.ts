@@ -1,6 +1,6 @@
 import type { ZodIssue } from "zod";
 
-import { type Environment, environmentSchema } from "./environment.schema.js";
+import { environmentSchema, type ValidatedEnvironment } from "./environment.schema.js";
 
 export class EnvironmentValidationError extends Error {
   readonly issues: readonly string[];
@@ -19,7 +19,7 @@ function formatIssue(issue: ZodIssue): string {
   return `${path}: ${issue.message}`;
 }
 
-export function parseEnvironment(source: unknown): Environment {
+export function parseEnvironment(source: unknown): ValidatedEnvironment {
   const result = environmentSchema.safeParse(source);
 
   if (!result.success) {

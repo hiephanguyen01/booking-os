@@ -1,8 +1,110 @@
+import { Buffer } from "node:buffer";
+
 import { z } from "zod";
 
 import { LOG_LEVELS, NODE_ENVIRONMENTS } from "./environment.constants.js";
 
 const hostLabelPattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
+const keyIdPattern = /^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/;
+const canonicalBase64Pattern = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+const SECRET_KEY_BYTES = 32;
+
+function decodeSecretKey(value: string): Buffer | null {
+  if (!canonicalBase64Pattern.test(value)) {
+    return null;
+  }
+
+  const decoded = Buffer.from(value, "base64");
+
+  if (decoded.byteLength !== SECRET_KEY_BYTES || decoded.toString("base64") !== value) {
+    return null;
+  }
+
+  return decoded;
+}
+
+function secretKeySchema(variableName: string) {
+  return z
+    .string()
+    .trim()
+    .transform((value, context) => {
+      const decoded = decodeSecretKey(value);
+
+      if (!decoded) {
+        context.addIssue({
+          code: "custom",
+          message: `${variableName} must be canonical base64 encoding exactly 32 bytes`,
+        });
+        return z.NEVER;
+      }
+
+      return decoded;
+    });
+}
+
+const envelopeKeyringSchema = z
+  .string()
+  .trim()
+  .transform((value, context): Readonly<Record<string, Buffer>> => {
+    let parsed: unknown;
+
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      context.addIssue({
+        code: "custom",
+        message: "IDENTITY_ENVELOPE_KEYS must be a JSON object of key IDs to base64 keys",
+      });
+      return z.NEVER;
+    }
+
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      context.addIssue({
+        code: "custom",
+        message: "IDENTITY_ENVELOPE_KEYS must be a non-empty JSON object",
+      });
+      return z.NEVER;
+    }
+
+    const entries = Object.entries(parsed);
+
+    if (entries.length === 0) {
+      context.addIssue({
+        code: "custom",
+        message: "IDENTITY_ENVELOPE_KEYS must contain at least one key",
+      });
+      return z.NEVER;
+    }
+
+    const keyring: Record<string, Buffer> = {};
+
+    for (const [keyId, encodedKey] of entries) {
+      const decoded = typeof encodedKey === "string" ? decodeSecretKey(encodedKey.trim()) : null;
+
+      if (!keyIdPattern.test(keyId) || !decoded) {
+        context.addIssue({
+          code: "custom",
+          message:
+            "IDENTITY_ENVELOPE_KEYS entries require a safe key ID and canonical 32-byte base64 key",
+        });
+        return z.NEVER;
+      }
+
+      keyring[keyId] = decoded;
+    }
+
+    return Object.freeze(keyring);
+  });
+
+const optionalBootstrapEmailSchema = z.preprocess(
+  (value) => (typeof value === "string" && value.trim().length === 0 ? undefined : value),
+  z
+    .string()
+    .trim()
+    .email("IDENTITY_BOOTSTRAP_ADMIN_EMAIL must be a valid email address")
+    .transform((value) => value.toLowerCase())
+    .optional(),
+);
 
 const apiPrefixSchema = z
   .string()
@@ -61,6 +163,16 @@ const rawEnvironmentSchema = z
     SESSION_SECRET: z.string().min(32, "SESSION_SECRET must contain at least 32 characters"),
 
     PAYMENT_PROVIDER: z.enum(["mock", "payos"]).default("mock"),
+
+    IDENTITY_TOKEN_PEPPER: secretKeySchema("IDENTITY_TOKEN_PEPPER"),
+
+    IDENTITY_ENVELOPE_KEYS: envelopeKeyringSchema,
+
+    IDENTITY_ACTIVE_ENVELOPE_KEY_ID: z.string().trim().regex(keyIdPattern),
+
+    IDENTITY_BOOTSTRAP_ENABLED: z.enum(["true", "false"]).default("false"),
+
+    IDENTITY_BOOTSTRAP_ADMIN_EMAIL: optionalBootstrapEmailSchema,
   })
   .superRefine((values, context) => {
     if (values.NODE_ENV === "production" && !values.TENANT_BASE_DOMAIN) {
@@ -76,6 +188,22 @@ const rawEnvironmentSchema = z
         code: "custom",
         path: ["PAYMENT_PROVIDER"],
         message: "PAYMENT_PROVIDER cannot be mock in production",
+      });
+    }
+
+    if (!Object.hasOwn(values.IDENTITY_ENVELOPE_KEYS, values.IDENTITY_ACTIVE_ENVELOPE_KEY_ID)) {
+      context.addIssue({
+        code: "custom",
+        path: ["IDENTITY_ACTIVE_ENVELOPE_KEY_ID"],
+        message: "IDENTITY_ACTIVE_ENVELOPE_KEY_ID must reference a configured envelope key",
+      });
+    }
+
+    if (values.IDENTITY_BOOTSTRAP_ENABLED === "true" && !values.IDENTITY_BOOTSTRAP_ADMIN_EMAIL) {
+      context.addIssue({
+        code: "custom",
+        path: ["IDENTITY_BOOTSTRAP_ADMIN_EMAIL"],
+        message: "IDENTITY_BOOTSTRAP_ADMIN_EMAIL is required when bootstrap is enabled",
       });
     }
   });
@@ -94,8 +222,22 @@ export const environmentSchema = rawEnvironmentSchema.transform((values) => ({
   readinessTimeoutMs: values.READINESS_TIMEOUT_MS,
   sessionSecret: values.SESSION_SECRET,
   paymentProvider: values.PAYMENT_PROVIDER,
+  identitySecurity: Object.freeze({
+    tokenPepper: values.IDENTITY_TOKEN_PEPPER,
+    envelopeKeys: values.IDENTITY_ENVELOPE_KEYS,
+    activeEnvelopeKeyId: values.IDENTITY_ACTIVE_ENVELOPE_KEY_ID,
+    bootstrapEnabled: values.IDENTITY_BOOTSTRAP_ENABLED === "true",
+    ...(values.IDENTITY_BOOTSTRAP_ADMIN_EMAIL
+      ? { bootstrapAdminEmail: values.IDENTITY_BOOTSTRAP_ADMIN_EMAIL }
+      : {}),
+  }),
 }));
 
-export type Environment = z.output<typeof environmentSchema>;
+export type ValidatedEnvironment = z.output<typeof environmentSchema>;
+
+export type IdentitySecurityConfig = ValidatedEnvironment["identitySecurity"];
+
+export type Environment = Omit<ValidatedEnvironment, "identitySecurity"> &
+  Partial<Pick<ValidatedEnvironment, "identitySecurity">>;
 
 export type RawEnvironment = z.input<typeof environmentSchema>;

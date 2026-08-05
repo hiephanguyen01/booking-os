@@ -12,6 +12,7 @@
     "test": "prisma generate && node --test --import tsx \"src/**/*.test.ts\" \"test/**/*.test.ts\"",
     "test:e2e": "prisma generate && node --test --import tsx \"test/**/*.test.ts\"",
     "openapi:generate": "prisma generate && tsx src/openapi/generate-openapi.ts",
+    "identity:bootstrap-platform-admin": "tsx src/cli/run-platform-admin-bootstrap.ts",
     "prisma:validate": "prisma validate",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
@@ -24,6 +25,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@booking-os/auth": "workspace:*",
     "@booking-os/contracts": "workspace:*",
     "@booking-os/observability": "workspace:*",
     "@nestjs/common": "11.1.28",
@@ -31,6 +33,7 @@
     "@nestjs/platform-express": "11.1.28",
     "@nestjs/swagger": "11.4.6",
     "@prisma/client": "6.19.3",
+    "argon2": "0.45.1",
     "dotenv": "17.4.2",
     "ioredis": "5.11.1",
     "pg": "8.22.0",

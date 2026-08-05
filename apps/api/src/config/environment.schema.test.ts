@@ -3,6 +3,15 @@ import test from "node:test";
 
 import { EnvironmentValidationError, parseEnvironment } from "./environment.js";
 
+const TOKEN_PEPPER = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=";
+const ENVELOPE_KEY = "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=";
+const identityEnvironment = {
+  IDENTITY_TOKEN_PEPPER: TOKEN_PEPPER,
+  IDENTITY_ENVELOPE_KEYS: JSON.stringify({ "identity-v1": ENVELOPE_KEY }),
+  IDENTITY_ACTIVE_ENVELOPE_KEY_ID: "identity-v1",
+  IDENTITY_BOOTSTRAP_ENABLED: "false",
+} as const;
+
 const validEnvironment = {
   NODE_ENV: "test",
   HOST: "127.0.0.1",
@@ -17,6 +26,7 @@ const validEnvironment = {
   READINESS_TIMEOUT_MS: "900",
   SESSION_SECRET: "test-only-session-secret-at-least-32-characters",
   PAYMENT_PROVIDER: "mock",
+  ...identityEnvironment,
 } as const;
 
 test("parseEnvironment validates and normalizes environment variables", () => {
@@ -36,6 +46,14 @@ test("parseEnvironment validates and normalizes environment variables", () => {
     readinessTimeoutMs: 900,
     sessionSecret: "test-only-session-secret-at-least-32-characters",
     paymentProvider: "mock",
+    identitySecurity: {
+      tokenPepper: Buffer.from(TOKEN_PEPPER, "base64"),
+      envelopeKeys: {
+        "identity-v1": Buffer.from(ENVELOPE_KEY, "base64"),
+      },
+      activeEnvelopeKeyId: "identity-v1",
+      bootstrapEnabled: false,
+    },
   });
 });
 
@@ -44,6 +62,7 @@ test("parseEnvironment applies safe defaults", () => {
     DATABASE_URL: "postgresql://booking:booking@localhost:5432/booking_os",
     REDIS_URL: "redis://localhost:6379/0",
     SESSION_SECRET: "development-only-session-secret-change-before-use",
+    ...identityEnvironment,
   });
 
   assert.equal(environment.nodeEnvironment, "development");
@@ -62,10 +81,6 @@ test("parseEnvironment accepts explicit disabled proxy trust", () => {
   assert.equal(parseEnvironment({ ...validEnvironment, TRUST_PROXY: "false" }).trustProxy, false);
 });
 
-test("parseEnvironment rejects invalid proxy trust", () => {
-  assert.throws(() => parseEnvironment({ ...validEnvironment, TRUST_PROXY: "1" }), /TRUST_PROXY/);
-});
-
 test("parseEnvironment accepts readiness timeout boundaries", () => {
   assert.equal(
     parseEnvironment({ ...validEnvironment, READINESS_TIMEOUT_MS: "100" }).readinessTimeoutMs,
@@ -75,6 +90,20 @@ test("parseEnvironment accepts readiness timeout boundaries", () => {
     parseEnvironment({ ...validEnvironment, READINESS_TIMEOUT_MS: "5000" }).readinessTimeoutMs,
     5000,
   );
+});
+
+test("parseEnvironment accepts an enabled bootstrap with a normalized admin email", () => {
+  const environment = parseEnvironment({
+    ...validEnvironment,
+    IDENTITY_BOOTSTRAP_ENABLED: "true",
+    IDENTITY_BOOTSTRAP_ADMIN_EMAIL: " Platform.Admin@Example.COM ",
+  });
+
+  assert.deepEqual(environment.identitySecurity.bootstrapAdminEmail, "platform.admin@example.com");
+});
+
+test("parseEnvironment rejects invalid proxy trust", () => {
+  assert.throws(() => parseEnvironment({ ...validEnvironment, TRUST_PROXY: "1" }), /TRUST_PROXY/);
 });
 
 test("parseEnvironment rejects invalid readiness timeouts", () => {
@@ -119,6 +148,51 @@ test("parseEnvironment rejects a short session secret", () => {
   );
 });
 
+test("parseEnvironment rejects malformed identity token pepper", () => {
+  for (const tokenPepper of [undefined, "not-base64", "AQE="]) {
+    assert.throws(
+      () => parseEnvironment({ ...validEnvironment, IDENTITY_TOKEN_PEPPER: tokenPepper }),
+      /IDENTITY_TOKEN_PEPPER/,
+    );
+  }
+});
+
+test("parseEnvironment rejects malformed identity envelope keys", () => {
+  for (const envelopeKeys of [
+    "not-json",
+    JSON.stringify({ "identity-v1": "not-base64" }),
+    JSON.stringify({ "identity-v1": "AQE=" }),
+  ]) {
+    assert.throws(
+      () => parseEnvironment({ ...validEnvironment, IDENTITY_ENVELOPE_KEYS: envelopeKeys }),
+      /IDENTITY_ENVELOPE_KEYS/,
+    );
+  }
+});
+
+test("parseEnvironment rejects an unknown active envelope key", () => {
+  assert.throws(
+    () =>
+      parseEnvironment({
+        ...validEnvironment,
+        IDENTITY_ACTIVE_ENVELOPE_KEY_ID: "identity-v2",
+      }),
+    /IDENTITY_ACTIVE_ENVELOPE_KEY_ID/,
+  );
+});
+
+test("parseEnvironment rejects bootstrap without an admin email", () => {
+  assert.throws(
+    () =>
+      parseEnvironment({
+        ...validEnvironment,
+        IDENTITY_BOOTSTRAP_ENABLED: "true",
+        IDENTITY_BOOTSTRAP_ADMIN_EMAIL: undefined,
+      }),
+    /IDENTITY_BOOTSTRAP_ADMIN_EMAIL/,
+  );
+});
+
 test("parseEnvironment rejects mock payments in production", () => {
   assert.throws(
     () =>
@@ -148,4 +222,6 @@ test("parseEnvironment returns an immutable result", () => {
   const environment = parseEnvironment(validEnvironment);
 
   assert.equal(Object.isFrozen(environment), true);
+  assert.equal(Object.isFrozen(environment.identitySecurity), true);
+  assert.equal(Object.isFrozen(environment.identitySecurity.envelopeKeys), true);
 });

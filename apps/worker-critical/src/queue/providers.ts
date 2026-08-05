@@ -1,11 +1,18 @@
 import { createStructuredLogger, type StructuredLogger } from "@booking-os/observability";
 import type { Provider } from "@nestjs/common";
 import { PrismaClient } from "@prisma/client";
-import { type Job, Queue, Worker } from "bullmq";
+import { type Job, Queue, UnrecoverableError, Worker } from "bullmq";
 import { Redis } from "ioredis";
 
 import { parseWorkerConfig, type WorkerConfig } from "../config/worker-config.js";
 import { WorkerDatabase } from "../database/worker-database.js";
+import { IdentityEmailDispatcher } from "../identity-email/identity-email-dispatcher.js";
+import { IdentityEmailDeliveryError } from "../identity-email/identity-email-error.js";
+import { isIdentityEmailEventType } from "../identity-email/identity-email-event.js";
+import {
+  NodeSmtpTransport,
+  SmtpIdentityEmailAdapter,
+} from "../identity-email/smtp-identity-email.adapter.js";
 import { OutboxDispatcher } from "../outbox/outbox-dispatcher.js";
 import type { OutboxJobPayload } from "../outbox/outbox-event.js";
 import { OutboxPollingService } from "../outbox/outbox-polling.service.js";
@@ -14,6 +21,7 @@ import { createHealthCheckProcessor } from "./health-check.js";
 import {
   BULLMQ_QUEUE_TOKEN,
   BULLMQ_WORKER_TOKEN,
+  IDENTITY_EMAIL_DISPATCHER_TOKEN,
   LOGGER_TOKEN,
   PRISMA_CLIENT_TOKEN,
   REDIS_CONNECTION_TOKEN,
@@ -32,6 +40,38 @@ function isOutboxJobPayload(value: unknown): value is OutboxJobPayload {
     typeof payload.aggregateType === "string" &&
     typeof payload.aggregateId === "string"
   );
+}
+
+async function processIdentityEmail(
+  dispatcher: IdentityEmailDispatcher,
+  logger: StructuredLogger,
+  name: string,
+  data: OutboxJobPayload,
+): Promise<unknown> {
+  try {
+    const result = await dispatcher.dispatch(name, data);
+    logger.info("identity_email.sent", {
+      eventId: data.eventId,
+      eventType: name,
+    });
+    return result;
+  } catch (error: unknown) {
+    const classified =
+      error instanceof IdentityEmailDeliveryError
+        ? error
+        : new IdentityEmailDeliveryError("identity_email.smtp_temporary", true);
+    logger.warn("identity_email.delivery_failed", {
+      eventId: data.eventId,
+      eventType: name,
+      errorCode: classified.code,
+      retryable: classified.retryable,
+    });
+
+    if (!classified.retryable) {
+      throw new UnrecoverableError(classified.code);
+    }
+    throw classified;
+  }
 }
 
 export const workerProviders: Provider[] = [
@@ -80,12 +120,29 @@ export const workerProviders: Provider[] = [
     },
   },
   {
+    provide: IDENTITY_EMAIL_DISPATCHER_TOKEN,
+    inject: [WORKER_CONFIG_TOKEN],
+    useFactory: (config: WorkerConfig): IdentityEmailDispatcher => {
+      const sender = new SmtpIdentityEmailAdapter(
+        { from: config.smtp.from },
+        new NodeSmtpTransport(config.smtp),
+      );
+      return new IdentityEmailDispatcher(sender, config.identityEncryption.envelopeKeys);
+    },
+  },
+  {
     provide: BULLMQ_WORKER_TOKEN,
-    inject: [WORKER_CONFIG_TOKEN, REDIS_CONNECTION_TOKEN, LOGGER_TOKEN],
+    inject: [
+      WORKER_CONFIG_TOKEN,
+      REDIS_CONNECTION_TOKEN,
+      LOGGER_TOKEN,
+      IDENTITY_EMAIL_DISPATCHER_TOKEN,
+    ],
     useFactory: async (
       config: WorkerConfig,
       connection: Redis,
       logger: StructuredLogger,
+      identityEmails: IdentityEmailDispatcher,
     ): Promise<Worker> => {
       const processHealthCheck = createHealthCheckProcessor(logger);
       const worker = new Worker(
@@ -97,6 +154,9 @@ export const workerProviders: Provider[] = [
               eventType: job.name,
               ...(job.data.tenantId === null ? {} : { tenantId: job.data.tenantId }),
             });
+            if (isIdentityEmailEventType(job.name)) {
+              return processIdentityEmail(identityEmails, logger, job.name, job.data);
+            }
             return { eventId: job.data.eventId, status: "accepted" };
           }
 

@@ -7,9 +7,10 @@
     "dev": "tsx watch src/main.ts",
     "start": "node dist/main.js",
     "build": "prisma generate --schema ../api/prisma/schema.prisma && tsc -p tsconfig.build.json",
-    "lint": "biome check src",
+    "lint": "biome check src integration",
     "typecheck": "prisma generate --schema ../api/prisma/schema.prisma && tsc -p tsconfig.json --noEmit",
     "test": "prisma generate --schema ../api/prisma/schema.prisma && node --test --import tsx \"src/**/*.test.ts\"",
+    "test:mailpit": "prisma generate --schema ../api/prisma/schema.prisma && node --test --import tsx \"integration/**/*.test.ts\"",
     "smoke:enqueue": "tsx src/smoke/enqueue-health-check.ts",
     "clean": "rimraf dist tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo"
   },

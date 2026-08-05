@@ -43,10 +43,10 @@ class MemoryOutboxRepository implements OutboxDispatchRepository {
 }
 
 class RecordingQueue implements OutboxQueue {
-  readonly calls: Array<{ name: string; data: unknown; jobId: string }> = [];
+  readonly calls: Array<{ name: string; data: unknown; options: Record<string, unknown> }> = [];
 
   async add(name: string, data: unknown, options: { readonly jobId: string }): Promise<void> {
-    this.calls.push({ name, data, jobId: options.jobId });
+    this.calls.push({ name, data, options });
   }
 }
 
@@ -90,9 +90,30 @@ test("dispatches the same event at most once", async () => {
         aggregateId: "33333333-3333-4333-8333-333333333333",
         payload: { value: "created" },
       },
-      jobId: EVENT_ID,
+      options: { jobId: EVENT_ID },
     },
   ]);
+});
+
+test("configures bounded exponential retries for identity email jobs", async () => {
+  const event: DispatchableOutboxEvent = {
+    ...eventFixture(),
+    tenantId: null,
+    type: "identity.activation.requested.v1",
+    aggregateType: "user",
+  };
+  const repository = new MemoryOutboxRepository(event);
+  const queue = new RecordingQueue();
+  const dispatcher = new OutboxDispatcher(repository, queue);
+
+  await dispatcher.dispatchBatch(10);
+
+  assert.deepEqual(queue.calls[0]?.options, {
+    jobId: EVENT_ID,
+    attempts: 5,
+    backoff: { type: "exponential", delay: 1_000 },
+    removeOnComplete: true,
+  });
 });
 
 test("persists only a sanitized error name when queue delivery fails", async () => {
