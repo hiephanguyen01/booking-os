@@ -63,7 +63,11 @@ function verifyIdentityMigrationContract() {
     }
   }
 
-  const forbiddenPlaintextColumns = [/"(?:raw_)?password"\s/i, /"(?:raw_)?token"\s/i, /"secret"\s/i];
+  const forbiddenPlaintextColumns = [
+    /"(?:raw_)?password"\s/i,
+    /"(?:raw_)?token"\s/i,
+    /"secret"\s/i,
+  ];
 
   for (const pattern of forbiddenPlaintextColumns) {
     if (pattern.test(migration)) {
