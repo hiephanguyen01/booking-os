@@ -3,10 +3,7 @@ import { type AddressInfo, createServer } from "node:net";
 import test from "node:test";
 
 import { IdentityEmailDeliveryError } from "./identity-email-error.js";
-import {
-  NodeSmtpTransport,
-  SmtpIdentityEmailAdapter,
-} from "./smtp-identity-email.adapter.js";
+import { NodeSmtpTransport, SmtpIdentityEmailAdapter } from "./smtp-identity-email.adapter.js";
 
 const MESSAGE = {
   to: "owner@example.com",
