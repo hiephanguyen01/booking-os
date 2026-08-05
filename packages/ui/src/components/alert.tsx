@@ -16,9 +16,7 @@ const alertVariants = cva("rounded-md border p-3 text-sm", {
   },
 });
 
-export interface AlertProps
-  extends ComponentProps<"div">,
-    VariantProps<typeof alertVariants> {}
+export interface AlertProps extends ComponentProps<"div">, VariantProps<typeof alertVariants> {}
 
 export function Alert({ className, variant, role = "alert", ...props }: AlertProps) {
   return (
