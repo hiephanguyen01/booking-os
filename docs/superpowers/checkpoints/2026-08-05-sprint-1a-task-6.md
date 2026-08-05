@@ -21,6 +21,8 @@ Pull request: `#10`
 - Application-role and worker-role outbox integration coverage
 - Tenant isolation architecture and recovery operating guidance
 
+The approved detailed implementation plan remains preserved at `docs/superpowers/plans/2026-08-05-tenant-isolation-core.md`.
+
 ## Verification evidence available
 
 - Architecture fixtures and repository verification passed on pre-cutover heads.
