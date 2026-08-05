@@ -130,7 +130,7 @@ CREATE INDEX "auth_sessions_tenant_id_idx"
   ON "auth_sessions"("tenant_id");
 CREATE INDEX "auth_sessions_hostname_state_idx"
   ON "auth_sessions"("hostname", "state");
-CREATE INDEX "auth_sessions_expiry_idx"
+CREATE INDEX "auth_sessions_idle_expires_at_absolute_expires_at_idx"
   ON "auth_sessions"("idle_expires_at", "absolute_expires_at");
 
 CREATE INDEX "auth_session_tokens_session_id_idx"
