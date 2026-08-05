@@ -4,6 +4,70 @@
  */
 
 export interface paths {
+    readonly "/api/auth/activation/complete": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post: operations["completeAccountActivation"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/auth/csrf": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get: operations["getPreAuthCsrf"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/auth/password/forgot": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post: operations["requestPasswordReset"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/auth/password/reset": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post: operations["completePasswordReset"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/health": {
         readonly parameters: {
             readonly query?: never;
@@ -40,6 +104,22 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        readonly AcceptedResponseDto: {
+            /** @example true */
+            readonly accepted: boolean;
+        };
+        readonly CompletedResponseDto: {
+            /** @example true */
+            readonly completed: boolean;
+        };
+        readonly CompleteIdentityPasswordDto: {
+            readonly newPassword: string;
+            /** @enum {string} */
+            readonly scopeType: "platform" | "tenant";
+            /** Format: uuid */
+            readonly tenantId?: string;
+            readonly token: string;
+        };
         readonly HealthDependencyStatusDto: {
             readonly latencyMs?: number;
             readonly message?: string;
@@ -52,11 +132,24 @@ export interface components {
             };
             readonly service: string;
             /** @enum {string} */
-            readonly status: "ok" | "degraded" | "unavailable";
+            readonly status: "ok" | "degraded" | "unavaile";
             /** Format: date-time */
             readonly timestamp: string;
             readonly uptimeSeconds: number;
             readonly version: string;
+        };
+        readonly PreAuthCsrfResponseDto: {
+            readonly csrfToken: string;
+            /** Format: date-time */
+            readonly expiresAt: string;
+        };
+        readonly RequestIdentityPasswordResetDto: {
+            /** Format: email */
+            readonly email: string;
+            /** @enum {string} */
+            readonly scopeType: "platform" | "tenant";
+            /** Format: uuid */
+            readonly tenantId?: string;
         };
     };
     responses: never;
@@ -67,6 +160,120 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    readonly completeAccountActivation: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["CompleteIdentityPasswordDto"];
+            };
+        };
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CompletedResponseDto"];
+                };
+            };
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readonly getPreAuthCsrf: {
+        readonly parameters: {
+            readonly query: {
+                readonly purpose: "activation" | "password_forgot" | "password_reset";
+            };
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PreAuthCsrfResponseDto"];
+                };
+            };
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readonly requestPasswordReset: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["RequestIdentityPasswordResetDto"];
+            };
+        };
+        readonly responses: {
+            readonly 202: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AcceptedResponseDto"];
+                };
+            };
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readonly completePasswordReset: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["CompleteIdentityPasswordDto"];
+            };
+        };
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CompletedResponseDto"];
+                };
+            };
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     readonly getHealth: {
         readonly parameters: {
             readonly query?: never;
