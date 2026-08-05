@@ -44,7 +44,7 @@ class SmtpResponseReader {
   private responseCode: number | undefined;
   private terminalError: Error | undefined;
 
-  constructor(private readonly socket: Socket | TLSSocket) {
+  constructor(socket: Socket | TLSSocket) {
     socket.setEncoding("utf8");
     socket.on("data", (chunk: string) => this.consume(chunk));
     socket.on("error", (error: Error) => this.fail(error));
@@ -138,7 +138,10 @@ async function write(socket: Socket | TLSSocket, value: string): Promise<void> {
   }
 }
 
-async function expectResponse(reader: SmtpResponseReader, accepted: readonly number[]): Promise<void> {
+async function expectResponse(
+  reader: SmtpResponseReader,
+  accepted: readonly number[],
+): Promise<void> {
   const response = await reader.next();
   if (!accepted.includes(response.code)) {
     throw new SmtpProtocolError(response.code);
