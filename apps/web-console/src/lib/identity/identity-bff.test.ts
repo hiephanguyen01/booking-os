@@ -5,7 +5,7 @@ import { createIdentityBffHandlers } from "./identity-bff.js";
 
 interface FetchCall {
   readonly url: string;
-  readonly init?: RequestInit;
+  readonly init: RequestInit | undefined;
 }
 
 test("password-forgot performs a server-side CSRF handshake and returns only a neutral response", async () => {

@@ -4,7 +4,11 @@ import test from "node:test";
 import { consumeIdentityTokenFragment } from "./fragment-token.js";
 
 class RecordingHistory {
-  readonly calls: Array<{ data: unknown; unused: string; url?: string | URL | null }> = [];
+  readonly calls: Array<{
+    data: unknown;
+    unused: string;
+    url: string | URL | null | undefined;
+  }> = [];
 
   replaceState(data: unknown, unused: string, url?: string | URL | null): void {
     this.calls.push({ data, unused, url });
