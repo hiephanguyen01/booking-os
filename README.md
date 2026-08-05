@@ -159,9 +159,10 @@ When the API runs on the host, use:
 DATABASE_URL=postgresql://booking:booking@localhost:5432/booking_os
 REDIS_URL=redis://localhost:6379/0
 READINESS_TIMEOUT_MS=750
+TRUST_PROXY=false
 ```
 
-`READINESS_TIMEOUT_MS` is validated from `100` through `5000` milliseconds. Copy the complete local template before starting the API:
+`READINESS_TIMEOUT_MS` is validated from `100` through `5000` milliseconds. `TRUST_PROXY` defaults to `false` and accepts only the literal strings `true` or `false`. Enable it only when the API is behind a configured trusted proxy. Copy the complete local template before starting the API:
 
 ```bash
 cp apps/api/.env.example apps/api/.env
@@ -190,6 +191,38 @@ pnpm --filter @booking-os/api dev
 curl -i http://localhost:3001/api/health
 curl -i http://localhost:3001/api/ready
 ```
+
+### Tenant isolation and API module boundaries
+
+Tenant identity is resolved only from the effective hostname. Request bodies, query parameters, and client-provided tenant, actor, or source headers are never authorization inputs. With `TRUST_PROXY=false`, `Host` is authoritative; with `TRUST_PROXY=true`, only the first `x-forwarded-host` value is considered.
+
+The tenancy module follows a Hexagonal boundary:
+
+- controllers call application use cases;
+- `TenantResolutionMiddleware` calls `ResolveTenantUseCase`;
+- application ports expose technology-neutral capabilities;
+- Prisma imports stay under `apps/api/src/modules/*/infrastructure/persistence/prisma`;
+- composition roots may bind ports to adapters, but domain and application code may not import NestJS, Prisma, or infrastructure.
+
+Tenant-scoped persistence runs through a capability session:
+
+```ts
+return this.transactions.run(context, (session) =>
+  session.tenantProbes.list(),
+);
+```
+
+The application role is `booking_app`, which must remain `NOBYPASSRLS`. Tenant transactions set the role and transaction-local `app.tenant_id` before invoking application work. The critical worker uses the fixed `booking_worker` role through `WorkerDatabase`; callers cannot provide an arbitrary role.
+
+Run the fail-closed architecture and PostgreSQL policy checks with:
+
+```bash
+pnpm verify:architecture
+MIGRATION_DATABASE_URL="$DATABASE_URL" pnpm verify:migrations
+pnpm --filter @booking-os/api verify:tenant-policies
+```
+
+`verify:tenant-policies` checks tenant columns, indexes, RLS, FORCE RLS, `USING`, `WITH CHECK`, application-role flags, and table grants from the live PostgreSQL catalog.
 
 ### Supported OpenAPI contract
 
@@ -285,7 +318,8 @@ Các check chính:
 
 - `Quality`: formatting, lint và TypeScript validation.
 - `Unit, API E2E, and RLS tests`: unit, API end-to-end và tenant isolation.
-- `Migration verification`: migration replay và schema drift.
+- `Migration verification`: migration replay, schema drift và tenant-policy catalog verification.
+- `API architecture boundaries`: fail-closed Hexagonal dependency verification.
 - `Build`: workspace production builds.
 - `Playwright foundation smoke`: storefront, console và API critical smoke.
 - `Production configuration guard`: từ chối mock payment trong production.
@@ -302,13 +336,18 @@ Chạy các gate chính tại local:
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm genesis:validate
-pnpm api:check-generated
-pnpm api:verify-compatibility-fixtures
+pnpm format
 pnpm check:ci
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm test:e2e:api
+pnpm verify:architecture
+pnpm genesis:validate
+pnpm api:check-generated
+pnpm api:verify-compatibility-fixtures
+MIGRATION_DATABASE_URL="$DATABASE_URL" pnpm verify:migrations
+pnpm verify:foundation
 pnpm build
 pnpm audit --audit-level high
 python -m unittest discover -s tools/tests -p 'test_*.py' -v
