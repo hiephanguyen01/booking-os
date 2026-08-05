@@ -1,0 +1,53 @@
+name: Plan 2 temporary formatter
+
+on:
+  push:
+    branches:
+      - feat/sprint-1b-02-session-kernel
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          ref: feat/sprint-1b-02-session-kernel
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Format Plan 2 tests
+        run: >-
+          pnpm exec biome format --write
+          apps/api/test/session-policy-manifest.test.ts
+          apps/api/test/session-schema.integration.test.ts
+          apps/api/test/session-rls.integration.test.ts
+
+      - name: Commit formatted files
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/api/test/session-policy-manifest.test.ts \
+            apps/api/test/session-schema.integration.test.ts \
+            apps/api/test/session-rls.integration.test.ts
+          git commit -m "style(session): format RED persistence contracts"
+          git push origin HEAD:feat/sprint-1b-02-session-kernel
