@@ -1,0 +1,45 @@
+name: Identity email integration
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mailpit:
+    name: Mailpit identity email delivery
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      MAILPIT_API_URL: http://127.0.0.1:8025
+      MAILPIT_SMTP_HOST: 127.0.0.1
+      MAILPIT_SMTP_PORT: "1025"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify identity email delivery through Mailpit
+        run: pnpm --filter @booking-os/worker-critical test:mailpit
