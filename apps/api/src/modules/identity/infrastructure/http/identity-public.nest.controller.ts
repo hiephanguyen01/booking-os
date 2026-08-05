@@ -41,6 +41,7 @@ type HeaderValue = string | readonly string[] | undefined;
 
 interface NestIdentityRequest {
   readonly hostname: string;
+  readonly protocol: string;
   readonly headers: Readonly<Record<string, HeaderValue>>;
   readonly requestId?: string | null;
 }
@@ -103,6 +104,34 @@ function normalizeHostname(value: string): string {
   return hostname;
 }
 
+function normalizeProtocol(value: string): "http" | "https" {
+  const protocol = value.trim().toLowerCase();
+  if (protocol !== "http" && protocol !== "https") {
+    throw new TypeError("Identity request protocol is invalid.");
+  }
+  return protocol;
+}
+
+function trustedRequestOrigin(request: NestIdentityRequest, hostname: string): string {
+  const host = singleHeader(request.headers.host);
+  if (!host) {
+    throw new TypeError("Identity request host is required.");
+  }
+
+  let origin: URL;
+  try {
+    origin = new URL(`${normalizeProtocol(request.protocol)}://${host}`);
+  } catch {
+    throw new TypeError("Identity request host is invalid.");
+  }
+
+  if (origin.hostname.toLowerCase() !== hostname) {
+    throw new TypeError("Identity request host is invalid.");
+  }
+
+  return origin.origin;
+}
+
 function preAuthCookie(value: string | null): string | null {
   if (!value) {
     return null;
@@ -129,8 +158,10 @@ function preAuthCookie(value: string | null): string | null {
 export function toIdentityPublicHttpRequest(
   request: NestIdentityRequest,
 ): IdentityPublicHttpRequest {
+  const hostname = normalizeHostname(request.hostname);
   return Object.freeze({
-    hostname: normalizeHostname(request.hostname),
+    hostname,
+    expectedOrigin: trustedRequestOrigin(request, hostname),
     origin: singleHeader(request.headers.origin),
     csrfCookie: preAuthCookie(singleHeader(request.headers.cookie)),
     csrfToken: singleHeader(request.headers["x-csrf-token"]),
