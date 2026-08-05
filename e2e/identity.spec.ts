@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const CONSOLE_BASE_URL = "http://127.0.0.1:3002";
+const CONSOLE_BASE_URL = "http://localhost:3002";
 const IDENTITY_TOKEN = "browser-selector.browser-verifier";
 const NEW_PASSWORD = "Long-enough-password-123!";
 
@@ -18,8 +18,8 @@ test("activation removes the fragment and submits only the platform command to t
   await expect(page.getByRole("heading", { name: "Activate your account" })).toBeVisible();
   await expectTokenRemovedFromBrowser(page);
 
-  await page.getByLabel("New password").fill(NEW_PASSWORD);
-  await page.getByLabel("Confirm new password").fill(NEW_PASSWORD);
+  await page.getByLabel("New password", { exact: true }).fill(NEW_PASSWORD);
+  await page.getByLabel("Confirm new password", { exact: true }).fill(NEW_PASSWORD);
 
   const requestPromise = page.waitForRequest(
     (request) =>
@@ -76,8 +76,8 @@ test("password reset removes the fragment and submits only the platform command 
   await expect(page.getByRole("heading", { name: "Reset your password" })).toBeVisible();
   await expectTokenRemovedFromBrowser(page);
 
-  await page.getByLabel("New password").fill(NEW_PASSWORD);
-  await page.getByLabel("Confirm new password").fill(NEW_PASSWORD);
+  await page.getByLabel("New password", { exact: true }).fill(NEW_PASSWORD);
+  await page.getByLabel("Confirm new password", { exact: true }).fill(NEW_PASSWORD);
 
   const requestPromise = page.waitForRequest(
     (request) =>
