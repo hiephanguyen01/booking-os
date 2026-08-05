@@ -1,6 +1,58 @@
 {
   "components": {
     "schemas": {
+      "AcceptedResponseDto": {
+        "properties": {
+          "accepted": {
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accepted"
+        ],
+        "type": "object"
+      },
+      "CompletedResponseDto": {
+        "properties": {
+          "completed": {
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "completed"
+        ],
+        "type": "object"
+      },
+      "CompleteIdentityPasswordDto": {
+        "properties": {
+          "newPassword": {
+            "minLength": 12,
+            "type": "string"
+          },
+          "scopeType": {
+            "enum": [
+              "platform",
+              "tenant"
+            ],
+            "type": "string"
+          },
+          "tenantId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scopeType",
+          "token",
+          "newPassword"
+        ],
+        "type": "object"
+      },
       "HealthDependencyStatusDto": {
         "properties": {
           "latencyMs": {
@@ -63,6 +115,46 @@
           "uptimeSeconds"
         ],
         "type": "object"
+      },
+      "PreAuthCsrfResponseDto": {
+        "properties": {
+          "csrfToken": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "csrfToken",
+          "expiresAt"
+        ],
+        "type": "object"
+      },
+      "RequestIdentityPasswordResetDto": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "type": "string"
+          },
+          "scopeType": {
+            "enum": [
+              "platform",
+              "tenant"
+            ],
+            "type": "string"
+          },
+          "tenantId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scopeType",
+          "email"
+        ],
+        "type": "object"
       }
     }
   },
@@ -74,6 +166,150 @@
   },
   "openapi": "3.0.0",
   "paths": {
+    "/api/auth/activation/complete": {
+      "post": {
+        "operationId": "completeAccountActivation",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteIdentityPasswordDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompletedResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/auth/csrf": {
+      "get": {
+        "operationId": "getPreAuthCsrf",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "purpose",
+            "required": true,
+            "schema": {
+              "enum": [
+                "activation",
+                "password_forgot",
+                "password_reset"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreAuthCsrfResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/auth/password/forgot": {
+      "post": {
+        "operationId": "requestPasswordReset",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestIdentityPasswordResetDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/auth/password/reset": {
+      "post": {
+        "operationId": "completePasswordReset",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteIdentityPasswordDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompletedResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
     "/api/health": {
       "get": {
         "operationId": "getHealth",
