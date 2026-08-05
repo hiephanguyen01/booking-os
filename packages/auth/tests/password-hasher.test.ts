@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  ARGON2ID_BASELINE,
-  type PasswordHasher,
-} from "../src/password-hasher.js";
+import { ARGON2ID_BASELINE, type PasswordHasher } from "../src/password-hasher.js";
 
 test("exports the approved Argon2id baseline", () => {
   assert.deepEqual(ARGON2ID_BASELINE, {

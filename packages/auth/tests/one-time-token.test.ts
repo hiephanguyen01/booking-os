@@ -75,7 +75,13 @@ test("rejects malformed tokens and digests without throwing", () => {
     randomBytes: deterministicRandomBytes,
   });
 
-  for (const serialized of ["", token.selector, `${token.selector}.`, `.${token.secret}`, "a.b.c"]) {
+  for (const serialized of [
+    "",
+    token.selector,
+    `${token.selector}.`,
+    `.${token.secret}`,
+    "a.b.c",
+  ]) {
     assert.equal(parseOneTimeToken(serialized), null);
   }
 
