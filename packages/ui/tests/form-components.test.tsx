@@ -6,12 +6,7 @@ import { SubmitButton } from "../src/components/submit-button.js";
 
 it("links description and error IDs to the control", () => {
   const html = renderToStaticMarkup(
-    <FormField
-      id="password"
-      label="Password"
-      description="Use 12 characters"
-      error="Too short"
-    >
+    <FormField id="password" label="Password" description="Use 12 characters" error="Too short">
       {(a11y) => <input id="password" {...a11y} />}
     </FormField>,
   );
