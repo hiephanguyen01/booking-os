@@ -59,7 +59,9 @@ function fixture(overrides: Partial<CatalogFixture> = {}): CatalogFixture {
 
 function fakeClient(catalog: CatalogFixture): Pick<PoolClient, "query"> {
   return {
-    query: async <R extends QueryResultRow>(text: string): Promise<QueryResult<R>> => {
+    query: async <R extends QueryResultRow>(
+      text: string,
+    ): Promise<QueryResult<R>> => {
       let rows: readonly QueryResultRow[];
       if (text.includes("FROM pg_class")) {
         rows = catalog.tables;
@@ -216,4 +218,17 @@ test("rejects a missing application role", async () => {
   assert.deepEqual(await failures({ roles: [] }), [
     "booking_app: application database role is missing",
   ]);
+});
+
+test("rejects split tenant enforcement across separate policies", async () => {
+  const splitPolicies = [
+    { ...validPolicy, policyname: "tenant_read", with_check: null },
+    { ...validPolicy, policyname: "tenant_write", qual: null },
+  ];
+
+  assert.ok(
+    (await failures({ policies: splitPolicies })).some((failure) =>
+      failure.includes("single RLS policy"),
+    ),
+  );
 });
