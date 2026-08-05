@@ -1,13 +1,13 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  forgotPasswordFormSchema,
   type ForgotPasswordFormValues,
+  forgotPasswordFormSchema,
 } from "@booking-os/contracts/identity";
 import { FormField } from "@booking-os/ui/form-field";
 import { Input } from "@booking-os/ui/input";
 import { SubmitButton } from "@booking-os/ui/submit-button";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
