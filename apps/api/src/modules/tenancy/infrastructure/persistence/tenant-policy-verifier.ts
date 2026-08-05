@@ -26,6 +26,7 @@ interface PolicyRow extends QueryResultRow {
 }
 
 interface GrantRow extends QueryResultRow {
+  readonly grantee: string;
   readonly privilege_type: string;
 }
 
@@ -178,22 +179,38 @@ async function inspectTable(
   }
 
   const grantResult = await client.query<GrantRow>(
-    `SELECT privilege_type
-       FROM information_schema.role_table_grants
+    `SELECT grantee, privilege_type
+       FROM information_schema.table_privileges
       WHERE table_schema = 'public'
         AND table_name = $1
-        AND grantee = $2`,
+        AND grantee IN ($2, 'PUBLIC')`,
     [policy.table, policy.applicationRole],
   );
-  const actualPrivileges = [
-    ...new Set(grantResult.rows.map((row) => row.privilege_type.toUpperCase())),
+  const applicationPrivileges = [
+    ...new Set(
+      grantResult.rows
+        .filter((row) => row.grantee === policy.applicationRole)
+        .map((row) => row.privilege_type.toUpperCase()),
+    ),
+  ].sort();
+  const publicPrivileges = [
+    ...new Set(
+      grantResult.rows
+        .filter((row) => row.grantee.toUpperCase() === "PUBLIC")
+        .map((row) => row.privilege_type.toUpperCase()),
+    ),
   ].sort();
   const missingPrivileges = REQUIRED_PRIVILEGES.filter(
-    (privilege) => !actualPrivileges.includes(privilege),
+    (privilege) => !applicationPrivileges.includes(privilege),
   );
-  const excessivePrivileges = actualPrivileges.filter(
+  const excessivePrivileges = applicationPrivileges.filter(
     (privilege) => !REQUIRED_PRIVILEGES.includes(privilege),
   );
+  if (publicPrivileges.length > 0) {
+    failures.push(
+      `${policy.table}: PUBLIC has table privileges ${publicPrivileges.join(", ")}`,
+    );
+  }
   if (missingPrivileges.length > 0) {
     failures.push(
       `${policy.table}: ${policy.applicationRole} is missing privileges ${missingPrivileges.join(

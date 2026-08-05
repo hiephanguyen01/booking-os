@@ -45,10 +45,10 @@ const validFixture: CatalogFixture = {
   ],
   policies: [validPolicy],
   grants: [
-    { privilege_type: "SELECT" },
-    { privilege_type: "INSERT" },
-    { privilege_type: "UPDATE" },
-    { privilege_type: "DELETE" },
+    { grantee: "booking_app", privilege_type: "SELECT" },
+    { grantee: "booking_app", privilege_type: "INSERT" },
+    { grantee: "booking_app", privilege_type: "UPDATE" },
+    { grantee: "booking_app", privilege_type: "DELETE" },
   ],
   roles: [{ rolsuper: false, rolbypassrls: false }],
 };
@@ -71,7 +71,7 @@ function fakeClient(catalog: CatalogFixture): Pick<PoolClient, "query"> {
         rows = catalog.indexes;
       } else if (text.includes("FROM pg_policies")) {
         rows = catalog.policies;
-      } else if (text.includes("information_schema.role_table_grants")) {
+      } else if (text.includes("information_schema.table_privileges")) {
         rows = catalog.grants;
       } else if (text.includes("FROM pg_roles")) {
         rows = catalog.roles;
@@ -198,7 +198,7 @@ test("rejects excessive table grants", async () => {
   assert.ok(
     (
       await failures({
-        grants: [...validFixture.grants, { privilege_type: "TRUNCATE" }],
+        grants: [...validFixture.grants, { grantee: "booking_app", privilege_type: "TRUNCATE" }],
       })
     ).some((failure) => failure.includes("excessive privileges TRUNCATE")),
   );
@@ -245,5 +245,18 @@ test("rejects an additional broad applicable policy", async () => {
     (await failures({ policies: [validPolicy, broadPolicy] })).some((failure) =>
       failure.includes("applicable RLS policy"),
     ),
+  );
+});
+
+test("rejects table privileges granted to PUBLIC", async () => {
+  assert.ok(
+    (
+      await failures({
+        grants: [
+          ...validFixture.grants,
+          { grantee: "PUBLIC", privilege_type: "SELECT" },
+        ],
+      })
+    ).some((failure) => failure.includes("PUBLIC has table privileges SELECT")),
   );
 });
