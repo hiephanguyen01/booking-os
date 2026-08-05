@@ -12,6 +12,7 @@
     "test": "prisma generate && node --test --import tsx \"src/**/*.test.ts\" \"test/**/*.test.ts\"",
     "test:e2e": "prisma generate && node --test --import tsx \"test/**/*.test.ts\"",
     "openapi:generate": "prisma generate && tsx src/openapi/generate-openapi.ts",
+    "identity:bootstrap-platform-admin": "tsx src/cli/run-platform-admin-bootstrap.ts",
     "prisma:validate": "prisma validate",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
