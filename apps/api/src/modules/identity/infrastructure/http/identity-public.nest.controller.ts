@@ -46,41 +46,41 @@ interface NestIdentityRequest {
 }
 
 class PreAuthCsrfResponseDto {
-  @ApiProperty()
+  @ApiProperty({ type: String })
   csrfToken!: string;
 
-  @ApiProperty({ format: "date-time" })
+  @ApiProperty({ type: String, format: "date-time" })
   expiresAt!: string;
 }
 
 class AcceptedResponseDto {
-  @ApiProperty({ example: true })
+  @ApiProperty({ type: Boolean, example: true })
   accepted!: true;
 }
 
 class CompletedResponseDto {
-  @ApiProperty({ example: true })
+  @ApiProperty({ type: Boolean, example: true })
   completed!: true;
 }
 
 class IdentityScopeDto {
-  @ApiProperty({ enum: SCOPES })
+  @ApiProperty({ type: String, enum: SCOPES })
   scopeType!: IdentityScopeType;
 
-  @ApiProperty({ required: false, format: "uuid" })
+  @ApiProperty({ type: String, required: false, format: "uuid" })
   tenantId?: string;
 }
 
 class CompleteIdentityPasswordDto extends IdentityScopeDto {
-  @ApiProperty()
+  @ApiProperty({ type: String })
   token!: string;
 
-  @ApiProperty({ minLength: 12 })
+  @ApiProperty({ type: String, minLength: 12 })
   newPassword!: string;
 }
 
 class RequestIdentityPasswordResetDto extends IdentityScopeDto {
-  @ApiProperty({ format: "email" })
+  @ApiProperty({ type: String, format: "email" })
   email!: string;
 }
 
