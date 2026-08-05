@@ -76,8 +76,8 @@ jobs:
           apps/api/src/observability/http-logging.interceptor.test.ts
           apps/api/src/modules/tenancy/infrastructure/http/tenant-required.guard.test.ts
 
-      - name: Verify API typecheck
-        run: pnpm --filter @booking-os/api typecheck
+      - name: Verify workspace typecheck
+        run: pnpm typecheck
 
       - name: Commit fixes
         run: |
