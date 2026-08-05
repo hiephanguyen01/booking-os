@@ -13,6 +13,10 @@
     "./health": {
       "types": "./dist/health/index.d.ts",
       "import": "./dist/health/index.js"
+    },
+    "./identity": {
+      "types": "./dist/identity/index.d.ts",
+      "import": "./dist/identity/index.js"
     }
   },
   "files": [
