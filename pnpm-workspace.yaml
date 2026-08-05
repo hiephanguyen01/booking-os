@@ -4,9 +4,23 @@ packages:
   - "tools/*"
 
 catalog:
+  "@hookform/resolvers": 5.5.7
   "@playwright/test": 1.62.0
+  "@tailwindcss/postcss": 4.3.3
+  "@testing-library/dom": 10.4.1
+  "@testing-library/react": 16.3.2
+  "@testing-library/user-event": 14.6.1
   "@types/node": 22.18.0
+  class-variance-authority: 0.7.1
+  clsx: 2.1.1
+  jsdom: 29.1.1
+  postcss: 8.5.18
+  react-hook-form: 7.83.0
+  tailwind-merge: 3.6.0
+  tailwindcss: 4.3.3
   typescript: 5.9.3
+  vitest: 4.1.10
+  zod: 4.4.3
 
 onlyBuiltDependencies:
   - "@prisma/client"

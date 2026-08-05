@@ -9,26 +9,37 @@
     "build": "next build --webpack",
     "lint": "biome check app src middleware.ts next.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test --import tsx \"src/**/*.test.ts\" \"app/**/*.test.ts\"",
+    "test": "node --test --import tsx \"src/**/*.test.ts\" \"app/**/*.test.ts\" && vitest run",
     "clean": "rimraf .next tsconfig.tsbuildinfo"
   },
   "dependencies": {
     "@booking-os/api-client": "workspace:*",
     "@booking-os/auth": "workspace:*",
+    "@booking-os/contracts": "workspace:*",
     "@booking-os/i18n": "workspace:*",
     "@booking-os/ui": "workspace:*",
+    "@hookform/resolvers": "catalog:",
     "next": "16.2.12",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "react-hook-form": "catalog:"
   },
   "devDependencies": {
     "@booking-os/testing": "workspace:*",
     "@booking-os/typescript-config": "workspace:*",
+    "@tailwindcss/postcss": "catalog:",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
+    "jsdom": "catalog:",
+    "postcss": "catalog:",
     "rimraf": "6.0.1",
+    "tailwindcss": "catalog:",
     "tsx": "4.20.5",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
