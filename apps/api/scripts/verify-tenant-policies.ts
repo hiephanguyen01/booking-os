@@ -1,14 +1,9 @@
 import { Pool } from "pg";
 
-import {
-  TENANT_POLICY_MANIFEST,
-} from "../src/modules/tenancy/infrastructure/persistence/tenant-policy-manifest.js";
-import {
-  verifyTenantPolicies,
-} from "../src/modules/tenancy/infrastructure/persistence/tenant-policy-verifier.js";
+import { TENANT_POLICY_MANIFEST } from "../src/modules/tenancy/infrastructure/persistence/tenant-policy-manifest.js";
+import { verifyTenantPolicies } from "../src/modules/tenancy/infrastructure/persistence/tenant-policy-verifier.js";
 
-const databaseUrl =
-  process.env.MIGRATION_DATABASE_URL?.trim() || process.env.DATABASE_URL?.trim();
+const databaseUrl = process.env.MIGRATION_DATABASE_URL?.trim() || process.env.DATABASE_URL?.trim();
 
 if (!databaseUrl) {
   throw new Error(

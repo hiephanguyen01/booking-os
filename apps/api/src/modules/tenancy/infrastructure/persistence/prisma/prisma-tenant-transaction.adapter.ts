@@ -4,14 +4,14 @@ import type { TenantExecutionContext } from "@booking-os/contracts";
 import { Inject, Injectable } from "@nestjs/common";
 
 import { PrismaService } from "../../../../../database/prisma.service.js";
-import {
-  InvalidTenantContextError,
-  TenantContextConflictError,
-} from "../../../application/tenant-context.errors.js";
 import type {
   TenantDataSession,
   TenantTransactionPort,
 } from "../../../application/ports/tenant-transaction.port.js";
+import {
+  InvalidTenantContextError,
+  TenantContextConflictError,
+} from "../../../application/tenant-context.errors.js";
 import { isTenantId } from "../../../domain/tenant-id.js";
 import { PrismaTenantProbeRepositoryAdapter } from "./prisma-tenant-probe-repository.adapter.js";
 

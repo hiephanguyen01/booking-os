@@ -184,8 +184,7 @@ function policyAppliesToRole(roles: readonly string[] | string, applicationRole:
       : roles.map((role) => role.toLowerCase());
 
   return (
-    normalizedRoles.includes("public") ||
-    normalizedRoles.includes(applicationRole.toLowerCase())
+    normalizedRoles.includes("public") || normalizedRoles.includes(applicationRole.toLowerCase())
   );
 }
 
@@ -345,9 +344,7 @@ async function inspectTable(
     (privilege) => !REQUIRED_PRIVILEGES.includes(privilege),
   );
   if (publicPrivileges.length > 0) {
-    failures.push(
-      `${policy.table}: PUBLIC has table privileges ${publicPrivileges.join(", ")}`,
-    );
+    failures.push(`${policy.table}: PUBLIC has table privileges ${publicPrivileges.join(", ")}`);
   }
   if (missingPrivileges.length > 0) {
     failures.push(

@@ -22,9 +22,7 @@ function createDatabase(events: string[]): {
     },
   };
   const prisma = {
-    async $transaction<T>(
-      work: (transaction: Prisma.TransactionClient) => Promise<T>,
-    ): Promise<T> {
+    async $transaction<T>(work: (transaction: Prisma.TransactionClient) => Promise<T>): Promise<T> {
       calls += 1;
       events.push("transaction");
       return work(transaction as unknown as Prisma.TransactionClient);

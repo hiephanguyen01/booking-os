@@ -7,12 +7,8 @@ import { RequestContextStorage } from "../src/common/request-context/request-con
 import type { Environment } from "../src/config/environment.schema.js";
 import { EnvironmentService } from "../src/config/environment.service.js";
 import { PrismaService } from "../src/database/prisma.service.js";
-import {
-  requireTenantExecutionContext,
-} from "../src/modules/tenancy/application/tenant-execution-context.js";
-import {
-  PrismaTenantTransactionAdapter,
-} from "../src/modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-transaction.adapter.js";
+import { requireTenantExecutionContext } from "../src/modules/tenancy/application/tenant-execution-context.js";
+import { PrismaTenantTransactionAdapter } from "../src/modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-transaction.adapter.js";
 import { runTenantTestTransaction } from "./support/tenant-test-transaction.js";
 
 const TENANT_A_ID = "55555555-5555-4555-8555-555555555555";

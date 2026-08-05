@@ -111,8 +111,11 @@ test("tenant A cannot find tenant B by primary key", async () => {
 });
 
 test("tenant A raw select cannot see tenant B", async () => {
-  const rows = await runTenantTestTransaction(prisma, TENANT_A_ID, (transaction) =>
-    transaction.$queryRaw<readonly { id: string; tenant_id: string }[]>`
+  const rows = await runTenantTestTransaction(
+    prisma,
+    TENANT_A_ID,
+    (transaction) =>
+      transaction.$queryRaw<readonly { id: string; tenant_id: string }[]>`
       SELECT id, tenant_id
       FROM tenant_probes
       WHERE id = ${tenantBProbeId}
@@ -189,8 +192,11 @@ test("tenant A cannot upsert tenant B by primary key", async () => {
 });
 
 test("tenant A raw update cannot modify tenant B", async () => {
-  const count = await runTenantTestTransaction(prisma, TENANT_A_ID, (transaction) =>
-    transaction.$executeRaw`
+  const count = await runTenantTestTransaction(
+    prisma,
+    TENANT_A_ID,
+    (transaction) =>
+      transaction.$executeRaw`
       UPDATE tenant_probes
       SET value = ${"forbidden-raw-update"}
       WHERE id = ${tenantBProbeId}

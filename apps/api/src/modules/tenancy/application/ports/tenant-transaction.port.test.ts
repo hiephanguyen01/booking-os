@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-
-import type {
-  TenantDataSession,
-  TenantTransactionPort,
-} from "./tenant-transaction.port.js";
 import type { TenantProbeRepositoryPort } from "./tenant-probe-repository.port.js";
+import type { TenantDataSession, TenantTransactionPort } from "./tenant-transaction.port.js";
 
 const tenantProbes: TenantProbeRepositoryPort = {
   async list() {

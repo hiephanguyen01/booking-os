@@ -122,10 +122,7 @@ export const workerProviders: Provider[] = [
       logger: StructuredLogger,
     ): OutboxPollingService =>
       new OutboxPollingService(
-        new OutboxDispatcher(
-          new PrismaOutboxRepository(new WorkerDatabase(prisma)),
-          queue,
-        ),
+        new OutboxDispatcher(new PrismaOutboxRepository(new WorkerDatabase(prisma)), queue),
         logger,
       ),
   },

@@ -27,8 +27,9 @@ export class PrismaOutboxRepository implements OutboxDispatchRepository {
   }
 
   claimBatch(limit: number): Promise<readonly DispatchableOutboxEvent[]> {
-    return this.database.run((transaction) =>
-      transaction.$queryRaw<ClaimedOutboxRow[]>`
+    return this.database.run(
+      (transaction) =>
+        transaction.$queryRaw<ClaimedOutboxRow[]>`
         WITH candidates AS (
           SELECT "id"
           FROM "outbox_events"

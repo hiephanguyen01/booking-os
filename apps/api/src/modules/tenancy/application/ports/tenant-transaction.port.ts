@@ -6,5 +6,8 @@ export interface TenantDataSession {
 }
 
 export interface TenantTransactionPort {
-  run<T>(context: TenantExecutionContext, work: (session: TenantDataSession) => Promise<T>): Promise<T>;
+  run<T>(
+    context: TenantExecutionContext,
+    work: (session: TenantDataSession) => Promise<T>,
+  ): Promise<T>;
 }

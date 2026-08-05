@@ -28,8 +28,7 @@ interface CatalogFixture {
 const validPolicy = {
   policyname: "tenant_probe_isolation",
   roles: ["public"],
-  qual:
-    "(tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)",
+  qual: "(tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)",
   with_check:
     "(tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)",
 } as const;
@@ -64,9 +63,7 @@ function fixture(overrides: Partial<CatalogFixture> = {}): CatalogFixture {
 
 function fakeClient(catalog: CatalogFixture): Pick<PoolClient, "query"> {
   return {
-    query: async <R extends QueryResultRow>(
-      text: string,
-    ): Promise<QueryResult<R>> => {
+    query: async <R extends QueryResultRow>(text: string): Promise<QueryResult<R>> => {
       let rows: readonly QueryResultRow[];
       if (text.includes("FROM pg_class")) {
         rows = catalog.tables;
@@ -155,9 +152,7 @@ test("rejects disabled FORCE ROW LEVEL SECURITY", async () => {
 
 test("rejects a missing applicable RLS policy", async () => {
   assert.ok(
-    (await failures({ policies: [] })).some((failure) =>
-      failure.includes("no RLS policy applies"),
-    ),
+    (await failures({ policies: [] })).some((failure) => failure.includes("no RLS policy applies")),
   );
 });
 
@@ -259,10 +254,7 @@ test("rejects table privileges granted to PUBLIC", async () => {
   assert.ok(
     (
       await failures({
-        grants: [
-          ...validFixture.grants,
-          { grantee: "PUBLIC", privilege_type: "SELECT" },
-        ],
+        grants: [...validFixture.grants, { grantee: "PUBLIC", privilege_type: "SELECT" }],
       })
     ).some((failure) => failure.includes("PUBLIC has table privileges SELECT")),
   );
@@ -281,8 +273,7 @@ test("rejects an index on a similarly named non-tenant column", async () => {
 test("rejects a policy on a similarly named non-tenant column", async () => {
   const wrongColumnPolicy = {
     ...validPolicy,
-    qual:
-      "(tenant_id_backup = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)",
+    qual: "(tenant_id_backup = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)",
     with_check:
       "(tenant_id_backup = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)",
   };
@@ -295,8 +286,6 @@ test("rejects a policy on a similarly named non-tenant column", async () => {
     ).some((failure) => failure.includes("USING expression")),
   );
 });
-
-
 
 test("rejects application-role membership in another role", async () => {
   assert.ok(
@@ -314,7 +303,6 @@ test("rejects application-role membership in another role", async () => {
     ).some((failure) => failure.includes("must not be a member of role tenant_admin")),
   );
 });
-
 
 test("rejects application-role login and administrative capabilities", async () => {
   const roleFailures = await failures({
@@ -339,8 +327,7 @@ test("rejects application-role login and administrative capabilities", async () 
 test("rejects tenant policy expressions that do not compare equality", async () => {
   const inequalityPolicy = {
     ...validPolicy,
-    qual:
-      "(tenant_id <> (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)",
+    qual: "(tenant_id <> (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)",
     with_check:
       "(tenant_id <> (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)",
   };
@@ -357,8 +344,7 @@ test("rejects tenant policy expressions that do not compare equality", async () 
 test("rejects broad OR tenant policy expressions", async () => {
   const broadOrPolicy = {
     ...validPolicy,
-    qual:
-      "(tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid OR tenant_id IS NOT NULL)",
+    qual: "(tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid OR tenant_id IS NOT NULL)",
     with_check:
       "(tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid OR tenant_id IS NOT NULL)",
   };
@@ -371,7 +357,6 @@ test("rejects broad OR tenant policy expressions", async () => {
     ).some((failure) => failure.includes("USING expression")),
   );
 });
-
 
 test("rejects tenant tables owned by the application role", async () => {
   assert.ok(

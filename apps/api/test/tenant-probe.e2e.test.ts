@@ -56,8 +56,7 @@ before(async () => {
   process.env.API_PREFIX = "api";
   process.env.APP_VERSION = "0.1.0-e2e";
   process.env.LOG_LEVEL = "error";
-  process.env.DATABASE_URL ??=
-    "postgresql://booking:booking@localhost:5432/booking_os_test";
+  process.env.DATABASE_URL ??= "postgresql://booking:booking@localhost:5432/booking_os_test";
   process.env.REDIS_URL ??= "redis://localhost:6379/1";
   process.env.READINESS_TIMEOUT_MS = "750";
   process.env.SESSION_SECRET = "test-only-session-secret-at-least-32-characters";
