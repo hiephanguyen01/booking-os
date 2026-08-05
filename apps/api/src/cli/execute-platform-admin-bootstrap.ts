@@ -55,8 +55,9 @@ export class PlatformAdminBootstrapRoleMissingError extends Error {
 }
 
 async function acquireBootstrapLock(transaction: Prisma.TransactionClient): Promise<void> {
-  await transaction.$queryRaw`
-    SELECT pg_advisory_xact_lock(
+  await transaction.$queryRaw<Array<{ readonly acquired: number }>>`
+    SELECT 1 AS acquired
+    FROM pg_advisory_xact_lock(
       hashtext(${BOOTSTRAP_LOCK_NAMESPACE}),
       hashtext(${BOOTSTRAP_LOCK_NAME})
     )
