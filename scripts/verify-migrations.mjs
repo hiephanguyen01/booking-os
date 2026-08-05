@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
@@ -8,6 +8,10 @@ const migrationDatabaseUrl =
 const previousSchemaFixture = resolve(
   repositoryRoot,
   "apps/api/prisma/fixtures/previous-schema.sql",
+);
+const identityMigrationPath = resolve(
+  repositoryRoot,
+  "apps/api/prisma/migrations/20260805_identity_foundation/migration.sql",
 );
 
 function run(args, environment = {}) {
@@ -29,9 +33,50 @@ function run(args, environment = {}) {
   }
 }
 
+function verifyIdentityMigrationContract() {
+  if (!existsSync(identityMigrationPath)) {
+    throw new Error(`Missing identity migration: ${identityMigrationPath}`);
+  }
+
+  const migration = readFileSync(identityMigrationPath, "utf8");
+  const requiredSnippets = [
+    'CREATE TABLE "users"',
+    'CREATE TABLE "password_credentials"',
+    'CREATE TABLE "account_activation_tokens"',
+    'CREATE TABLE "password_reset_tokens"',
+    'CREATE TABLE "roles"',
+    'CREATE TABLE "permissions"',
+    'CREATE TABLE "role_permissions"',
+    'CREATE TABLE "role_assignments"',
+    'CREATE TABLE "security_audit_events"',
+    '"account_activation_tokens_one_active_scope_key"',
+    '"password_reset_tokens_one_active_scope_key"',
+    "NULLS NOT DISTINCT",
+    "platform.security.audit.read",
+    "platform.tenants.provision",
+    "platform.users.provision",
+  ];
+
+  for (const snippet of requiredSnippets) {
+    if (!migration.includes(snippet)) {
+      throw new Error(`Identity migration is missing required contract: ${snippet}`);
+    }
+  }
+
+  const forbiddenPlaintextColumns = [/"(?:raw_)?password"\s/i, /"(?:raw_)?token"\s/i, /"secret"\s/i];
+
+  for (const pattern of forbiddenPlaintextColumns) {
+    if (pattern.test(migration)) {
+      throw new Error(`Identity migration contains a forbidden plaintext column: ${pattern}`);
+    }
+  }
+}
+
 if (!migrationDatabaseUrl) {
   throw new Error("MIGRATION_DATABASE_URL or DATABASE_URL is required for migration verification.");
 }
+
+verifyIdentityMigrationContract();
 
 const migrationEnvironment = { DATABASE_URL: migrationDatabaseUrl };
 

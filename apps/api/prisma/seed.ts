@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, RoleScopeLevel } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -17,6 +17,31 @@ const tenants = [
   },
 ] as const;
 
+const platformAdminRole = {
+  id: "00000000-0000-4000-8000-000000000101",
+  key: "platform_admin",
+  scopeLevel: RoleScopeLevel.platform,
+  isSystem: true,
+} as const;
+
+const platformPermissions = [
+  {
+    id: "00000000-0000-4000-8000-000000000201",
+    key: "platform.security.audit.read",
+    description: "Read platform security audit events.",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000202",
+    key: "platform.tenants.provision",
+    description: "Provision a tenant and its initial owner invitation.",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000203",
+    key: "platform.users.provision",
+    description: "Provision global user accounts.",
+  },
+] as const;
+
 async function seedTenantProbe(tenantId: string, value: string): Promise<void> {
   await prisma.$transaction(async (transaction) => {
     await transaction.$executeRawUnsafe("SET LOCAL ROLE booking_app");
@@ -26,7 +51,48 @@ async function seedTenantProbe(tenantId: string, value: string): Promise<void> {
   });
 }
 
+async function seedAuthorizationCatalog(): Promise<void> {
+  const role = await prisma.role.upsert({
+    where: { key: platformAdminRole.key },
+    update: {
+      scopeLevel: platformAdminRole.scopeLevel,
+      isSystem: platformAdminRole.isSystem,
+    },
+    create: platformAdminRole,
+  });
+
+  for (const permissionDefinition of platformPermissions) {
+    const permission = await prisma.permission.upsert({
+      where: { key: permissionDefinition.key },
+      update: {
+        scopeLevel: RoleScopeLevel.platform,
+        description: permissionDefinition.description,
+      },
+      create: {
+        ...permissionDefinition,
+        scopeLevel: RoleScopeLevel.platform,
+      },
+    });
+
+    await prisma.rolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId: role.id,
+          permissionId: permission.id,
+        },
+      },
+      update: {},
+      create: {
+        roleId: role.id,
+        permissionId: permission.id,
+      },
+    });
+  }
+}
+
 async function main(): Promise<void> {
+  await seedAuthorizationCatalog();
+
   for (const tenant of tenants) {
     await prisma.tenant.upsert({
       where: { id: tenant.id },
