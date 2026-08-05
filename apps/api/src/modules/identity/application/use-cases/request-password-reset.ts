@@ -44,7 +44,7 @@ export class RequestPasswordResetUseCase {
     const tenantId = resolveTenantId(command.scopeType, command.tenantId);
     const user = await this.repository.findUserByNormalizedEmail(normalizedEmail);
 
-    if (!user || user.status !== "active") {
+    if (user?.status !== "active") {
       return;
     }
 

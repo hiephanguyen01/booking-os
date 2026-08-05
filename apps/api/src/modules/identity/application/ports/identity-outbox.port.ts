@@ -1,7 +1,4 @@
-import type {
-  StoredActivationToken,
-  StoredResetToken,
-} from "./identity-repository.port.js";
+import type { StoredActivationToken, StoredResetToken } from "./identity-repository.port.js";
 import type { SensitiveEnvelopeValue } from "./sensitive-envelope.port.js";
 
 export type IdentityEmailTemplate = "account_activation" | "password_reset";
@@ -16,9 +13,7 @@ export interface IdentityEmailEventPayload {
 
 export interface IdentityEmailOutboxEvent {
   readonly id: string;
-  readonly type:
-    | "identity.activation.requested.v1"
-    | "identity.password_reset.requested.v1";
+  readonly type: "identity.activation.requested.v1" | "identity.password_reset.requested.v1";
   readonly tenantId: string | null;
   readonly aggregateType: "user";
   readonly aggregateId: string;
@@ -40,9 +35,7 @@ export interface IssuePasswordResetEmailInput {
   };
 }
 
-export type IssueIdentityEmailInput =
-  | IssueActivationEmailInput
-  | IssuePasswordResetEmailInput;
+export type IssueIdentityEmailInput = IssueActivationEmailInput | IssuePasswordResetEmailInput;
 
 export interface IdentityOutboxPort {
   issueActivation(input: IssueActivationEmailInput): Promise<void>;

@@ -19,10 +19,8 @@ test("derives the selector and purpose-bound digest from serialized token materi
     tokenHash: issued.tokenHash,
   });
   assert.notEqual(
-    adapter.derive(
-      issued.serialized,
-      "identity.password_reset.v1:platform:-:console.example.com",
-    )?.tokenHash,
+    adapter.derive(issued.serialized, "identity.password_reset.v1:platform:-:console.example.com")
+      ?.tokenHash,
     issued.tokenHash,
   );
   assert.equal(adapter.derive("malformed", "identity.activation.v1"), null);

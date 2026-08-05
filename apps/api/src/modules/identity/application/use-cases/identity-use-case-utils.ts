@@ -1,4 +1,4 @@
-import { PasswordPolicyError, assertPasswordPolicy } from "@booking-os/auth";
+import { assertPasswordPolicy, PasswordPolicyError } from "@booking-os/auth";
 
 import type { IdentityScopeType } from "../../domain/user.js";
 import type { IdentityEmailTemplate } from "../ports/identity-outbox.port.js";
