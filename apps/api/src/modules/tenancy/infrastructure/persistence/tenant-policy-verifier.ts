@@ -54,27 +54,123 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function stripOuterParentheses(value: string): string {
+  let result = value.trim();
+
+  while (result.startsWith("(") && result.endsWith(")")) {
+    let depth = 0;
+    let closesAtEnd = false;
+    let inString = false;
+
+    for (let index = 0; index < result.length; index += 1) {
+      const character = result[index];
+      if (character === "'") {
+        if (inString && result[index + 1] === "'") {
+          index += 1;
+          continue;
+        }
+        inString = !inString;
+        continue;
+      }
+      if (inString) {
+        continue;
+      }
+      if (character === "(") {
+        depth += 1;
+      } else if (character === ")") {
+        depth -= 1;
+        if (depth === 0) {
+          closesAtEnd = index === result.length - 1;
+          break;
+        }
+      }
+    }
+
+    if (!closesAtEnd) {
+      break;
+    }
+    result = result.slice(1, -1).trim();
+  }
+
+  return result;
+}
+
+function splitTopLevelEquality(expression: string): readonly [string, string] | undefined {
+  let depth = 0;
+  let inString = false;
+  let equalityIndex = -1;
+
+  for (let index = 0; index < expression.length; index += 1) {
+    const character = expression[index];
+    if (character === "'") {
+      if (inString && expression[index + 1] === "'") {
+        index += 1;
+        continue;
+      }
+      inString = !inString;
+      continue;
+    }
+    if (inString) {
+      continue;
+    }
+    if (character === "(") {
+      depth += 1;
+      continue;
+    }
+    if (character === ")") {
+      depth -= 1;
+      continue;
+    }
+    if (depth === 0 && character === "=") {
+      if (equalityIndex !== -1) {
+        return undefined;
+      }
+      equalityIndex = index;
+    }
+  }
+
+  if (equalityIndex === -1) {
+    return undefined;
+  }
+
+  return [expression.slice(0, equalityIndex), expression.slice(equalityIndex + 1)];
+}
+
+function isTenantSettingValue(value: string): boolean {
+  const compact = value.replaceAll(/\s+/g, "");
+  const currentSetting = String.raw`current_setting\('app\.tenant_id'(?:::text)?,true\)`;
+  const settingValuePattern = new RegExp(
+    String.raw`^\(*(?:nullif\(${currentSetting},''(?:::text)?\)|${currentSetting})\)*::uuid\)*$`,
+  );
+
+  return settingValuePattern.test(compact);
+}
+
 function expressionReferencesTenant(expression: string | null, tenantColumn: string): boolean {
   if (!expression) {
     return false;
   }
 
-  const normalized = normalizeIdentifier(expression);
-  const settingPattern =
-    /current_setting\s*\(\s*'app\.tenant_id'(?:::[a-z0-9_ ]+)?\s*,\s*true\s*\)/i;
-  if (!settingPattern.test(normalized)) {
+  const normalized = stripOuterParentheses(normalizeIdentifier(expression));
+  if (/\b(?:and|or)\b/i.test(normalized) || /<>|!=|<=|>=|<|>/.test(normalized)) {
     return false;
   }
 
-  const expressionWithoutSettings = normalized.replace(
-    /current_setting\s*\(\s*'app\.tenant_id'(?:::[a-z0-9_ ]+)?\s*,\s*true\s*\)/gi,
-    "",
-  );
-  const tenantColumnPattern = new RegExp(
-    `(?:^|[^a-z0-9_$])${escapeRegExp(tenantColumn.toLowerCase())}(?:[^a-z0-9_$]|$)`,
-  );
+  const equality = splitTopLevelEquality(normalized);
+  if (!equality) {
+    return false;
+  }
 
-  return tenantColumnPattern.test(expressionWithoutSettings);
+  const [left, right] = equality.map((side) => stripOuterParentheses(side.trim())) as [
+    string,
+    string,
+  ];
+  const normalizedTenantColumn = tenantColumn.toLowerCase();
+
+  return (
+    (left === normalizedTenantColumn && isTenantSettingValue(right)) ||
+    (right === normalizedTenantColumn && isTenantSettingValue(left))
+  );
 }
 
 function policyAppliesToRole(roles: readonly string[] | string, applicationRole: string): boolean {

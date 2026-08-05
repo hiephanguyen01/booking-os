@@ -335,3 +335,39 @@ test("rejects application-role login and administrative capabilities", async () 
   assert.ok(roleFailures.some((failure) => failure.includes("must not have CREATEROLE")));
   assert.ok(roleFailures.some((failure) => failure.includes("must not have REPLICATION")));
 });
+
+test("rejects tenant policy expressions that do not compare equality", async () => {
+  const inequalityPolicy = {
+    ...validPolicy,
+    qual:
+      "(tenant_id <> (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)",
+    with_check:
+      "(tenant_id <> (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)",
+  };
+
+  assert.ok(
+    (
+      await failures({
+        policies: [inequalityPolicy],
+      })
+    ).some((failure) => failure.includes("USING expression")),
+  );
+});
+
+test("rejects broad OR tenant policy expressions", async () => {
+  const broadOrPolicy = {
+    ...validPolicy,
+    qual:
+      "(tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid OR tenant_id IS NOT NULL)",
+    with_check:
+      "(tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid OR tenant_id IS NOT NULL)",
+  };
+
+  assert.ok(
+    (
+      await failures({
+        policies: [broadOrPolicy],
+      })
+    ).some((failure) => failure.includes("USING expression")),
+  );
+});
