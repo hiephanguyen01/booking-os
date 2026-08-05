@@ -118,7 +118,7 @@ test("tenant A raw select cannot see tenant B", async () => {
       transaction.$queryRaw<readonly { id: string; tenant_id: string }[]>`
       SELECT id, tenant_id
       FROM tenant_probes
-      WHERE id = ${tenantBProbeId}
+      WHERE id = ${tenantBProbeId}::uuid
     `,
   );
 
@@ -199,7 +199,7 @@ test("tenant A raw update cannot modify tenant B", async () => {
       transaction.$executeRaw`
       UPDATE tenant_probes
       SET value = ${"forbidden-raw-update"}
-      WHERE id = ${tenantBProbeId}
+      WHERE id = ${tenantBProbeId}::uuid
     `,
   );
 

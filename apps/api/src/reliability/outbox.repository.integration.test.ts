@@ -127,7 +127,7 @@ test("application role cannot read or alter another tenant outbox row", async ()
     const rawUpdated = await transaction.$executeRaw`
       UPDATE outbox_events
       SET last_error = ${"forbidden-raw-update"}
-      WHERE id = ${TENANT_B_EVENT_ID}
+      WHERE id = ${TENANT_B_EVENT_ID}::uuid
     `;
 
     return { visible, updated, rawUpdated };
