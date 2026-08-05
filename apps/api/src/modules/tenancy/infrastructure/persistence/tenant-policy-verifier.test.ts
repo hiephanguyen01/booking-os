@@ -45,7 +45,16 @@ const validFixture: CatalogFixture = {
     { grantee: "booking_app", privilege_type: "UPDATE" },
     { grantee: "booking_app", privilege_type: "DELETE" },
   ],
-  roles: [{ rolsuper: false, rolbypassrls: false }],
+  roles: [
+    {
+      rolsuper: false,
+      rolbypassrls: false,
+      rolcanlogin: false,
+      rolcreatedb: false,
+      rolcreaterole: false,
+      rolreplication: false,
+    },
+  ],
   memberships: [],
 };
 
@@ -304,4 +313,25 @@ test("rejects application-role membership in another role", async () => {
       })
     ).some((failure) => failure.includes("must not be a member of role tenant_admin")),
   );
+});
+
+
+test("rejects application-role login and administrative capabilities", async () => {
+  const roleFailures = await failures({
+    roles: [
+      {
+        rolsuper: false,
+        rolbypassrls: false,
+        rolcanlogin: true,
+        rolcreatedb: true,
+        rolcreaterole: true,
+        rolreplication: true,
+      },
+    ],
+  });
+
+  assert.ok(roleFailures.some((failure) => failure.includes("must not allow LOGIN")));
+  assert.ok(roleFailures.some((failure) => failure.includes("must not have CREATEDB")));
+  assert.ok(roleFailures.some((failure) => failure.includes("must not have CREATEROLE")));
+  assert.ok(roleFailures.some((failure) => failure.includes("must not have REPLICATION")));
 });

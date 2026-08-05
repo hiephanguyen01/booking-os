@@ -33,6 +33,10 @@ interface GrantRow extends QueryResultRow {
 interface RoleRow extends QueryResultRow {
   readonly rolsuper: boolean;
   readonly rolbypassrls: boolean;
+  readonly rolcanlogin: boolean;
+  readonly rolcreatedb: boolean;
+  readonly rolcreaterole: boolean;
+  readonly rolreplication: boolean;
 }
 
 interface MembershipRow extends QueryResultRow {
@@ -265,7 +269,12 @@ async function inspectRole(
   applicationRole: string,
 ): Promise<readonly string[]> {
   const roleResult = await client.query<RoleRow>(
-    `SELECT rolsuper, rolbypassrls
+    `SELECT rolsuper,
+            rolbypassrls,
+            rolcanlogin,
+            rolcreatedb,
+            rolcreaterole,
+            rolreplication
        FROM pg_roles
       WHERE rolname = $1`,
     [applicationRole],
@@ -281,6 +290,18 @@ async function inspectRole(
   }
   if (role.rolbypassrls) {
     failures.push(`${applicationRole}: application database role must not have BYPASSRLS`);
+  }
+  if (role.rolcanlogin) {
+    failures.push(`${applicationRole}: application database role must not allow LOGIN`);
+  }
+  if (role.rolcreatedb) {
+    failures.push(`${applicationRole}: application database role must not have CREATEDB`);
+  }
+  if (role.rolcreaterole) {
+    failures.push(`${applicationRole}: application database role must not have CREATEROLE`);
+  }
+  if (role.rolreplication) {
+    failures.push(`${applicationRole}: application database role must not have REPLICATION`);
   }
 
   const membershipResult = await client.query<MembershipRow>(
