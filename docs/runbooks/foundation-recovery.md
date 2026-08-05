@@ -89,16 +89,17 @@ This runbook covers the Booking OS Pilot foundation only. It assumes PostgreSQL,
    WHERE rolname IN ('booking_app', 'booking_worker');
 
    SELECT table_name, grantee, privilege_type
-   FROM information_schema.role_table_grants
+   FROM information_schema.table_privileges
    WHERE table_schema = 'public'
      AND table_name IN ('tenant_probes', 'outbox_events')
-     AND grantee IN ('booking_app', 'booking_worker')
+     AND grantee IN ('booking_app', 'booking_worker', 'PUBLIC')
    ORDER BY table_name, grantee, privilege_type;
    ```
 
 6. Decision:
    - hostname does not resolve to a tenant: correct DNS/proxy routing or tenant configuration; do not accept a tenant ID from body, query, or client headers.
    - `booking_app` is superuser or has `BYPASSRLS`: stop the rollout and restore the reviewed role through a forward migration.
+   - `PUBLIC` has any privilege on a tenant-owned table: stop the rollout and revoke it through a reviewed forward migration.
    - RLS, FORCE RLS, tenant index, `USING`, or `WITH CHECK` is missing: stop the rollout and create a reviewed forward migration.
    - architecture verification reports a forbidden import: restore the application port boundary; do not bypass it with a direct Prisma or infrastructure import.
    - a single tenant row appears incorrect: preserve evidence and create a reviewed repair procedure. Do not modify the row ad hoc.
