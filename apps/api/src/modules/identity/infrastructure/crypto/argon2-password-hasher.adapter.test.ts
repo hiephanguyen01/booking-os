@@ -16,12 +16,29 @@ const BASELINE_OPTIONS: Argon2PasswordHasherOptions = {
   saltLength: 16,
 };
 
+function parseParameters(hash: string): Readonly<Record<string, string>> {
+  const segment = hash.split("$")[3];
+  assert.ok(segment, "expected an Argon2 parameter segment");
+
+  return Object.fromEntries(
+    segment.split(",").map((entry) => {
+      const [key, value] = entry.split("=");
+      assert.ok(key && value, "expected a key-value Argon2 parameter");
+      return [key, value];
+    }),
+  );
+}
+
 test("encodes the approved Argon2id baseline and verifies passwords", async () => {
   const adapter = new Argon2PasswordHasherAdapter();
 
   const hash = await adapter.hash(PASSWORD);
+  const parameters = parseParameters(hash);
 
-  assert.match(hash, /^\$argon2id\$v=19\$m=65536,t=3,p=1\$/);
+  assert.match(hash, /^\$argon2id\$v=19\$/);
+  assert.equal(parameters.m, "65536");
+  assert.equal(parameters.t, "3");
+  assert.equal(parameters.p, "1");
   assert.equal(await adapter.verify(hash, PASSWORD), true);
   assert.equal(await adapter.verify(hash, "incorrect password"), false);
   assert.equal(adapter.needsRehash(hash), false);
