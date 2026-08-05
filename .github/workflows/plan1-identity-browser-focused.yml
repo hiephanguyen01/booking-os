@@ -1,0 +1,75 @@
+name: Plan 1 identity browser focused gate
+
+on:
+  pull_request:
+    branches:
+      - docs/frontend-library-foundation-design
+    paths:
+      - ".github/workflows/plan1-identity-browser-focused.yml"
+      - "e2e/identity.spec.ts"
+      - "apps/web-console/**"
+      - "packages/ui/**"
+
+permissions:
+  contents: read
+
+jobs:
+  identity-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: booking
+          POSTGRES_PASSWORD: booking
+          POSTGRES_DB: booking_os_smoke
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U booking -d booking_os_smoke"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: "true"
+      DATABASE_URL: postgresql://booking:booking@127.0.0.1:5432/booking_os_smoke
+      REDIS_URL: redis://127.0.0.1:6379/1
+      SESSION_SECRET: smoke-only-session-secret-at-least-32-characters
+      PAYMENT_PROVIDER: mock
+      NODE_ENV: test
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build workspaces
+        run: pnpm build
+      - name: Apply database migrations
+        run: pnpm --filter @booking-os/api prisma:migrate:deploy
+      - name: Seed smoke data
+        run: pnpm --filter @booking-os/api prisma:seed
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run identity browser contract
+        run: pnpm exec playwright test e2e/identity.spec.ts
