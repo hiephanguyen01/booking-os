@@ -32,9 +32,8 @@ function fail(message, exitCode) {
 
 function printGeneratedArtifacts() {
   for (const path of GENERATED_PATHS) {
-    process.stdout.write(`\n===== GENERATED ${path} BEGIN =====\n`);
-    process.stdout.write(readFileSync(path, "utf8"));
-    process.stdout.write(`===== GENERATED ${path} END =====\n`);
+    const encoded = readFileSync(path).toString("base64");
+    process.stdout.write(`GENERATED_BASE64 ${path} ${encoded}\n`);
   }
 }
 
