@@ -4,17 +4,17 @@ import test from "node:test";
 import type { IssueIdentityEmailInput } from "../ports/identity-outbox.port.js";
 import { ProvisionUserUseCase } from "./provision-user.js";
 import {
-  HOSTNAME,
-  NOW,
-  REQUESTED_BY_USER_ID,
-  SERIALIZED_TOKEN,
-  USER_ID,
   createIdentityOutbox,
   createIdentityRepository,
   createOneTimeTokenPort,
   createSensitiveEnvelopePort,
   createUser,
   fixedClock,
+  HOSTNAME,
+  NOW,
+  REQUESTED_BY_USER_ID,
+  SERIALIZED_TOKEN,
+  USER_ID,
 } from "./use-case-test-doubles.js";
 
 const TOKEN_ID = "55555555-5555-4555-8555-555555555555";

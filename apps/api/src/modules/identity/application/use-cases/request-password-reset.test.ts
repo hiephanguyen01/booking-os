@@ -5,10 +5,6 @@ import type { IssueIdentityEmailInput } from "../ports/identity-outbox.port.js";
 import type { SecurityAuditRecord } from "../ports/security-audit.port.js";
 import { RequestPasswordResetUseCase } from "./request-password-reset.js";
 import {
-  HOSTNAME,
-  NOW,
-  SERIALIZED_TOKEN,
-  USER_ID,
   createIdentityOutbox,
   createIdentityRepository,
   createOneTimeTokenPort,
@@ -16,6 +12,10 @@ import {
   createSensitiveEnvelopePort,
   createUser,
   fixedClock,
+  HOSTNAME,
+  NOW,
+  SERIALIZED_TOKEN,
+  USER_ID,
 } from "./use-case-test-doubles.js";
 
 const TOKEN_ID = "77777777-7777-4777-8777-777777777777";

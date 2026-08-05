@@ -1,16 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-
+import { IdentityTokenInvalidError } from "../../domain/identity-errors.js";
 import type { ConsumeActivationInput } from "../ports/identity-repository.port.js";
 import type { SecurityAuditRecord } from "../ports/security-audit.port.js";
-import { IdentityTokenInvalidError } from "../../domain/identity-errors.js";
 import { CompleteActivationUseCase } from "./complete-activation.js";
 import {
-  HOSTNAME,
-  NOW,
-  SERIALIZED_TOKEN,
-  TOKEN_HASH,
-  USER_ID,
   createIdentityRepository,
   createOneTimeTokenPort,
   createPasswordDenylist,
@@ -18,6 +12,11 @@ import {
   createSecurityAudit,
   createUser,
   fixedClock,
+  HOSTNAME,
+  NOW,
+  SERIALIZED_TOKEN,
+  TOKEN_HASH,
+  USER_ID,
 } from "./use-case-test-doubles.js";
 
 const PASSWORD = "Cafe\u0301 secure phrase 2026";

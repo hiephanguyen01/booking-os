@@ -1,17 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-
+import { IdentityTokenInvalidError } from "../../domain/identity-errors.js";
 import type { CompleteResetInput } from "../ports/identity-repository.port.js";
 import type { SecurityAuditRecord } from "../ports/security-audit.port.js";
 import type { SessionRevocationPort } from "../ports/session-revocation.port.js";
-import { IdentityTokenInvalidError } from "../../domain/identity-errors.js";
 import { CompletePasswordResetUseCase } from "./complete-password-reset.js";
 import {
-  HOSTNAME,
-  NOW,
-  SERIALIZED_TOKEN,
-  TOKEN_HASH,
-  USER_ID,
   createIdentityRepository,
   createOneTimeTokenPort,
   createPasswordDenylist,
@@ -19,6 +13,11 @@ import {
   createSecurityAudit,
   createSessionRevocation,
   fixedClock,
+  HOSTNAME,
+  NOW,
+  SERIALIZED_TOKEN,
+  TOKEN_HASH,
+  USER_ID,
 } from "./use-case-test-doubles.js";
 
 const PASSWORD = "Reset secure phrase 2026";

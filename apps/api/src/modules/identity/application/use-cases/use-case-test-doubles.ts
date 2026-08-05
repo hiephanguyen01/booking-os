@@ -1,22 +1,16 @@
+import type { GlobalUser } from "../../domain/user.js";
 import type { ClockPort } from "../ports/clock.port.js";
+import type { IdentityOutboxPort, IssueIdentityEmailInput } from "../ports/identity-outbox.port.js";
 import type {
   IdentityRepositoryPort,
   PendingUserInput,
 } from "../ports/identity-repository.port.js";
-import type {
-  IdentityOutboxPort,
-  IssueIdentityEmailInput,
-} from "../ports/identity-outbox.port.js";
 import type { OneTimeTokenPort } from "../ports/one-time-token.port.js";
 import type { PasswordDenylistPort } from "../ports/password-denylist.port.js";
 import type { PasswordHasherPort } from "../ports/password-hasher.port.js";
-import type {
-  SecurityAuditPort,
-  SecurityAuditRecord,
-} from "../ports/security-audit.port.js";
+import type { SecurityAuditPort, SecurityAuditRecord } from "../ports/security-audit.port.js";
 import type { SensitiveEnvelopePort } from "../ports/sensitive-envelope.port.js";
 import type { SessionRevocationPort } from "../ports/session-revocation.port.js";
-import type { GlobalUser } from "../../domain/user.js";
 
 export const NOW = new Date("2026-08-05T09:00:00.000Z");
 export const HOSTNAME = "console.example.com";
