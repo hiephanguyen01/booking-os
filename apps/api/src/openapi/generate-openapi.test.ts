@@ -55,9 +55,33 @@ test("generates the contract without binding a port or reaching infrastructure",
     assert.equal(result.status, 0, `generator failed:\n${result.stdout}\n${result.stderr}`);
     const source = await readFile(outputPath, "utf8");
     const document = JSON.parse(source) as {
-      readonly paths: Readonly<Record<string, unknown>>;
+      readonly paths: Readonly<
+        Record<string, Readonly<Record<string, { readonly operationId?: string }>>>
+      >;
     };
-    assert.deepEqual(Object.keys(document.paths), ["/api/health", "/api/ready"]);
+    assert.deepEqual(Object.keys(document.paths), [
+      "/api/auth/activation/complete",
+      "/api/auth/csrf",
+      "/api/auth/password/forgot",
+      "/api/auth/password/reset",
+      "/api/health",
+      "/api/ready",
+    ]);
+    assert.deepEqual(
+      Object.values(document.paths)
+        .flatMap((pathItem) => Object.values(pathItem))
+        .map((operation) => operation.operationId)
+        .filter((operationId): operationId is string => operationId !== undefined)
+        .sort(),
+      [
+        "completeAccountActivation",
+        "completePasswordReset",
+        "getHealth",
+        "getPreAuthCsrf",
+        "getReadiness",
+        "requestPasswordReset",
+      ],
+    );
   } finally {
     await reservedPort.close();
     await rm(temporaryDirectory, { force: true, recursive: true });
