@@ -19,15 +19,13 @@ async function collectSourceFiles(directory) {
   return files;
 }
 
-const isExactVersion = (value) =>
-  /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(value);
+const isExactVersion = (value) => /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(value);
 
 export async function verifyFrontendLibraryBoundaries(rootDir) {
   const violations = [];
-  const workspace = await readFile(
-    path.join(rootDir, "pnpm-workspace.yaml"),
-    "utf8",
-  ).catch(() => "");
+  const workspace = await readFile(path.join(rootDir, "pnpm-workspace.yaml"), "utf8").catch(
+    () => "",
+  );
   let insideCatalog = false;
 
   for (const line of workspace.split("\n")) {
@@ -38,9 +36,7 @@ export async function verifyFrontendLibraryBoundaries(rootDir) {
     if (insideCatalog && line && !line.startsWith("  ")) insideCatalog = false;
     if (!insideCatalog) continue;
 
-    const match = line.match(
-      /^\s{2}["']?(.+?)["']?:\s*["']?([^"']+)["']?\s*$/,
-    );
+    const match = line.match(/^\s{2}["']?(.+?)["']?:\s*["']?([^"']+)["']?\s*$/);
     if (match && !isExactVersion(match[2])) {
       violations.push(
         `catalog dependency ${match[1]} must use an exact version; received ${match[2]}`,
@@ -52,9 +48,7 @@ export async function verifyFrontendLibraryBoundaries(rootDir) {
     for (const file of await collectSourceFiles(path.join(rootDir, app))) {
       const source = await readFile(file, "utf8");
       if (/from\s+["']axios["']|import\s*\(["']axios["']\)/.test(source)) {
-        violations.push(
-          `${path.relative(rootDir, file)} contains a direct axios import`,
-        );
+        violations.push(`${path.relative(rootDir, file)} contains a direct axios import`);
       }
     }
   }
@@ -62,10 +56,7 @@ export async function verifyFrontendLibraryBoundaries(rootDir) {
   return violations;
 }
 
-if (
-  process.argv[1] &&
-  import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const violations = await verifyFrontendLibraryBoundaries(process.cwd());
   if (violations.length) {
     console.error(violations.join("\n"));
