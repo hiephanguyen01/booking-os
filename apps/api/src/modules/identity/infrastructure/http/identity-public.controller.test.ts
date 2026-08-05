@@ -32,6 +32,7 @@ class RecordingResponse implements IdentityPublicHttpResponse {
 function request(overrides: Partial<IdentityPublicHttpRequest> = {}): IdentityPublicHttpRequest {
   return {
     hostname: "console.example.test",
+    expectedOrigin: "https://console.example.test",
     origin: "https://console.example.test",
     csrfCookie: "opaque-nonce",
     csrfToken: "opaque-proof",
