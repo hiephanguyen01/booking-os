@@ -1,4 +1,3 @@
-import type { IdentityScopeType } from "../../domain/user.js";
 import type {
   CompleteActivationCommand,
   CompleteActivationResult,
@@ -8,10 +7,8 @@ import type {
   CompletePasswordResetResult,
 } from "../../application/use-cases/complete-password-reset.js";
 import type { RequestPasswordResetCommand } from "../../application/use-cases/request-password-reset.js";
-import type {
-  IssuedPreAuthCsrf,
-  PreAuthCsrfPurpose,
-} from "./pre-auth-csrf.js";
+import type { IdentityScopeType } from "../../domain/user.js";
+import type { IssuedPreAuthCsrf, PreAuthCsrfPurpose } from "./pre-auth-csrf.js";
 
 export interface IdentityPublicHttpRequest {
   readonly hostname: string;
@@ -73,7 +70,9 @@ function applySensitiveResponseHeaders(response: IdentityPublicHttpResponse): vo
   response.setHeader("Referrer-Policy", "no-referrer");
 }
 
-function commandScope(body: IdentityScopeBody):
+function commandScope(
+  body: IdentityScopeBody,
+):
   | { readonly scopeType: IdentityScopeType }
   | { readonly scopeType: IdentityScopeType; readonly tenantId: string } {
   return body.tenantId === undefined

@@ -35,7 +35,10 @@ function hasMatchingOrigin(request: Request): boolean {
   }
 
   try {
-    return new URL(origin).origin === new URL(request.url).origin && origin === new URL(request.url).origin;
+    return (
+      new URL(origin).origin === new URL(request.url).origin &&
+      origin === new URL(request.url).origin
+    );
   } catch {
     return false;
   }
@@ -128,7 +131,10 @@ export function createIdentityBffHandlers(options: IdentityBffOptions): Identity
         const cookie = extractPreAuthCookie(csrfResponse.headers.get("set-cookie"));
         if (!csrfBody || !cookie) {
           return jsonResponse(502, {
-            error: { code: "IDENTITY_UPSTREAM_UNAVAILABLE", message: "Identity service unavailable." },
+            error: {
+              code: "IDENTITY_UPSTREAM_UNAVAILABLE",
+              message: "Identity service unavailable.",
+            },
           });
         }
 
@@ -147,14 +153,20 @@ export function createIdentityBffHandlers(options: IdentityBffOptions): Identity
 
         if (!upstream.ok) {
           return jsonResponse(502, {
-            error: { code: "IDENTITY_UPSTREAM_UNAVAILABLE", message: "Identity service unavailable." },
+            error: {
+              code: "IDENTITY_UPSTREAM_UNAVAILABLE",
+              message: "Identity service unavailable.",
+            },
           });
         }
 
         return jsonResponse(202, { accepted: true });
       } catch {
         return jsonResponse(502, {
-          error: { code: "IDENTITY_UPSTREAM_UNAVAILABLE", message: "Identity service unavailable." },
+          error: {
+            code: "IDENTITY_UPSTREAM_UNAVAILABLE",
+            message: "Identity service unavailable.",
+          },
         });
       }
     },

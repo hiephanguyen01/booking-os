@@ -1,8 +1,4 @@
-import {
-  createHmac,
-  randomBytes as cryptoRandomBytes,
-  timingSafeEqual,
-} from "node:crypto";
+import { createHmac, randomBytes as cryptoRandomBytes, timingSafeEqual } from "node:crypto";
 
 export const PRE_AUTH_CSRF_COOKIE_NAME = "__Host-booking_pre_auth_csrf" as const;
 
@@ -83,7 +79,10 @@ export class PreAuthCsrfService {
   private readonly randomBytes: (size: number) => Uint8Array;
 
   constructor(options: PreAuthCsrfServiceOptions) {
-    if (!(options.secret instanceof Uint8Array) || options.secret.byteLength < MINIMUM_SECRET_BYTES) {
+    if (
+      !(options.secret instanceof Uint8Array) ||
+      options.secret.byteLength < MINIMUM_SECRET_BYTES
+    ) {
       throw new RangeError("Pre-auth CSRF secret must contain at least 32 bytes.");
     }
 
@@ -160,10 +159,7 @@ export class PreAuthCsrfService {
       }
 
       const expectedSignature = createHmac("sha256", this.secret)
-        .update(
-          associatedData(input.nonce, hostname, input.purpose, issuedAtMs),
-          "utf8",
-        )
+        .update(associatedData(input.nonce, hostname, input.purpose, issuedAtMs), "utf8")
         .digest();
 
       return timingSafeEqual(providedSignature, expectedSignature);
