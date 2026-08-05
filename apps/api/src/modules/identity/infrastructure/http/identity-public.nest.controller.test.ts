@@ -68,7 +68,9 @@ test("publishes exactly the four supported public identity operations and no set
 test("extracts only the effective hostname, exact origin, CSRF values, and request ID", () => {
   const request = toIdentityPublicHttpRequest({
     hostname: " Console.Example.Test ",
+    protocol: "https",
     headers: {
+      host: "console.example.test",
       origin: "https://console.example.test",
       cookie:
         "other=value; __Host-booking_pre_auth_csrf=opaque-nonce; session=must-not-be-returned",
@@ -79,6 +81,7 @@ test("extracts only the effective hostname, exact origin, CSRF values, and reque
 
   assert.deepEqual(request, {
     hostname: "console.example.test",
+    expectedOrigin: "https://console.example.test",
     origin: "https://console.example.test",
     csrfCookie: "opaque-nonce",
     csrfToken: "opaque-proof",
@@ -92,7 +95,9 @@ test("rejects ambiguous security headers instead of selecting one value", () => 
     () =>
       toIdentityPublicHttpRequest({
         hostname: "console.example.test",
+        protocol: "https",
         headers: {
+          host: "console.example.test",
           origin: ["https://console.example.test", "https://attacker.example.test"],
           cookie: "__Host-booking_pre_auth_csrf=nonce",
           "x-csrf-token": ["first", "second"],
