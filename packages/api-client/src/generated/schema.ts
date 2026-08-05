@@ -132,7 +132,7 @@ export interface components {
             };
             readonly service: string;
             /** @enum {string} */
-            readonly status: "ok" | "degraded" | "unavaile";
+            readonly status: "ok" | "degraded" | "unavailable";
             /** Format: date-time */
             readonly timestamp: string;
             readonly uptimeSeconds: number;
