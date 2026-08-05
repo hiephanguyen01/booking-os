@@ -38,10 +38,7 @@ async function cleanBootstrapRows(): Promise<void> {
       prisma.roleAssignment.deleteMany({ where: { userId: { in: userIds } } }),
       prisma.securityAuditEvent.deleteMany({
         where: {
-          OR: [
-            { actorUserId: { in: userIds } },
-            { subjectUserId: { in: userIds } },
-          ],
+          OR: [{ actorUserId: { in: userIds } }, { subjectUserId: { in: userIds } }],
         },
       }),
       prisma.user.deleteMany({ where: { id: { in: userIds } } }),
@@ -90,10 +87,7 @@ test("concurrent bootstrap creates one pending platform admin and one encrypted 
     }),
   ]);
 
-  assert.deepEqual(
-    results.map((result) => result.created).sort(),
-    [false, true],
-  );
+  assert.deepEqual(results.map((result) => result.created).sort(), [false, true]);
   assert.equal(new Set(results.map((result) => result.userId)).size, 1);
 
   const user = await prisma.user.findUniqueOrThrow({
@@ -148,14 +142,8 @@ test("same configured email is idempotent and a different email is refused", asy
 
   assert.equal(first.userId, second.userId);
   assert.equal(second.created, false);
-  assert.equal(
-    await prisma.accountActivationToken.count({ where: { userId: first.userId } }),
-    1,
-  );
-  assert.equal(
-    await prisma.outboxEvent.count({ where: { aggregateId: first.userId } }),
-    1,
-  );
+  assert.equal(await prisma.accountActivationToken.count({ where: { userId: first.userId } }), 1);
+  assert.equal(await prisma.outboxEvent.count({ where: { aggregateId: first.userId } }), 1);
 
   await assert.rejects(
     executePlatformAdminBootstrap({
