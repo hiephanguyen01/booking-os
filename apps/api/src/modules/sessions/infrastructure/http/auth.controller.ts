@@ -24,6 +24,7 @@ import type {
   SessionSummary,
 } from "../../application/use-cases/list-sessions.js";
 import { InvalidLoginError, type LoginInput } from "../../application/use-cases/login.use-case.js";
+import type { RevokeOtherSessionsInput } from "../../application/use-cases/revoke-other-sessions.js";
 import type { RevokeSessionInput } from "../../application/use-cases/revoke-session.js";
 import { SessionRequired } from "./session-required.decorator.js";
 
@@ -37,6 +38,10 @@ interface RevokeSessionExecutor {
 
 interface ListSessionsExecutor {
   execute(input: ListSessionsInput): Promise<readonly SessionSummary[]>;
+}
+
+interface RevokeOtherSessionsExecutor {
+  execute(input: RevokeOtherSessionsInput): Promise<{ readonly revokedCount: number }>;
 }
 
 export interface LoginRequestBody {
@@ -89,6 +94,10 @@ export interface RevokeDeviceResponse {
   readonly revoked: boolean;
 }
 
+export interface RevokeOtherSessionsResponse {
+  readonly revokedCount: number;
+}
+
 function firstHeaderValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -117,6 +126,7 @@ export class AuthController {
     private readonly options: AuthControllerOptions,
     private readonly revokeSessionUseCase?: RevokeSessionExecutor,
     private readonly listSessionsUseCase?: ListSessionsExecutor,
+    private readonly revokeOtherSessionsUseCase?: RevokeOtherSessionsExecutor,
   ) {}
 
   @Post("login")
@@ -213,6 +223,25 @@ export class AuthController {
         currentSessionId: authenticated.sessionId,
       }),
     };
+  }
+
+  @SessionRequired()
+  @Post("sessions/revoke-others")
+  async revokeOtherSessions(
+    @Res({ passthrough: true }) response: HeaderResponse,
+  ): Promise<RevokeOtherSessionsResponse> {
+    response.setHeader("Cache-Control", "private, no-store");
+
+    const authenticated = this.requestContext.requireAuthenticated();
+    if (!this.revokeOtherSessionsUseCase) {
+      throw new ServiceUnavailableException("Session revocation is unavailable.");
+    }
+
+    return this.revokeOtherSessionsUseCase.execute({
+      userId: authenticated.actorId,
+      currentSessionId: authenticated.sessionId,
+      requestId: authenticated.requestId,
+    });
   }
 
   @SessionRequired()
