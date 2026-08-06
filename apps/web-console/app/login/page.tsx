@@ -1,4 +1,4 @@
-import { LoginForm } from "../../src/components/session/login-form.js";
+import { LoginForm } from "../../src/components/session/login-form";
 
 export default function LoginPage() {
   return (
