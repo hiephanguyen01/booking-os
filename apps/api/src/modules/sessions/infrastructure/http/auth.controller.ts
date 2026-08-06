@@ -3,6 +3,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   Post,
   Req,
   Res,
@@ -57,6 +58,17 @@ export interface LoginResponse {
 
 export interface LogoutResponse {
   readonly loggedOut: true;
+}
+
+export interface CurrentAuthenticationResponse {
+  readonly actor: {
+    readonly id: string;
+  };
+  readonly session: {
+    readonly id: string;
+    readonly state: "active" | "invitation_pending";
+    readonly scope: SessionScope;
+  };
 }
 
 function firstHeaderValue(value: string | string[] | undefined): string | undefined {
@@ -146,5 +158,21 @@ export class AuthController {
     });
     response.setHeader("Set-Cookie", serializeExpiredSessionCookie());
     return { loggedOut: true };
+  }
+
+  @SessionRequired()
+  @Get("me")
+  me(@Res({ passthrough: true }) response: HeaderResponse): CurrentAuthenticationResponse {
+    response.setHeader("Cache-Control", "private, no-store");
+
+    const authenticated = this.requestContext.requireAuthenticated();
+    return {
+      actor: { id: authenticated.actorId },
+      session: {
+        id: authenticated.sessionId,
+        state: authenticated.sessionState,
+        scope: authenticated.authScope,
+      },
+    };
   }
 }
