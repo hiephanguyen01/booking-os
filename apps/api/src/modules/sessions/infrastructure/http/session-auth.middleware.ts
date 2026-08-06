@@ -2,7 +2,10 @@ import { readSessionToken } from "@booking-os/auth";
 import { Inject, Injectable, type NestMiddleware } from "@nestjs/common";
 
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
-import type { RequestHeaders } from "../../../../common/request-context/request-context.types.js";
+import type {
+  AuthenticatedRequestContext,
+  RequestHeaders,
+} from "../../../../common/request-context/request-context.types.js";
 import type {
   CurrentSession,
   GetCurrentSessionInput,
@@ -73,17 +76,15 @@ export class SessionAuthMiddleware implements NestMiddleware {
         scope,
         requestId: current.requestId,
       });
+      const authenticatedContext: AuthenticatedRequestContext = {
+        ...current,
+        actorId: authenticated.actorId,
+        sessionId: authenticated.sessionId,
+        authScope: authenticated.authScope,
+        sessionState: authenticated.sessionState,
+      };
 
-      this.requestContext.run(
-        {
-          ...current,
-          actorId: authenticated.actorId,
-          sessionId: authenticated.sessionId,
-          authScope: authenticated.authScope,
-          sessionState: authenticated.sessionState,
-        },
-        next,
-      );
+      this.requestContext.run(authenticatedContext, next);
     } catch (error: unknown) {
       next(error);
     }
