@@ -30,8 +30,8 @@ import {
   RedisLoginAbuseProtectionAdapter,
 } from "./infrastructure/abuse/redis-login-abuse-protection.adapter.js";
 import { SessionAuthMiddleware } from "./infrastructure/http/session-auth.middleware.js";
-import { SessionCsrfHttpController } from "./infrastructure/http/session-csrf-http.controller.js";
 import { SessionCsrfGuard } from "./infrastructure/http/session-csrf.guard.js";
+import { SessionCsrfHttpController } from "./infrastructure/http/session-csrf-http.controller.js";
 import { SessionHttpController } from "./infrastructure/http/session-http.controller.js";
 import { SessionRequiredGuard } from "./infrastructure/http/session-required.guard.js";
 import { StructuredLoginAbuseMetricsAdapter } from "./infrastructure/observability/structured-login-abuse-metrics.adapter.js";
