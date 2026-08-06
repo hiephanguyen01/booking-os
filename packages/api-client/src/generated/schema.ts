@@ -116,6 +116,22 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/auth/session/csrf": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get: operations["getSessionCsrf"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/auth/session/refresh": {
         readonly parameters: {
             readonly query?: never;
@@ -292,6 +308,9 @@ export interface components {
         };
         readonly RevokeOtherSessionsResponseDto: {
             readonly revokedCount: number;
+        };
+        readonly SessionCsrfResponseDto: {
+            readonly csrfToken: string;
         };
         readonly SessionListResponseDto: {
             readonly sessions: readonly components["schemas"]["SessionSummaryDto"][];
@@ -503,6 +522,25 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    readonly getSessionCsrf: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["SessionCsrfResponseDto"];
+                };
             };
         };
     };

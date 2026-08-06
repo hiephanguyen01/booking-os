@@ -50,6 +50,7 @@ export interface GeneratedClient {
   readonly getCurrentSession: (options?: GeneratedRequestOptions) => Promise<operations["getCurrentSession"]["responses"][200]["content"]["application/json"]>;
   readonly requestPasswordReset: (parameters: RequestPasswordResetParameters, options?: GeneratedRequestOptions) => Promise<operations["requestPasswordReset"]["responses"][202]["content"]["application/json"]>;
   readonly completePasswordReset: (parameters: CompletePasswordResetParameters, options?: GeneratedRequestOptions) => Promise<operations["completePasswordReset"]["responses"][200]["content"]["application/json"]>;
+  readonly getSessionCsrf: (options?: GeneratedRequestOptions) => Promise<operations["getSessionCsrf"]["responses"][200]["content"]["application/json"]>;
   readonly refreshSession: (options?: GeneratedRequestOptions) => Promise<operations["refreshSession"]["responses"][200]["content"]["application/json"]>;
   readonly listSessions: (options?: GeneratedRequestOptions) => Promise<operations["listSessions"]["responses"][200]["content"]["application/json"]>;
   readonly revokeOtherSessions: (options?: GeneratedRequestOptions) => Promise<operations["revokeOtherSessions"]["responses"][200]["content"]["application/json"]>;
@@ -105,6 +106,12 @@ export function createGeneratedClient(transport: GeneratedTransport): GeneratedC
       method: "POST",
       path: "/api/auth/password/reset",
       body: parameters.body,
+      }, options);
+    },
+    async getSessionCsrf(options) {
+      return transport<operations["getSessionCsrf"]["responses"][200]["content"]["application/json"]>({
+      method: "GET",
+      path: "/api/auth/session/csrf",
       }, options);
     },
     async refreshSession(options) {

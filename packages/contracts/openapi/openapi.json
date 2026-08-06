@@ -260,6 +260,17 @@
         ],
         "type": "object"
       },
+      "SessionCsrfResponseDto": {
+        "properties": {
+          "csrfToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "csrfToken"
+        ],
+        "type": "object"
+      },
       "SessionListResponseDto": {
         "properties": {
           "sessions": {
@@ -585,6 +596,28 @@
         "summary": "",
         "tags": [
           "identity"
+        ]
+      }
+    },
+    "/api/auth/session/csrf": {
+      "get": {
+        "operationId": "getSessionCsrf",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionCsrfResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "sessions"
         ]
       }
     },
