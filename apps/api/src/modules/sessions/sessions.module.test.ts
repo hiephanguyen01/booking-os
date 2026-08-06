@@ -3,9 +3,10 @@ import test from "node:test";
 
 import type { StructuredLogger } from "@booking-os/observability";
 
+import { AppModule } from "../../app.module.js";
 import { DependenciesModule } from "../../dependencies/dependencies.module.js";
 import { REDIS_CLIENT_TOKEN } from "../../dependencies/tokens.js";
-import { API_LOGGER_TOKEN } from "../../observability/tokens.js";
+import { TenancyModule } from "../tenancy/tenancy.module.js";
 import { RedisLoginAbuseProtectionAdapter } from "./infrastructure/abuse/redis-login-abuse-protection.adapter.js";
 import { StructuredLoginAbuseMetricsAdapter } from "./infrastructure/observability/structured-login-abuse-metrics.adapter.js";
 import { SessionsModule } from "./sessions.module.js";
@@ -77,4 +78,14 @@ test("composes distributed login abuse protection with bounded telemetry", () =>
 
   const sessionExports = metadata<unknown>(MODULE_METADATA.exports, SessionsModule);
   assert.ok(sessionExports.includes(LOGIN_ABUSE_PROTECTION_PORT));
+});
+
+test("orders trusted tenant resolution before session authentication", () => {
+  const imports = metadata<unknown>(MODULE_METADATA.imports, AppModule);
+  const tenancyIndex = imports.indexOf(TenancyModule);
+  const sessionsIndex = imports.indexOf(SessionsModule);
+
+  assert.notEqual(tenancyIndex, -1);
+  assert.notEqual(sessionsIndex, -1);
+  assert.ok(tenancyIndex < sessionsIndex);
 });
