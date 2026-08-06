@@ -29,8 +29,8 @@ import {
   type LoginAbuseRedisClient,
   RedisLoginAbuseProtectionAdapter,
 } from "./infrastructure/abuse/redis-login-abuse-protection.adapter.js";
-import { deriveSessionCsrfKey } from "./infrastructure/http/csrf-key.js";
 import { CsrfGuard } from "./infrastructure/http/csrf.guard.js";
+import { deriveSessionCsrfKey } from "./infrastructure/http/csrf-key.js";
 import { SessionAuthMiddleware } from "./infrastructure/http/session-auth.middleware.js";
 import { SessionCsrfHttpController } from "./infrastructure/http/session-csrf-http.controller.js";
 import { SessionHttpController } from "./infrastructure/http/session-http.controller.js";
