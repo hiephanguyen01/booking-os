@@ -2,9 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-type SessionScope =
-  | { type: "platform" }
-  | { type: "tenant"; tenantId: string };
+type SessionScope = { type: "platform" } | { type: "tenant"; tenantId: string };
 
 type SessionState = "active" | "rotated" | "revoked" | "compromised" | "expired";
 
@@ -153,9 +151,7 @@ export function SessionSecurityPanel({ onSignedOut }: SessionSecurityPanelProps)
         <button
           type="button"
           disabled={busyAction !== null}
-          onClick={() =>
-            void runMutation("refresh", "/api/auth/session/refresh", "POST")
-          }
+          onClick={() => void runMutation("refresh", "/api/auth/session/refresh", "POST")}
         >
           Refresh session
         </button>
