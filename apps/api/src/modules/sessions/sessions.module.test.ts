@@ -4,6 +4,8 @@ import test from "node:test";
 import type { StructuredLogger } from "@booking-os/observability";
 
 import { AppModule } from "../../app.module.js";
+import { RequestContextStorage } from "../../common/request-context/request-context.storage.js";
+import { EnvironmentService } from "../../config/environment.service.js";
 import { DependenciesModule } from "../../dependencies/dependencies.module.js";
 import { REDIS_CLIENT_TOKEN } from "../../dependencies/tokens.js";
 import { API_LOGGER_TOKEN } from "../../observability/tokens.js";
@@ -12,6 +14,8 @@ import { ListSessionsUseCase } from "./application/use-cases/list-sessions.js";
 import { RefreshSessionUseCase } from "./application/use-cases/refresh-session.js";
 import { RevokeOtherSessionsUseCase } from "./application/use-cases/revoke-other-sessions.js";
 import { RedisLoginAbuseProtectionAdapter } from "./infrastructure/abuse/redis-login-abuse-protection.adapter.js";
+import { CsrfGuard } from "./infrastructure/http/csrf.guard.js";
+import { SessionCsrfHttpController } from "./infrastructure/http/session-csrf-http.controller.js";
 import { SessionHttpController } from "./infrastructure/http/session-http.controller.js";
 import { StructuredLoginAbuseMetricsAdapter } from "./infrastructure/observability/structured-login-abuse-metrics.adapter.js";
 import { SessionsModule } from "./sessions.module.js";
@@ -94,6 +98,20 @@ test("wires the session HTTP controller and device-management use cases", () => 
   assert.ok(providers.some((provider) => provider.provide === ListSessionsUseCase));
   assert.ok(providers.some((provider) => provider.provide === RevokeOtherSessionsUseCase));
   assert.ok(providers.some((provider) => provider.provide === RefreshSessionUseCase));
+});
+
+test("wires session CSRF issuance and enforcement into the runtime module", () => {
+  const controllers = metadata<unknown>(MODULE_METADATA.controllers, SessionsModule);
+  assert.ok(controllers.includes(SessionCsrfHttpController));
+  assert.equal(Reflect.getMetadata("path", SessionCsrfHttpController), "auth/session");
+
+  const providers = metadata<FactoryProvider>(MODULE_METADATA.providers, SessionsModule);
+  const csrfProvider = providers.find((provider) => provider.provide === CsrfGuard);
+  assert.ok(csrfProvider);
+  assert.deepEqual(csrfProvider.inject, [RequestContextStorage, EnvironmentService]);
+
+  const guards = metadata<unknown>("__guards__", SessionHttpController);
+  assert.ok(guards.includes(CsrfGuard));
 });
 
 test("orders trusted tenant resolution before session authentication", () => {
