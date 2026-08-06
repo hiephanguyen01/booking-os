@@ -18,7 +18,7 @@ const NOW = new Date("2026-08-06T05:00:00.000Z");
 const ISSUED_SESSION: StoredSession = Object.freeze({
   id: "33333333-3333-4333-8333-333333333333",
   userId: USER_ID,
-  scope: { type: "platform" },
+  scope: { type: "platform" as const },
   hostname: "console.example.com",
   state: "active",
   authorizationVersion: 3,
