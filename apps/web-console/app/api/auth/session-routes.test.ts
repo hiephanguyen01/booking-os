@@ -45,11 +45,15 @@ function request(
     headers.set("content-type", "application/json");
   }
 
-  return new Request(`${CONSOLE_ORIGIN}${path}`, {
+  const init: RequestInit = {
     method: options.method ?? "GET",
     headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  });
+  };
+  if (options.body !== undefined) {
+    init.body = JSON.stringify(options.body);
+  }
+
+  return new Request(`${CONSOLE_ORIGIN}${path}`, init);
 }
 
 test("sample and in-memory session authority files are removed", async () => {
