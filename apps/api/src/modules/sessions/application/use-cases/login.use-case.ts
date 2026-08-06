@@ -51,7 +51,9 @@ export class LoginUseCase {
     this.sleep = options.sleep ?? sleep;
   }
 
-  private async rejectLogin(attemptKey: Parameters<LoginAbuseProtectionPort["recordFailure"]>[0]) {
+  private async rejectLogin(
+    attemptKey: Parameters<LoginAbuseProtectionPort["recordFailure"]>[0],
+  ): Promise<never> {
     await this.abuse.recordFailure(attemptKey);
     throw new InvalidLoginError();
   }
