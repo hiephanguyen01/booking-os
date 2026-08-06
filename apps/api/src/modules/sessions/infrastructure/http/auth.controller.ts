@@ -17,11 +17,11 @@ import type {
   SessionScope,
   StoredSession,
 } from "../../application/ports/session-repository.port.js";
-import { InvalidLoginError, type LoginInput } from "../../application/use-cases/login.use-case.js";
 import type {
   ListSessionsInput,
   SessionSummary,
 } from "../../application/use-cases/list-sessions.js";
+import { InvalidLoginError, type LoginInput } from "../../application/use-cases/login.use-case.js";
 import type { RevokeSessionInput } from "../../application/use-cases/revoke-session.js";
 import { SessionRequired } from "./session-required.decorator.js";
 
