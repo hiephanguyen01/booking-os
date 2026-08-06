@@ -122,6 +122,7 @@ test("loads current authorization version before validating the opaque session",
     sessionId: SESSION_ID,
     authScope: { type: "tenant", tenantId: TENANT_ID },
     sessionState: "active",
+    authorizationVersion: 4,
     tokenDisposition: "active",
     rotationRequired: false,
   });
