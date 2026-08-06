@@ -80,10 +80,7 @@ function assertPositiveInteger(value: number, label: string): void {
   }
 }
 
-export function calculateLoginDelayMs(
-  failureCount: number,
-  options: LoginDelayOptions,
-): number {
+export function calculateLoginDelayMs(failureCount: number, options: LoginDelayOptions): number {
   if (!Number.isSafeInteger(failureCount) || failureCount < 0) {
     throw new RangeError("Login failure count must be a non-negative safe integer.");
   }
@@ -98,10 +95,7 @@ export function calculateLoginDelayMs(
   if (failureCount >= 32) {
     return options.maxDelayMs;
   }
-  return Math.min(
-    options.maxDelayMs,
-    options.baseDelayMs * 2 ** (failureCount - 1),
-  );
+  return Math.min(options.maxDelayMs, options.baseDelayMs * 2 ** (failureCount - 1));
 }
 
 function redisKeys(prefix: string, input: LoginAttemptKey): readonly [string, string, string] {
@@ -163,12 +157,7 @@ export class RedisLoginAbuseProtectionAdapter implements LoginAbuseProtectionPor
   async recordFailure(input: LoginAttemptKey): Promise<void> {
     const keys = redisKeys(this.keyPrefix, input);
     try {
-      await this.redis.eval(
-        RECORD_FAILURE_SCRIPT,
-        keys.length,
-        ...keys,
-        String(this.ttlMs),
-      );
+      await this.redis.eval(RECORD_FAILURE_SCRIPT, keys.length, ...keys, String(this.ttlMs));
     } catch (error) {
       throw new LoginAbuseProtectionUnavailableError(error);
     }
@@ -177,12 +166,7 @@ export class RedisLoginAbuseProtectionAdapter implements LoginAbuseProtectionPor
   async recordSuccess(input: LoginAttemptKey): Promise<void> {
     const keys = redisKeys(this.keyPrefix, input);
     try {
-      await this.redis.eval(
-        RECORD_SUCCESS_SCRIPT,
-        keys.length,
-        ...keys,
-        String(this.ttlMs),
-      );
+      await this.redis.eval(RECORD_SUCCESS_SCRIPT, keys.length, ...keys, String(this.ttlMs));
     } catch (error) {
       throw new LoginAbuseProtectionUnavailableError(error);
     }
