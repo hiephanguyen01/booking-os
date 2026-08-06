@@ -61,9 +61,7 @@ function normalizeSessionApiTarget(value: string): SessionApiTarget {
     url.search !== "" ||
     url.hash !== ""
   ) {
-    throw new Error(
-      "Session API base URL must be a canonical HTTPS URL or loopback HTTP URL.",
-    );
+    throw new Error("Session API base URL must be a canonical HTTPS URL or loopback HTTP URL.");
   }
 
   const pathname = url.pathname.replace(/\/+$/u, "");
@@ -324,15 +322,18 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
       }
 
       try {
-        const upstream = await dependencies.fetch(apiEndpoint(apiTarget.baseUrl, "/auth/sessions"), {
-          method: "GET",
-          headers: {
-            accept: "application/json",
-            cookie,
+        const upstream = await dependencies.fetch(
+          apiEndpoint(apiTarget.baseUrl, "/auth/sessions"),
+          {
+            method: "GET",
+            headers: {
+              accept: "application/json",
+              cookie,
+            },
+            cache: "no-store",
+            redirect: "error",
           },
-          cache: "no-store",
-          redirect: "error",
-        });
+        );
         return forwardResponse(upstream, { allowSessionCookie: false });
       } catch {
         return jsonError(503, "Session service is unavailable.");
