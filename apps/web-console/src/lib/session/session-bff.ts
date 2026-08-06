@@ -26,10 +26,19 @@ interface LoginBody {
   readonly password: string;
 }
 
+interface AuthenticatedMutationOptions {
+  readonly method: "DELETE" | "POST";
+  readonly path: string;
+  readonly allowSessionCookie: boolean;
+}
+
 const SAFE_RESPONSE_HEADERS = Object.freeze({
   "cache-control": "no-store",
   "referrer-policy": "no-referrer",
 });
+
+const SESSION_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 function apiEndpoint(apiBaseUrl: string, path: string): string {
   return `${apiBaseUrl.replace(/\/$/, "")}${path}`;
@@ -43,10 +52,6 @@ function jsonError(status: number, message: string): Response {
       headers: SAFE_RESPONSE_HEADERS,
     },
   );
-}
-
-function unavailable(): Promise<Response> {
-  return Promise.resolve(jsonError(501, "Session service is unavailable."));
 }
 
 function isSameOrigin(request: Request): boolean {
@@ -153,7 +158,7 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
 
   async function authenticatedMutation(
     request: Request,
-    path: "/auth/logout" | "/auth/session/refresh",
+    options: AuthenticatedMutationOptions,
   ): Promise<Response> {
     if (!isSameOrigin(request)) {
       return jsonError(403, "Request origin is not allowed.");
@@ -175,19 +180,24 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
         return jsonError(503, "Session service is unavailable.");
       }
 
-      const upstream = await dependencies.fetch(apiEndpoint(dependencies.apiBaseUrl, path), {
-        method: "POST",
-        headers: {
-          accept: "application/json",
-          cookie,
-          origin: apiOrigin,
-          "x-csrf-token": csrfToken,
+      const upstream = await dependencies.fetch(
+        apiEndpoint(dependencies.apiBaseUrl, options.path),
+        {
+          method: options.method,
+          headers: {
+            accept: "application/json",
+            cookie,
+            origin: apiOrigin,
+            "x-csrf-token": csrfToken,
+          },
+          cache: "no-store",
+          redirect: "error",
         },
-        cache: "no-store",
-        redirect: "error",
-      });
+      );
 
-      return forwardResponse(upstream, { allowSessionCookie: true });
+      return forwardResponse(upstream, {
+        allowSessionCookie: options.allowSessionCookie,
+      });
     } catch {
       return jsonError(503, "Session service is unavailable.");
     }
@@ -249,8 +259,18 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
         return jsonError(503, "Session service is unavailable.");
       }
     },
-    logout: (request) => authenticatedMutation(request, "/auth/logout"),
-    refresh: (request) => authenticatedMutation(request, "/auth/session/refresh"),
+    logout: (request) =>
+      authenticatedMutation(request, {
+        method: "POST",
+        path: "/auth/logout",
+        allowSessionCookie: true,
+      }),
+    refresh: (request) =>
+      authenticatedMutation(request, {
+        method: "POST",
+        path: "/auth/session/refresh",
+        allowSessionCookie: true,
+      }),
     async me(request) {
       const cookie = exactSessionCookie(request.headers.get("cookie"));
       const headers = new Headers({ accept: "application/json" });
@@ -273,8 +293,46 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
         return jsonError(503, "Session service is unavailable.");
       }
     },
-    sessions: unavailable,
-    revokeSession: unavailable,
-    revokeOtherSessions: unavailable,
+    async sessions(request) {
+      const cookie = exactSessionCookie(request.headers.get("cookie"));
+      if (cookie === null) {
+        return jsonError(401, "Authentication is required.");
+      }
+
+      try {
+        const upstream = await dependencies.fetch(
+          apiEndpoint(dependencies.apiBaseUrl, "/auth/sessions"),
+          {
+            method: "GET",
+            headers: {
+              accept: "application/json",
+              cookie,
+            },
+            cache: "no-store",
+            redirect: "error",
+          },
+        );
+        return forwardResponse(upstream, { allowSessionCookie: false });
+      } catch {
+        return jsonError(503, "Session service is unavailable.");
+      }
+    },
+    async revokeSession(request, sessionId) {
+      if (!SESSION_ID_PATTERN.test(sessionId)) {
+        return jsonError(400, "Invalid session identifier.");
+      }
+
+      return authenticatedMutation(request, {
+        method: "DELETE",
+        path: `/auth/sessions/${sessionId}`,
+        allowSessionCookie: true,
+      });
+    },
+    revokeOtherSessions: (request) =>
+      authenticatedMutation(request, {
+        method: "POST",
+        path: "/auth/sessions/revoke-others",
+        allowSessionCookie: false,
+      }),
   };
 }
