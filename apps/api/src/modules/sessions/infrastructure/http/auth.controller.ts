@@ -12,6 +12,7 @@ import {
   ServiceUnavailableException,
   UnauthorizedException,
 } from "@nestjs/common";
+import { ApiParam } from "@nestjs/swagger";
 
 import type { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import type { RequestHeaders } from "../../../../common/request-context/request-context.types.js";
@@ -246,6 +247,7 @@ export class AuthController {
 
   @SessionRequired()
   @Delete("sessions/:sessionId")
+  @ApiParam({ name: "sessionId", required: true, type: String, format: "uuid" })
   async revokeSession(
     @Param("sessionId") sessionId: string,
     @Res({ passthrough: true }) response: HeaderResponse,
