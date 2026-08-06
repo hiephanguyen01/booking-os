@@ -64,7 +64,7 @@ function createHarness() {
     },
   } as unknown as SessionRepositoryPort;
   const subjectVersions: string[] = [];
-  const subjects = {
+  const subjects: SessionSubjectPort = {
     async resolveForLogin() {
       return null;
     },
@@ -72,7 +72,7 @@ function createHarness() {
       subjectVersions.push(userId);
       return 4;
     },
-  } satisfies SessionSubjectPort;
+  };
   const validations: unknown[] = [];
   const validator = {
     async execute(input: unknown) {
