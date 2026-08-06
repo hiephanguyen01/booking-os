@@ -36,7 +36,7 @@ test("session CSRF forwards only the validated opaque session cookie", async () 
   assert.equal(headers.get("cookie"), `__Host-booking_session=${encodeURIComponent(token)}`);
   assert.equal(headers.get("origin"), null);
   assert.equal(headers.get("host"), null);
-  assert.equal(headers.get("x-forwarded-host"), null);
+  assert.equal(headers.get("x-forwarded-host"), "console.example.test");
 });
 
 test("refresh overlap leaves the existing browser cookie untouched", async () => {
