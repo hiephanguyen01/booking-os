@@ -77,9 +77,7 @@ async function readLoginBody(request: Request): Promise<LoginBody | null> {
 
 function exactSessionCookie(cookieHeader: string | null): string | null {
   const token = readSessionToken(cookieHeader);
-  return token === undefined
-    ? null
-    : `${BOOKING_SESSION_COOKIE}=${encodeURIComponent(token)}`;
+  return token === undefined ? null : `${BOOKING_SESSION_COOKIE}=${encodeURIComponent(token)}`;
 }
 
 function sanitizedSetCookie(setCookie: string | null): string | null {
@@ -127,9 +125,7 @@ async function forwardResponse(
   });
 }
 
-export function createSessionBffHandlers(
-  dependencies: SessionBffDependencies,
-): SessionBffHandlers {
+export function createSessionBffHandlers(dependencies: SessionBffDependencies): SessionBffHandlers {
   const apiOrigin = new URL(dependencies.apiBaseUrl).origin;
 
   return {
