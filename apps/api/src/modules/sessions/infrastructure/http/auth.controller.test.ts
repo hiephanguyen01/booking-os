@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  BOOKING_SESSION_COOKIE,
   createSessionToken,
   serializeExpiredSessionCookie,
   serializeSessionCookie,
@@ -30,6 +31,7 @@ const AUTHENTICATED_CONTEXT = Object.freeze({
   sessionId: SESSION_ID,
   authScope: { type: "platform" as const },
   sessionState: "active" as const,
+  authorizationVersion: 3,
 });
 
 function storedSession(scope: StoredSession["scope"]): StoredSession {
@@ -222,4 +224,120 @@ test("returns only trusted current authentication state with private no-store", 
 
   assert.equal(headers.get("cache-control"), "private, no-store");
   assert.equal(headers.has("set-cookie"), false);
+});
+
+test("refreshes from the opaque cookie and trusted authenticated context", async () => {
+  const storage = new RequestContextStorage();
+  const currentToken = createSessionToken();
+  const successorToken = createSessionToken();
+  const calls: unknown[] = [];
+  const refresh = {
+    async execute(input: unknown) {
+      calls.push(input);
+      return {
+        status: "rotated" as const,
+        token: successorToken,
+        session: storedSession({ type: "platform" }),
+      };
+    },
+  };
+  const controller = Reflect.construct(AuthController, [
+    { execute: async () => assert.fail("login must not run") },
+    storage,
+    { trustProxy: false },
+    undefined,
+    undefined,
+    undefined,
+    refresh,
+  ]) as AuthController & {
+    refresh(
+      request: { readonly headers: Record<string, string> },
+      response: { setHeader(name: string, value: string): void },
+    ): Promise<{
+      readonly session: {
+        readonly id: string;
+        readonly state: "active" | "invitation_pending";
+        readonly scope: { readonly type: "platform" };
+      };
+    }>;
+  };
+  const { headers, response } = responseHeaders();
+
+  await storage.run(AUTHENTICATED_CONTEXT, async () => {
+    const result = await controller.refresh(
+      {
+        headers: {
+          host: "console.example.com:443",
+          cookie: `${BOOKING_SESSION_COOKIE}=${encodeURIComponent(currentToken)}`,
+        },
+      },
+      response,
+    );
+
+    assert.deepEqual(result, {
+      session: {
+        id: SESSION_ID,
+        state: "active",
+        scope: { type: "platform" },
+      },
+    });
+    assert.equal(JSON.stringify(result).includes(successorToken), false);
+    assert.equal(JSON.stringify(result).includes("rotated"), false);
+  });
+
+  assert.deepEqual(calls, [
+    {
+      token: currentToken,
+      hostname: "console.example.com",
+      scope: { type: "platform" },
+      authorizationVersion: 3,
+      requestId: "request-1",
+    },
+  ]);
+  assert.equal(headers.get("set-cookie"), serializeSessionCookie(successorToken));
+  assert.equal(headers.get("cache-control"), "private, no-store");
+});
+
+test("overlap refresh preserves the current cookie when no successor secret is returned", async () => {
+  const storage = new RequestContextStorage();
+  const currentToken = createSessionToken();
+  const refresh = {
+    async execute() {
+      return {
+        status: "overlap" as const,
+        token: null,
+        session: storedSession({ type: "platform" }),
+      };
+    },
+  };
+  const controller = Reflect.construct(AuthController, [
+    { execute: async () => assert.fail("login must not run") },
+    storage,
+    { trustProxy: false },
+    undefined,
+    undefined,
+    undefined,
+    refresh,
+  ]) as AuthController & {
+    refresh(
+      request: { readonly headers: Record<string, string> },
+      response: { setHeader(name: string, value: string): void },
+    ): Promise<unknown>;
+  };
+  const { headers, response } = responseHeaders();
+
+  await storage.run(AUTHENTICATED_CONTEXT, async () => {
+    await controller.refresh(
+      {
+        headers: {
+          host: "console.example.com",
+          cookie: `${BOOKING_SESSION_COOKIE}=${encodeURIComponent(currentToken)}`,
+        },
+      },
+      response,
+    );
+  });
+
+  assert.equal(headers.has("set-cookie"), false);
+  assert.equal(headers.get("cache-control"), "private, no-store");
 });
