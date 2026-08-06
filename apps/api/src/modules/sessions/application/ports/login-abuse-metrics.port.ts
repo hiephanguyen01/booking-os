@@ -1,7 +1,4 @@
-export type LoginAbuseMetricPurpose =
-  | "before_attempt"
-  | "record_failure"
-  | "record_success";
+export type LoginAbuseMetricPurpose = "before_attempt" | "record_failure" | "record_success";
 
 export type LoginAbuseMetricOutcome =
   | "allowed"
