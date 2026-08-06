@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createSessionToken, serializeSessionCookie } from "@booking-os/auth";
+import {
+  createSessionToken,
+  serializeExpiredSessionCookie,
+  serializeSessionCookie,
+} from "@booking-os/auth";
 import { UnauthorizedException } from "@nestjs/common";
 
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
@@ -18,6 +22,14 @@ const BASE_CONTEXT = Object.freeze({
   requestId: "request-1",
   traceId: "44444444-4444-4444-8444-444444444444",
   source: "console" as const,
+});
+
+const AUTHENTICATED_CONTEXT = Object.freeze({
+  ...BASE_CONTEXT,
+  actorId: USER_ID,
+  sessionId: SESSION_ID,
+  authScope: { type: "platform" as const },
+  sessionState: "active" as const,
 });
 
 function storedSession(scope: StoredSession["scope"]): StoredSession {
@@ -137,5 +149,42 @@ test("maps every invalid login to one generic 401 without setting a cookie", asy
   });
 
   assert.equal(headers.has("set-cookie"), false);
+  assert.equal(headers.get("cache-control"), "private, no-store");
+});
+
+test("logs out idempotently, revokes the current session, and expires the host cookie", async () => {
+  const storage = new RequestContextStorage();
+  const calls: unknown[] = [];
+  const revoke = {
+    async execute(input: unknown) {
+      calls.push(input);
+      return { revoked: false };
+    },
+  };
+  const controller = Reflect.construct(AuthController, [
+    { execute: async () => assert.fail("login must not run") },
+    storage,
+    { trustProxy: false },
+    revoke,
+  ]) as AuthController & {
+    logout(response: { setHeader(name: string, value: string): void }): Promise<{
+      readonly loggedOut: true;
+    }>;
+  };
+  const { headers, response } = responseHeaders();
+
+  await storage.run(AUTHENTICATED_CONTEXT, async () => {
+    assert.deepEqual(await controller.logout(response), { loggedOut: true });
+  });
+
+  assert.deepEqual(calls, [
+    {
+      sessionId: SESSION_ID,
+      userId: USER_ID,
+      reason: "logout",
+      requestId: "request-1",
+    },
+  ]);
+  assert.equal(headers.get("set-cookie"), serializeExpiredSessionCookie());
   assert.equal(headers.get("cache-control"), "private, no-store");
 });
