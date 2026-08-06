@@ -11,7 +11,7 @@ import { TenancyModule } from "../tenancy/tenancy.module.js";
 import { ListSessionsUseCase } from "./application/use-cases/list-sessions.js";
 import { RevokeOtherSessionsUseCase } from "./application/use-cases/revoke-other-sessions.js";
 import { RedisLoginAbuseProtectionAdapter } from "./infrastructure/abuse/redis-login-abuse-protection.adapter.js";
-import { AuthController } from "./infrastructure/http/auth.controller.js";
+import { SessionHttpController } from "./infrastructure/http/session-http.controller.js";
 import { StructuredLoginAbuseMetricsAdapter } from "./infrastructure/observability/structured-login-abuse-metrics.adapter.js";
 import { SessionsModule } from "./sessions.module.js";
 import { LOGIN_ABUSE_METRICS_PORT, LOGIN_ABUSE_PROTECTION_PORT } from "./sessions.tokens.js";
@@ -87,7 +87,7 @@ test("composes distributed login abuse protection with bounded telemetry", () =>
 
 test("wires the session HTTP controller and device-management use cases", () => {
   const controllers = metadata<unknown>(MODULE_METADATA.controllers, SessionsModule);
-  assert.ok(controllers.includes(AuthController));
+  assert.ok(controllers.includes(SessionHttpController));
 
   const providers = metadata<FactoryProvider>(MODULE_METADATA.providers, SessionsModule);
   assert.ok(providers.some((provider) => provider.provide === ListSessionsUseCase));
