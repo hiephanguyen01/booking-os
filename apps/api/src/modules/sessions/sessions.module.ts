@@ -29,8 +29,8 @@ import {
   type LoginAbuseRedisClient,
   RedisLoginAbuseProtectionAdapter,
 } from "./infrastructure/abuse/redis-login-abuse-protection.adapter.js";
-import { AuthController } from "./infrastructure/http/auth.controller.js";
 import { SessionAuthMiddleware } from "./infrastructure/http/session-auth.middleware.js";
+import { SessionHttpController } from "./infrastructure/http/session-http.controller.js";
 import { SessionRequiredGuard } from "./infrastructure/http/session-required.guard.js";
 import { StructuredLoginAbuseMetricsAdapter } from "./infrastructure/observability/structured-login-abuse-metrics.adapter.js";
 import { PrismaCredentialVerifierAdapter } from "./infrastructure/persistence/prisma/prisma-credential-verifier.adapter.js";
@@ -54,7 +54,7 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
 
 @Module({
   imports: [DatabaseModule, DependenciesModule, RequestContextModule],
-  controllers: [AuthController],
+  controllers: [SessionHttpController],
   providers: [
     {
       provide: SESSION_REPOSITORY_PORT,
