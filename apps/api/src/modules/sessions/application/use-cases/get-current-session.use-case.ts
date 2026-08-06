@@ -69,10 +69,7 @@ export class GetCurrentSessionUseCase {
       authorizationVersion,
       requestId: input.requestId,
     });
-    if (
-      validated.session.state !== "active" &&
-      validated.session.state !== "invitation_pending"
-    ) {
+    if (validated.session.state !== "active" && validated.session.state !== "invitation_pending") {
       throw new SessionUnavailableError();
     }
 
