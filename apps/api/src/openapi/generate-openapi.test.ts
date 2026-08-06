@@ -94,6 +94,7 @@ test("generates the contract without binding a port or reaching infrastructure",
       "/api/auth/me",
       "/api/auth/password/forgot",
       "/api/auth/password/reset",
+      "/api/auth/session/csrf",
       "/api/auth/session/refresh",
       "/api/auth/sessions",
       "/api/auth/sessions/{sessionId}",
@@ -114,6 +115,7 @@ test("generates the contract without binding a port or reaching infrastructure",
         "getHealth",
         "getPreAuthCsrf",
         "getReadiness",
+        "getSessionCsrf",
         "listSessions",
         "loginSession",
         "logoutSession",
@@ -132,6 +134,12 @@ test("generates the contract without binding a port or reaching infrastructure",
     assert.equal(
       login?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref,
       "#/components/schemas/SessionResponseDto",
+    );
+
+    const sessionCsrf = document.paths["/api/auth/session/csrf"]?.get;
+    assert.equal(
+      sessionCsrf?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/SessionCsrfResponseDto",
     );
 
     const refresh = document.paths["/api/auth/session/refresh"]?.post;
