@@ -74,15 +74,17 @@ test("login performs a server-side session CSRF handshake and preserves only the
   assert.equal(calls.length, 2);
   assert.equal(calls[0]?.url, "https://api.example.test/api/auth/session/csrf");
   assert.equal(calls[0]?.init?.cache, "no-store");
+  const csrfHeaders = new Headers(calls[0]?.init?.headers);
+  assert.equal(csrfHeaders.get("x-forwarded-host"), "console.example.test");
 
   const login = calls[1];
   assert.equal(login?.url, "https://api.example.test/api/auth/login");
   assert.equal(login?.init?.method, "POST");
   const headers = new Headers(login?.init?.headers);
-  assert.equal(headers.get("origin"), "https://api.example.test");
+  assert.equal(headers.get("origin"), "https://console.example.test");
   assert.equal(headers.get("x-csrf-token"), "opaque-csrf-proof");
   assert.equal(headers.get("cookie"), null);
-  assert.equal(headers.get("x-forwarded-host"), null);
+  assert.equal(headers.get("x-forwarded-host"), "console.example.test");
   assert.deepEqual(JSON.parse(String(login?.init?.body)), {
     email: "pilot@example.com",
     password: "correct password",
@@ -121,7 +123,7 @@ test("me forwards only the validated opaque session cookie", async () => {
   assert.equal(headers.get("cookie"), `__Host-booking_session=${encodeURIComponent(token)}`);
   assert.equal(headers.get("host"), null);
   assert.equal(headers.get("origin"), null);
-  assert.equal(headers.get("x-forwarded-host"), null);
+  assert.equal(headers.get("x-forwarded-host"), "console.example.test");
 });
 
 test("cross-origin login is rejected before contacting the session API", async () => {
@@ -199,10 +201,12 @@ test("refresh binds session CSRF to the validated current cookie and forwards on
   const expectedCookie = `__Host-booking_session=${encodeURIComponent(currentToken)}`;
   const csrfHeaders = new Headers(calls[0]?.init?.headers);
   assert.equal(csrfHeaders.get("cookie"), expectedCookie);
+  assert.equal(csrfHeaders.get("x-forwarded-host"), "console.example.test");
   const refreshHeaders = new Headers(calls[1]?.init?.headers);
   assert.equal(refreshHeaders.get("cookie"), expectedCookie);
-  assert.equal(refreshHeaders.get("origin"), "https://api.example.test");
+  assert.equal(refreshHeaders.get("origin"), "https://console.example.test");
   assert.equal(refreshHeaders.get("x-csrf-token"), "session-proof");
+  assert.equal(refreshHeaders.get("x-forwarded-host"), "console.example.test");
 });
 
 test("logout uses session CSRF and expires the authoritative host-only cookie", async () => {
@@ -240,6 +244,7 @@ test("logout uses session CSRF and expires the authoritative host-only cookie", 
   assert.equal(calls[1]?.url, "https://api.example.test/api/auth/logout");
   const headers = new Headers(calls[1]?.init?.headers);
   assert.equal(headers.get("cookie"), `__Host-booking_session=${encodeURIComponent(token)}`);
-  assert.equal(headers.get("origin"), "https://api.example.test");
+  assert.equal(headers.get("origin"), "https://console.example.test");
   assert.equal(headers.get("x-csrf-token"), "logout-proof");
+  assert.equal(headers.get("x-forwarded-host"), "console.example.test");
 });
