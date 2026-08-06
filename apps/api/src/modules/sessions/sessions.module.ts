@@ -144,8 +144,7 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
         abuse: LoginAbuseProtectionPort,
         sessions: CreateSessionUseCase,
         abuseHmacKey: Uint8Array,
-      ): LoginUseCase =>
-        new LoginUseCase(credentials, subjects, abuse, sessions, { abuseHmacKey }),
+      ): LoginUseCase => new LoginUseCase(credentials, subjects, abuse, sessions, { abuseHmacKey }),
     },
     {
       provide: GetCurrentSessionUseCase,
@@ -154,8 +153,7 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
         repository: SessionRepositoryPort,
         subjects: SessionSubjectPort,
         validator: ValidateSessionUseCase,
-      ): GetCurrentSessionUseCase =>
-        new GetCurrentSessionUseCase(repository, subjects, validator),
+      ): GetCurrentSessionUseCase => new GetCurrentSessionUseCase(repository, subjects, validator),
     },
     {
       provide: SessionAuthMiddleware,
