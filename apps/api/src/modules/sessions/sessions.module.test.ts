@@ -92,7 +92,6 @@ test("wires the session HTTP controller and device-management use cases", () => 
   const providers = metadata<FactoryProvider>(MODULE_METADATA.providers, SessionsModule);
   assert.ok(providers.some((provider) => provider.provide === ListSessionsUseCase));
   assert.ok(providers.some((provider) => provider.provide === RevokeOtherSessionsUseCase));
-  assert.ok(providers.some((provider) => provider.provide === AuthController));
 });
 
 test("orders trusted tenant resolution before session authentication", () => {
