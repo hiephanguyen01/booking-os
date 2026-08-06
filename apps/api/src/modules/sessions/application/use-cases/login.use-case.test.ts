@@ -1,15 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { LoginAbuseProtectionPort } from "../ports/login-abuse-protection.port.js";
 import type {
   CredentialVerifierPort,
   VerifiedCredential,
 } from "../ports/credential-verifier.port.js";
-import type {
-  LoginSessionSubject,
-  SessionSubjectPort,
-} from "../ports/session-subject.port.js";
+import type { LoginAbuseProtectionPort } from "../ports/login-abuse-protection.port.js";
+import type { LoginSessionSubject, SessionSubjectPort } from "../ports/session-subject.port.js";
 import { InvalidLoginError, LoginUseCase } from "./login.use-case.js";
 
 const HMAC_KEY = new Uint8Array(32).fill(7);
@@ -176,9 +173,7 @@ test("applies progressive delay and rehashes Argon2 after successful verificatio
   });
 
   assert.deepEqual(harness.sleeps, [1_500]);
-  assert.deepEqual(harness.credentials.rehashCalls, [
-    { userId: USER_ID, password: "secret" },
-  ]);
+  assert.deepEqual(harness.credentials.rehashCalls, [{ userId: USER_ID, password: "secret" }]);
   assert.deepEqual(harness.abuse.calls, ["before", "success"]);
 });
 
