@@ -1,7 +1,15 @@
 import { Inject, Injectable } from "@nestjs/common";
 
 import { ENVIRONMENT_TOKEN } from "./environment.constants.js";
-import type { Environment, IdentitySecurityConfig } from "./environment.schema.js";
+import type {
+  Environment,
+  IdentitySecurityConfig,
+  ValidatedEnvironment,
+} from "./environment.schema.js";
+
+const EMPTY_SESSION_ALLOWED_ORIGINS: ValidatedEnvironment["sessionAllowedOrigins"] = Object.freeze(
+  [],
+);
 
 @Injectable()
 export class EnvironmentService {
@@ -67,8 +75,8 @@ export class EnvironmentService {
     return this.values.sessionSecret;
   }
 
-  get sessionAllowedOrigins(): Environment["sessionAllowedOrigins"] {
-    return this.values.sessionAllowedOrigins;
+  get sessionAllowedOrigins(): ValidatedEnvironment["sessionAllowedOrigins"] {
+    return this.values.sessionAllowedOrigins ?? EMPTY_SESSION_ALLOWED_ORIGINS;
   }
 
   get paymentProvider(): Environment["paymentProvider"] {
