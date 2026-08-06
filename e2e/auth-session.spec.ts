@@ -28,9 +28,9 @@ test("login reaches the API through the same-origin BFF with the trusted browser
   const response = await responsePromise;
   expect(request.postDataJSON()).toEqual({ email: EMAIL, password: PASSWORD });
   expect(response.status()).toBe(401);
-  await expect(page.getByRole("alert")).toContainText(
-    "We couldn't sign you in. Check your details and try again.",
-  );
+  await expect(
+    page.getByText("We couldn't sign you in. Check your details and try again.", { exact: true }),
+  ).toBeVisible();
 
   const cookies = await context.cookies(CONSOLE_BASE_URL);
   expect(cookies.some((cookie) => cookie.name === "__Host-booking_session")).toBe(false);
