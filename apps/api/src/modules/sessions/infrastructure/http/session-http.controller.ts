@@ -1,4 +1,4 @@
-import { Controller } from "@nestjs/common";
+import { Controller, Inject } from "@nestjs/common";
 
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import { EnvironmentService } from "../../../../config/environment.service.js";
@@ -11,11 +11,12 @@ import { AuthController } from "./auth.controller.js";
 @Controller("auth")
 export class SessionHttpController extends AuthController {
   constructor(
-    loginUseCase: LoginUseCase,
-    requestContext: RequestContextStorage,
-    environment: EnvironmentService,
-    revokeSessionUseCase: RevokeSessionUseCase,
-    listSessionsUseCase: ListSessionsUseCase,
+    @Inject(LoginUseCase) loginUseCase: LoginUseCase,
+    @Inject(RequestContextStorage) requestContext: RequestContextStorage,
+    @Inject(EnvironmentService) environment: EnvironmentService,
+    @Inject(RevokeSessionUseCase) revokeSessionUseCase: RevokeSessionUseCase,
+    @Inject(ListSessionsUseCase) listSessionsUseCase: ListSessionsUseCase,
+    @Inject(RevokeOtherSessionsUseCase)
     revokeOtherSessionsUseCase: RevokeOtherSessionsUseCase,
   ) {
     super(
