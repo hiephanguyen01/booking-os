@@ -45,7 +45,7 @@ test("session list forwards only the validated opaque session cookie", async () 
   assert.equal(headers.get("cookie"), `__Host-booking_session=${encodeURIComponent(token)}`);
   assert.equal(headers.get("origin"), null);
   assert.equal(headers.get("host"), null);
-  assert.equal(headers.get("x-forwarded-host"), null);
+  assert.equal(headers.get("x-forwarded-host"), "console.example.test");
 });
 
 test("revoking a device uses authenticated CSRF and preserves a current-device expiry", async () => {
@@ -84,10 +84,13 @@ test("revoking a device uses authenticated CSRF and preserves a current-device e
   assert.equal(calls[0]?.url, "https://api.example.test/api/auth/session/csrf");
   assert.equal(calls[1]?.url, `https://api.example.test/api/auth/sessions/${SESSION_ID}`);
   assert.equal(calls[1]?.init?.method, "DELETE");
+  const csrfHeaders = new Headers(calls[0]?.init?.headers);
+  assert.equal(csrfHeaders.get("x-forwarded-host"), "console.example.test");
   const headers = new Headers(calls[1]?.init?.headers);
   assert.equal(headers.get("cookie"), `__Host-booking_session=${encodeURIComponent(token)}`);
-  assert.equal(headers.get("origin"), "https://api.example.test");
+  assert.equal(headers.get("origin"), "https://console.example.test");
   assert.equal(headers.get("x-csrf-token"), "device-proof");
+  assert.equal(headers.get("x-forwarded-host"), "console.example.test");
 });
 
 test("revoke-others uses authenticated CSRF without exposing the proof", async () => {
@@ -122,6 +125,9 @@ test("revoke-others uses authenticated CSRF without exposing the proof", async (
   assert.equal(calls.length, 2);
   assert.equal(calls[1]?.url, "https://api.example.test/api/auth/sessions/revoke-others");
   assert.equal(calls[1]?.init?.method, "POST");
+  const headers = new Headers(calls[1]?.init?.headers);
+  assert.equal(headers.get("origin"), "https://console.example.test");
+  assert.equal(headers.get("x-forwarded-host"), "console.example.test");
 });
 
 test("device revocation rejects a non-UUID path before contacting the API", async () => {
