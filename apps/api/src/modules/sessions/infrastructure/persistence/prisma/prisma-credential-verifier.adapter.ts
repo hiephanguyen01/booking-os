@@ -96,7 +96,6 @@ export class PrismaCredentialVerifierAdapter implements CredentialVerifierPort {
           hashLength: ARGON2ID_BASELINE.hashLength,
           saltLength: ARGON2ID_BASELINE.saltLength,
         },
-        passwordChangedAt: new Date(),
       },
     });
   }
