@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type {
+  LoginAbuseMetric,
+  LoginAbuseMetricsPort,
+} from "../../application/ports/login-abuse-metrics.port.js";
 import type { LoginAttemptKey } from "../../application/ports/login-abuse-protection.port.js";
 import {
   calculateLoginDelayMs,
@@ -35,13 +39,28 @@ class FakeRedisClient {
   }
 }
 
-function createAdapter(client: FakeRedisClient): RedisLoginAbuseProtectionAdapter {
-  return new RedisLoginAbuseProtectionAdapter(client, {
-    keyPrefix: "booking:test:login-abuse",
-    ttlMs: 15 * 60 * 1000,
-    baseDelayMs: 250,
-    maxDelayMs: 8_000,
-  });
+class FakeMetrics implements LoginAbuseMetricsPort {
+  readonly records: LoginAbuseMetric[] = [];
+
+  record(metric: LoginAbuseMetric): void {
+    this.records.push(metric);
+  }
+}
+
+function createAdapter(client: FakeRedisClient, metrics = new FakeMetrics()) {
+  return {
+    adapter: new RedisLoginAbuseProtectionAdapter(
+      client,
+      {
+        keyPrefix: "booking:test:login-abuse",
+        ttlMs: 15 * 60 * 1000,
+        baseDelayMs: 250,
+        maxDelayMs: 8_000,
+      },
+      metrics,
+    ),
+    metrics,
+  };
 }
 
 test("uses bounded exponential progressive delay", () => {
@@ -55,7 +74,7 @@ test("uses bounded exponential progressive delay", () => {
 test("reads account, source, and combined counters in one atomic Lua evaluation", async () => {
   const redis = new FakeRedisClient();
   redis.results.push(1_500);
-  const adapter = createAdapter(redis);
+  const { adapter, metrics } = createAdapter(redis);
 
   assert.deepEqual(await adapter.beforeAttempt(ATTEMPT_KEY), { delayMs: 1_500 });
   assert.equal(redis.calls.length, 1);
@@ -66,11 +85,40 @@ test("reads account, source, and combined counters in one atomic Lua evaluation"
     `booking:test:login-abuse:combined:${ATTEMPT_KEY.combinedDigest}`,
   ]);
   assert.match(redis.calls[0]?.script ?? "", /MGET/);
+  assert.deepEqual(metrics.records, [
+    {
+      purpose: "before_attempt",
+      outcome: "delayed",
+      delayBucket: "1_4s",
+      availability: "available",
+    },
+  ]);
+});
+
+test("uses a finite delay bucket vocabulary", async () => {
+  const redis = new FakeRedisClient();
+  redis.results.push(0, 500, 2_000, 5_000);
+  const { adapter, metrics } = createAdapter(redis);
+
+  await adapter.beforeAttempt(ATTEMPT_KEY);
+  await adapter.beforeAttempt(ATTEMPT_KEY);
+  await adapter.beforeAttempt(ATTEMPT_KEY);
+  await adapter.beforeAttempt(ATTEMPT_KEY);
+
+  assert.deepEqual(
+    metrics.records.map((metric) => [metric.outcome, metric.delayBucket]),
+    [
+      ["allowed", "none"],
+      ["delayed", "lt_1s"],
+      ["delayed", "1_4s"],
+      ["delayed", "gte_4s"],
+    ],
+  );
 });
 
 test("increments all counters and refreshes their TTL in one Lua call", async () => {
   const redis = new FakeRedisClient();
-  const adapter = createAdapter(redis);
+  const { adapter, metrics } = createAdapter(redis);
 
   await adapter.recordFailure(ATTEMPT_KEY);
 
@@ -79,11 +127,19 @@ test("increments all counters and refreshes their TTL in one Lua call", async ()
   assert.match(redis.calls[0]?.script ?? "", /INCR/);
   assert.match(redis.calls[0]?.script ?? "", /PEXPIRE/);
   assert.equal(redis.calls[0]?.arguments.at(-1), String(15 * 60 * 1000));
+  assert.deepEqual(metrics.records, [
+    {
+      purpose: "record_failure",
+      outcome: "failure",
+      delayBucket: "none",
+      availability: "available",
+    },
+  ]);
 });
 
 test("success atomically decays all three counters without making them negative", async () => {
   const redis = new FakeRedisClient();
-  const adapter = createAdapter(redis);
+  const { adapter, metrics } = createAdapter(redis);
 
   await adapter.recordSuccess(ATTEMPT_KEY);
 
@@ -91,12 +147,20 @@ test("success atomically decays all three counters without making them negative"
   assert.equal(redis.calls[0]?.numberOfKeys, 3);
   assert.match(redis.calls[0]?.script ?? "", /DECR/);
   assert.match(redis.calls[0]?.script ?? "", /DEL/);
+  assert.deepEqual(metrics.records, [
+    {
+      purpose: "record_success",
+      outcome: "success",
+      delayBucket: "none",
+      availability: "available",
+    },
+  ]);
 });
 
-test("fails closed when Redis is unavailable", async () => {
+test("fails closed and records availability without sensitive labels", async () => {
   const redis = new FakeRedisClient();
   redis.error = new Error("redis unavailable");
-  const adapter = createAdapter(redis);
+  const { adapter, metrics } = createAdapter(redis);
 
   await assert.rejects(
     adapter.beforeAttempt(ATTEMPT_KEY),
@@ -110,4 +174,33 @@ test("fails closed when Redis is unavailable", async () => {
     adapter.recordSuccess(ATTEMPT_KEY),
     (error: unknown) => error instanceof LoginAbuseProtectionUnavailableError,
   );
+
+  assert.deepEqual(metrics.records, [
+    {
+      purpose: "before_attempt",
+      outcome: "unavailable",
+      delayBucket: "none",
+      availability: "unavailable",
+    },
+    {
+      purpose: "record_failure",
+      outcome: "unavailable",
+      delayBucket: "none",
+      availability: "unavailable",
+    },
+    {
+      purpose: "record_success",
+      outcome: "unavailable",
+      delayBucket: "none",
+      availability: "unavailable",
+    },
+  ]);
+  for (const record of metrics.records) {
+    assert.deepEqual(Object.keys(record).sort(), [
+      "availability",
+      "delayBucket",
+      "outcome",
+      "purpose",
+    ]);
+  }
 });
