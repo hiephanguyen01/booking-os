@@ -6,12 +6,32 @@ import type {
   VerifiedCredential,
 } from "../ports/credential-verifier.port.js";
 import type { LoginAbuseProtectionPort } from "../ports/login-abuse-protection.port.js";
+import type { StoredSession } from "../ports/session-repository.port.js";
 import type { LoginSessionSubject, SessionSubjectPort } from "../ports/session-subject.port.js";
 import { InvalidLoginError, LoginUseCase } from "./login.use-case.js";
 
 const HMAC_KEY = new Uint8Array(32).fill(7);
 const USER_ID = "11111111-1111-4111-8111-111111111111";
 const TENANT_ID = "22222222-2222-4222-8222-222222222222";
+const NOW = new Date("2026-08-06T05:00:00.000Z");
+
+const ISSUED_SESSION: StoredSession = Object.freeze({
+  id: "33333333-3333-4333-8333-333333333333",
+  userId: USER_ID,
+  scope: { type: "platform" },
+  hostname: "console.example.com",
+  state: "active",
+  authorizationVersion: 3,
+  version: 1,
+  idleExpiresAt: new Date("2026-08-13T05:00:00.000Z"),
+  absoluteExpiresAt: new Date("2026-09-05T05:00:00.000Z"),
+  lastSeenAt: NOW,
+  revokedAt: null,
+  revocationReason: null,
+  compromisedAt: null,
+  createdAt: NOW,
+  updatedAt: NOW,
+});
 
 class FakeCredentials implements CredentialVerifierPort {
   verification: VerifiedCredential | null = {
@@ -76,7 +96,7 @@ function createHarness() {
   const sessions = {
     async execute(input: unknown) {
       issued.push(input);
-      return { token: "selector.secret", session: { id: "session-1" } };
+      return { token: "selector.secret", session: ISSUED_SESSION };
     },
   };
   const useCase = new LoginUseCase(credentials, subjects, abuse, sessions, {
