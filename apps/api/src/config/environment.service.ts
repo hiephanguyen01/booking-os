@@ -67,6 +67,10 @@ export class EnvironmentService {
     return this.values.sessionSecret;
   }
 
+  get sessionAllowedOrigins(): Environment["sessionAllowedOrigins"] {
+    return this.values.sessionAllowedOrigins;
+  }
+
   get paymentProvider(): Environment["paymentProvider"] {
     return this.values.paymentProvider;
   }
