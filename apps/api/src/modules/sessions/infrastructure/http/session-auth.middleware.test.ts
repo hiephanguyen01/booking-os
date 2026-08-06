@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createSessionToken, BOOKING_SESSION_COOKIE } from "@booking-os/auth";
+import { BOOKING_SESSION_COOKIE, createSessionToken } from "@booking-os/auth";
 
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import { SessionUnavailableError } from "../../domain/session-errors.js";
