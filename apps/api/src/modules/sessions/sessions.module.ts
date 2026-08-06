@@ -29,10 +29,9 @@ import {
   type LoginAbuseRedisClient,
   RedisLoginAbuseProtectionAdapter,
 } from "./infrastructure/abuse/redis-login-abuse-protection.adapter.js";
-import { CsrfGuard } from "./infrastructure/http/csrf.guard.js";
-import { deriveSessionCsrfKey } from "./infrastructure/http/csrf-key.js";
 import { SessionAuthMiddleware } from "./infrastructure/http/session-auth.middleware.js";
 import { SessionCsrfHttpController } from "./infrastructure/http/session-csrf-http.controller.js";
+import { SessionCsrfGuard } from "./infrastructure/http/session-csrf.guard.js";
 import { SessionHttpController } from "./infrastructure/http/session-http.controller.js";
 import { SessionRequiredGuard } from "./infrastructure/http/session-required.guard.js";
 import { StructuredLoginAbuseMetricsAdapter } from "./infrastructure/observability/structured-login-abuse-metrics.adapter.js";
@@ -188,19 +187,7 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
           trustProxy: environment.trustProxy,
         }),
     },
-    {
-      provide: CsrfGuard,
-      inject: [RequestContextStorage, EnvironmentService],
-      useFactory: (
-        requestContext: RequestContextStorage,
-        environment: EnvironmentService,
-      ): CsrfGuard =>
-        new CsrfGuard(requestContext, {
-          allowedOrigins: environment.sessionAllowedOrigins,
-          csrfKey: deriveSessionCsrfKey(environment.sessionSecret),
-          trustProxy: environment.trustProxy,
-        }),
-    },
+    SessionCsrfGuard,
     SessionRequiredGuard,
     {
       provide: APP_GUARD,

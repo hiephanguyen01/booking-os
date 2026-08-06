@@ -10,11 +10,11 @@ import { RefreshSessionUseCase } from "../../application/use-cases/refresh-sessi
 import { RevokeOtherSessionsUseCase } from "../../application/use-cases/revoke-other-sessions.js";
 import { RevokeSessionUseCase } from "../../application/use-cases/revoke-session.js";
 import { AuthController } from "./auth.controller.js";
-import { CsrfGuard } from "./csrf.guard.js";
+import { SessionCsrfGuard } from "./session-csrf.guard.js";
 
 @SupportedApi()
 @ApiTags("sessions")
-@UseGuards(CsrfGuard)
+@UseGuards(SessionCsrfGuard)
 @Controller("auth")
 export class SessionHttpController extends AuthController {
   constructor(

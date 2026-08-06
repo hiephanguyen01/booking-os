@@ -14,8 +14,8 @@ import { ListSessionsUseCase } from "./application/use-cases/list-sessions.js";
 import { RefreshSessionUseCase } from "./application/use-cases/refresh-session.js";
 import { RevokeOtherSessionsUseCase } from "./application/use-cases/revoke-other-sessions.js";
 import { RedisLoginAbuseProtectionAdapter } from "./infrastructure/abuse/redis-login-abuse-protection.adapter.js";
-import { CsrfGuard } from "./infrastructure/http/csrf.guard.js";
 import { SessionCsrfHttpController } from "./infrastructure/http/session-csrf-http.controller.js";
+import { SessionCsrfGuard } from "./infrastructure/http/session-csrf.guard.js";
 import { SessionHttpController } from "./infrastructure/http/session-http.controller.js";
 import { StructuredLoginAbuseMetricsAdapter } from "./infrastructure/observability/structured-login-abuse-metrics.adapter.js";
 import { SessionsModule } from "./sessions.module.js";
@@ -105,13 +105,15 @@ test("wires session CSRF issuance and enforcement into the runtime module", () =
   assert.ok(controllers.includes(SessionCsrfHttpController));
   assert.equal(Reflect.getMetadata("path", SessionCsrfHttpController), "auth/session");
 
-  const providers = metadata<FactoryProvider>(MODULE_METADATA.providers, SessionsModule);
-  const csrfProvider = providers.find((provider) => provider.provide === CsrfGuard);
-  assert.ok(csrfProvider);
-  assert.deepEqual(csrfProvider.inject, [RequestContextStorage, EnvironmentService]);
+  const providers = metadata<unknown>(MODULE_METADATA.providers, SessionsModule);
+  assert.ok(providers.includes(SessionCsrfGuard));
+  assert.deepEqual(Reflect.getMetadata("design:paramtypes", SessionCsrfGuard), [
+    RequestContextStorage,
+    EnvironmentService,
+  ]);
 
   const guards = metadata<unknown>("__guards__", SessionHttpController);
-  assert.ok(guards.includes(CsrfGuard));
+  assert.ok(guards.includes(SessionCsrfGuard));
 });
 
 test("orders trusted tenant resolution before session authentication", () => {
