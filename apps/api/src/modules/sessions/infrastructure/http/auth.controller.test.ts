@@ -201,7 +201,9 @@ test("returns only trusted current authentication state with private no-store", 
       readonly session: {
         readonly id: string;
         readonly state: "active" | "invitation_pending";
-        readonly scope: { readonly type: "platform" } | { readonly type: "tenant"; tenantId: string };
+        readonly scope:
+          | { readonly type: "platform" }
+          | { readonly type: "tenant"; tenantId: string };
       };
     };
   };
