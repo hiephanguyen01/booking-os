@@ -1,6 +1,5 @@
 import { PERMISSIONS, type Permission } from "./permissions.js";
 import { ROLES, type Role } from "./roles.js";
-import type { Session } from "./session.js";
 
 export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
   [ROLES.platformAdmin]: [
@@ -24,8 +23,8 @@ export function getPermissions(role: Role): Permission[] {
 }
 
 export function hasPermission(
-  session: Session | null | undefined,
+  role: Role | null | undefined,
   permission: Permission,
 ): boolean {
-  return session ? ROLE_PERMISSIONS[session.user.role].includes(permission) : false;
+  return role ? ROLE_PERMISSIONS[role].includes(permission) : false;
 }

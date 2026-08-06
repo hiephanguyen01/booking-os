@@ -1,8 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ROLES } from "@booking-os/auth";
-
 import {
   assertHasOwnKeys,
   createHealthCheckJobFixture,
@@ -43,21 +41,27 @@ test("health fixture clones dependency overrides", () => {
   assert.notEqual(fixture.dependencies?.redis, dependencies.redis);
 });
 
-test("session fixtures support role overrides and return fresh users", () => {
-  const partner = createSessionFixture({ role: ROLES.partner });
+test("session fixtures expose scoped protocol metadata and fresh scope data", () => {
+  const first = createSessionFixture();
   const second = createSessionFixture();
 
-  assert.equal(partner.user.role, ROLES.partner);
-  assert.deepEqual(partner, {
-    user: {
-      id: "user-1",
-      email: "partner@example.com",
-      displayName: "Partner User",
-      role: ROLES.partner,
-    },
-    expiresAt: "2026-08-04T12:00:00.000Z",
+  assert.deepEqual(first, {
+    id: "session-1",
+    userId: "user-1",
+    scope: { type: "tenant", tenantId: "tenant-1" },
+    hostname: "partner.example.test",
+    authorizationVersion: 1,
+    state: "active",
+    idleExpiresAt: "2026-08-11T12:00:00.000Z",
+    absoluteExpiresAt: "2026-09-03T12:00:00.000Z",
   });
-  assert.notEqual(partner.user, second.user);
+  assert.notEqual(first.scope, second.scope);
+});
+
+test("session fixtures support platform scope overrides", () => {
+  const fixture = createSessionFixture({ scope: { type: "platform" } });
+
+  assert.deepEqual(fixture.scope, { type: "platform" });
 });
 
 test("job fixtures use the literal scaffold job name and clone data", () => {
