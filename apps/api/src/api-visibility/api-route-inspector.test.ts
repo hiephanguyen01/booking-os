@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { Controller, Get, Module } from "@nestjs/common";
+import { Controller, Delete, Get, Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 
@@ -15,6 +15,9 @@ class SupportedController {
   getItem(): { readonly ok: true } {
     return { ok: true };
   }
+
+  @Delete("items/:itemId")
+  deleteItem(): void {}
 }
 
 @InternalApi()
@@ -50,6 +53,11 @@ test("discovers normalized routes with resolved visibility", async () => {
         {
           method: "GET",
           path: "/api/supported/item",
+          visibility: "public-supported",
+        },
+        {
+          method: "DELETE",
+          path: "/api/supported/items/{itemId}",
           visibility: "public-supported",
         },
       ],
