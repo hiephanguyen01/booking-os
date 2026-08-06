@@ -18,6 +18,10 @@ import type {
   StoredSession,
 } from "../../application/ports/session-repository.port.js";
 import { InvalidLoginError, type LoginInput } from "../../application/use-cases/login.use-case.js";
+import type {
+  ListSessionsInput,
+  SessionSummary,
+} from "../../application/use-cases/list-sessions.js";
 import type { RevokeSessionInput } from "../../application/use-cases/revoke-session.js";
 import { SessionRequired } from "./session-required.decorator.js";
 
@@ -27,6 +31,10 @@ interface LoginExecutor {
 
 interface RevokeSessionExecutor {
   execute(input: RevokeSessionInput): Promise<{ readonly revoked: boolean }>;
+}
+
+interface ListSessionsExecutor {
+  execute(input: ListSessionsInput): Promise<readonly SessionSummary[]>;
 }
 
 export interface LoginRequestBody {
@@ -71,6 +79,10 @@ export interface CurrentAuthenticationResponse {
   };
 }
 
+export interface SessionListResponse {
+  readonly sessions: readonly SessionSummary[];
+}
+
 function firstHeaderValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -98,6 +110,7 @@ export class AuthController {
     private readonly requestContext: RequestContextStorage,
     private readonly options: AuthControllerOptions,
     private readonly revokeSessionUseCase?: RevokeSessionExecutor,
+    private readonly listSessionsUseCase?: ListSessionsExecutor,
   ) {}
 
   @Post("login")
@@ -173,6 +186,26 @@ export class AuthController {
         state: authenticated.sessionState,
         scope: authenticated.authScope,
       },
+    };
+  }
+
+  @SessionRequired()
+  @Get("sessions")
+  async sessions(
+    @Res({ passthrough: true }) response: HeaderResponse,
+  ): Promise<SessionListResponse> {
+    response.setHeader("Cache-Control", "private, no-store");
+
+    const authenticated = this.requestContext.requireAuthenticated();
+    if (!this.listSessionsUseCase) {
+      throw new ServiceUnavailableException("Session listing is unavailable.");
+    }
+
+    return {
+      sessions: await this.listSessionsUseCase.execute({
+        userId: authenticated.actorId,
+        currentSessionId: authenticated.sessionId,
+      }),
     };
   }
 }
