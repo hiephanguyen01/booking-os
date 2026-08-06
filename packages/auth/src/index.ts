@@ -4,8 +4,8 @@ export {
   ROLE_PERMISSIONS,
 } from "./authorization.js";
 export {
-  createCsrfNonce,
   CSRF_NONCE_BYTES,
+  createCsrfNonce,
   type DeriveCsrfTokenInput,
   deriveCsrfToken,
   type VerifyCsrfTokenInput,
@@ -26,15 +26,15 @@ export {
 export {
   type CreateSessionTokenOptions,
   createSessionToken,
-  type ParsedSessionToken,
   deriveSessionSecretDigest,
+  type ParsedSessionToken,
+  parseSessionToken,
   SESSION_SECRET_BYTES,
   SESSION_SECRET_DIGEST_HEX_LENGTH,
   SESSION_SELECTOR_BYTES,
   type SessionSecretDigestInput,
   type VerifySessionSecretDigestInput,
   verifySessionSecretDigest,
-  parseSessionToken,
 } from "./opaque-session.js";
 export { ARGON2ID_BASELINE, type PasswordHasher } from "./password-hasher.js";
 export {
