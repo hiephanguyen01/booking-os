@@ -11,15 +11,9 @@ test("sample console session uses the partner role", () => {
 });
 
 test("sample partner can manage listings", () => {
-  assert.equal(
-    hasPermission(samplePartnerSession.user.role, PERMISSIONS.listingManage),
-    true,
-  );
+  assert.equal(hasPermission(samplePartnerSession.user.role, PERMISSIONS.listingManage), true);
 });
 
 test("sample partner cannot manage the platform", () => {
-  assert.equal(
-    hasPermission(samplePartnerSession.user.role, PERMISSIONS.platformManage),
-    false,
-  );
+  assert.equal(hasPermission(samplePartnerSession.user.role, PERMISSIONS.platformManage), false);
 });

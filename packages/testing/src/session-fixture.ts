@@ -1,8 +1,4 @@
-import type {
-  PublicSession,
-  PublicSessionState,
-  SessionScope,
-} from "@booking-os/auth";
+import type { PublicSession, PublicSessionState, SessionScope } from "@booking-os/auth";
 
 export interface SessionFixtureOverrides {
   readonly id?: string;
@@ -19,7 +15,9 @@ export function createSessionFixture(overrides: SessionFixtureOverrides = {}): P
   return {
     id: overrides.id ?? "session-1",
     userId: overrides.userId ?? "user-1",
-    scope: overrides.scope ? structuredClone(overrides.scope) : { type: "tenant", tenantId: "tenant-1" },
+    scope: overrides.scope
+      ? structuredClone(overrides.scope)
+      : { type: "tenant", tenantId: "tenant-1" },
     hostname: overrides.hostname ?? "partner.example.test",
     authorizationVersion: overrides.authorizationVersion ?? 1,
     state: overrides.state ?? "active",
