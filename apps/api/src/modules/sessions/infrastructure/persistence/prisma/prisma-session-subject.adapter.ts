@@ -16,7 +16,7 @@ export class PrismaSessionSubjectAdapter implements SessionSubjectPort {
       where: { id: input.userId },
       select: { status: true, authorizationVersion: true },
     });
-    if (!user || user.status !== "active") {
+    if (user?.status !== "active") {
       return null;
     }
 
