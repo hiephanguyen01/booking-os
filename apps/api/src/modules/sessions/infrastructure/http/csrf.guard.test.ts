@@ -2,15 +2,13 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import test from "node:test";
 
-import {
-  BOOKING_SESSION_COOKIE,
-  createSessionToken,
-  deriveCsrfToken,
-} from "@booking-os/auth";
+import { BOOKING_SESSION_COOKIE, createSessionToken, deriveCsrfToken } from "@booking-os/auth";
 import type { ExecutionContext } from "@nestjs/common";
 import { ForbiddenException } from "@nestjs/common";
 
-import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
+import {
+  RequestContextStorage,
+} from "../../../../common/request-context/request-context.storage.js";
 import { CsrfGuard } from "./csrf.guard.js";
 
 const CSRF_KEY = Buffer.alloc(32, 7);
