@@ -25,6 +25,7 @@ const validEnvironment = {
   REDIS_URL: "redis://localhost:6379/1",
   READINESS_TIMEOUT_MS: "900",
   SESSION_SECRET: "test-only-session-secret-at-least-32-characters",
+  SESSION_ALLOWED_ORIGINS: "https://console.example.com, https://partner.example.com",
   PAYMENT_PROVIDER: "mock",
   ...identityEnvironment,
 } as const;
@@ -45,6 +46,7 @@ test("parseEnvironment validates and normalizes environment variables", () => {
     redisUrl: "redis://localhost:6379/1",
     readinessTimeoutMs: 900,
     sessionSecret: "test-only-session-secret-at-least-32-characters",
+    sessionAllowedOrigins: ["https://console.example.com", "https://partner.example.com"],
     paymentProvider: "mock",
     identitySecurity: {
       tokenPepper: Buffer.from(TOKEN_PEPPER, "base64"),
@@ -74,6 +76,7 @@ test("parseEnvironment applies safe defaults", () => {
   assert.equal(environment.appVersion, "0.1.0");
   assert.equal(environment.logLevel, "info");
   assert.equal(environment.readinessTimeoutMs, 750);
+  assert.deepEqual(environment.sessionAllowedOrigins, []);
   assert.equal(environment.paymentProvider, "mock");
 });
 
@@ -111,6 +114,22 @@ test("parseEnvironment rejects invalid readiness timeouts", () => {
     assert.throws(
       () => parseEnvironment({ ...validEnvironment, READINESS_TIMEOUT_MS: value }),
       EnvironmentValidationError,
+    );
+  }
+});
+
+test("parseEnvironment rejects non-canonical session origins", () => {
+  for (const sessionAllowedOrigins of [
+    "*",
+    "http://console.example.com",
+    "https://console.example.com/path",
+    "https://console.example.com?debug=true",
+    "https://Console.example.com",
+    "https://console.example.com,https://console.example.com",
+  ]) {
+    assert.throws(
+      () => parseEnvironment({ ...validEnvironment, SESSION_ALLOWED_ORIGINS: sessionAllowedOrigins }),
+      /SESSION_ALLOWED_ORIGINS/,
     );
   }
 });
@@ -218,10 +237,24 @@ test("parseEnvironment rejects a missing tenant base domain in production", () =
   );
 });
 
+test("parseEnvironment requires at least one session origin in production", () => {
+  assert.throws(
+    () =>
+      parseEnvironment({
+        ...validEnvironment,
+        NODE_ENV: "production",
+        PAYMENT_PROVIDER: "payos",
+        SESSION_ALLOWED_ORIGINS: undefined,
+      }),
+    /SESSION_ALLOWED_ORIGINS/,
+  );
+});
+
 test("parseEnvironment returns an immutable result", () => {
   const environment = parseEnvironment(validEnvironment);
 
   assert.equal(Object.isFrozen(environment), true);
+  assert.equal(Object.isFrozen(environment.sessionAllowedOrigins), true);
   assert.equal(Object.isFrozen(environment.identitySecurity), true);
   assert.equal(Object.isFrozen(environment.identitySecurity.envelopeKeys), true);
 });
