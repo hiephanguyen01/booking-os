@@ -7,7 +7,7 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -26,11 +26,10 @@ jobs:
       SESSION_SECRET: openapi-ci-only-secret-at-least-32-characters
       PAYMENT_PROVIDER: mock
     steps:
-      - name: Checkout pull request branch
+      - name: Checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v6
@@ -47,29 +46,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate API artifacts
-        run: pnpm api:generate
+      - name: Reject stale generated artifacts
+        run: pnpm api:check-generated
 
       - name: Typecheck generated API client
         run: pnpm --filter @booking-os/api-client typecheck
 
       - name: Test repository generators
         run: pnpm test:scripts
-
-      - name: Commit generated API artifacts
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            packages/contracts/openapi/openapi.json \
-            packages/api-client/src/generated/schema.ts \
-            packages/api-client/src/generated/client.ts
-          if git diff --cached --quiet; then
-            exit 0
-          fi
-          git commit -m "chore: sync generated session API contract"
-          branch="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
-          git push origin "HEAD:${branch}"
 
   genesis-tooling:
     name: Genesis tooling
