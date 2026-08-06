@@ -1,5 +1,6 @@
 import { Controller, Inject } from "@nestjs/common";
 
+import { SupportedApi } from "../../../../api-visibility/api-visibility.decorator.js";
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import { EnvironmentService } from "../../../../config/environment.service.js";
 import { ListSessionsUseCase } from "../../application/use-cases/list-sessions.js";
@@ -8,6 +9,7 @@ import { RevokeOtherSessionsUseCase } from "../../application/use-cases/revoke-o
 import { RevokeSessionUseCase } from "../../application/use-cases/revoke-session.js";
 import { AuthController } from "./auth.controller.js";
 
+@SupportedApi()
 @Controller("auth")
 export class SessionHttpController extends AuthController {
   constructor(
