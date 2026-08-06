@@ -9,10 +9,7 @@ import { API_LOGGER_TOKEN } from "../../observability/tokens.js";
 import { RedisLoginAbuseProtectionAdapter } from "./infrastructure/abuse/redis-login-abuse-protection.adapter.js";
 import { StructuredLoginAbuseMetricsAdapter } from "./infrastructure/observability/structured-login-abuse-metrics.adapter.js";
 import { SessionsModule } from "./sessions.module.js";
-import {
-  LOGIN_ABUSE_METRICS_PORT,
-  LOGIN_ABUSE_PROTECTION_PORT,
-} from "./sessions.tokens.js";
+import { LOGIN_ABUSE_METRICS_PORT, LOGIN_ABUSE_PROTECTION_PORT } from "./sessions.tokens.js";
 
 const MODULE_METADATA = Object.freeze({
   imports: "imports",
@@ -46,7 +43,9 @@ test("composes distributed login abuse protection with bounded telemetry", () =>
   assert.ok(sessionImports.includes(DependenciesModule));
 
   const providers = metadata<FactoryProvider>(MODULE_METADATA.providers, SessionsModule);
-  const metricsProvider = providers.find((provider) => provider.provide === LOGIN_ABUSE_METRICS_PORT);
+  const metricsProvider = providers.find(
+    (provider) => provider.provide === LOGIN_ABUSE_METRICS_PORT,
+  );
   assert.ok(metricsProvider);
   assert.deepEqual(metricsProvider.inject, [API_LOGGER_TOKEN]);
   assert.equal(typeof metricsProvider.useFactory, "function");
