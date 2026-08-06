@@ -25,7 +25,8 @@ function ipv4TailHextets(value: string): number[] {
   ) {
     throw new TypeError("Login source must be a valid IP address.");
   }
-  return [(octets[0] << 8) | octets[1], (octets[2] << 8) | octets[3]];
+  const [first = 0, second = 0, third = 0, fourth = 0] = octets;
+  return [(first << 8) | second, (third << 8) | fourth];
 }
 
 function parseIpv6Section(section: string): number[] {
