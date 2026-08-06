@@ -66,7 +66,7 @@ export interface LoginDelayOptions {
 
 export class LoginAbuseProtectionUnavailableError extends Error {
   override readonly name = "LoginAbuseProtectionUnavailableError";
-  readonly cause: unknown;
+  override readonly cause: unknown;
 
   constructor(cause: unknown) {
     super("Login abuse protection is unavailable.");
