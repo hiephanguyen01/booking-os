@@ -36,6 +36,54 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/auth/login": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post: operations["loginSession"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/auth/logout": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post: operations["logoutSession"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/auth/me": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get: operations["getCurrentSession"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/auth/password/forgot": {
         readonly parameters: {
             readonly query?: never;
@@ -62,6 +110,70 @@ export interface paths {
         readonly get?: never;
         readonly put?: never;
         readonly post: operations["completePasswordReset"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/auth/session/refresh": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post: operations["refreshSession"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/auth/sessions": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get: operations["listSessions"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/auth/sessions/{sessionId}": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete: operations["revokeSession"];
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/auth/sessions/revoke-others": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post: operations["revokeOtherSessions"];
         readonly delete?: never;
         readonly options?: never;
         readonly head?: never;
@@ -108,6 +220,10 @@ export interface components {
             /** @example true */
             readonly accepted: boolean;
         };
+        readonly ActorDto: {
+            /** Format: uuid */
+            readonly id: string;
+        };
         readonly CompletedResponseDto: {
             /** @example true */
             readonly completed: boolean;
@@ -119,6 +235,10 @@ export interface components {
             /** Format: uuid */
             readonly tenantId?: string;
             readonly token: string;
+        };
+        readonly CurrentAuthenticationResponseDto: {
+            readonly actor: components["schemas"]["ActorDto"];
+            readonly session: components["schemas"]["PublicSessionDto"];
         };
         readonly HealthDependencyStatusDto: {
             readonly latencyMs?: number;
@@ -138,10 +258,26 @@ export interface components {
             readonly uptimeSeconds: number;
             readonly version: string;
         };
+        readonly LoginRequestDto: {
+            /** Format: email */
+            readonly email: string;
+            readonly password: string;
+        };
+        readonly LogoutResponseDto: {
+            /** @example true */
+            readonly loggedOut: boolean;
+        };
         readonly PreAuthCsrfResponseDto: {
             readonly csrfToken: string;
             /** Format: date-time */
             readonly expiresAt: string;
+        };
+        readonly PublicSessionDto: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly scope: components["schemas"]["SessionScopeDto"];
+            /** @enum {string} */
+            readonly state: "active" | "invitation_pending";
         };
         readonly RequestIdentityPasswordResetDto: {
             /** Format: email */
@@ -150,6 +286,41 @@ export interface components {
             readonly scopeType: "platform" | "tenant";
             /** Format: uuid */
             readonly tenantId?: string;
+        };
+        readonly RevokeDeviceResponseDto: {
+            readonly revoked: boolean;
+        };
+        readonly RevokeOtherSessionsResponseDto: {
+            readonly revokedCount: number;
+        };
+        readonly SessionListResponseDto: {
+            readonly sessions: readonly components["schemas"]["SessionSummaryDto"][];
+        };
+        readonly SessionResponseDto: {
+            readonly session: components["schemas"]["PublicSessionDto"];
+        };
+        readonly SessionScopeDto: {
+            /** Format: uuid */
+            readonly tenantId?: string;
+            /** @enum {string} */
+            readonly type: "platform" | "tenant";
+        };
+        readonly SessionSummaryDto: {
+            /** Format: date-time */
+            readonly absoluteExpiresAt: string;
+            /** Format: date-time */
+            readonly createdAt: string;
+            readonly current: boolean;
+            readonly hostname: string;
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: date-time */
+            readonly idleExpiresAt: string;
+            /** Format: date-time */
+            readonly lastSeenAt: string;
+            readonly scope: components["schemas"]["SessionScopeDto"];
+            /** @enum {string} */
+            readonly state: "active" | "invitation_pending" | "compromised" | "revoked";
         };
     };
     responses: never;
@@ -216,6 +387,67 @@ export interface operations {
             };
         };
     };
+    readonly loginSession: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["LoginRequestDto"];
+            };
+        };
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["SessionResponseDto"];
+                };
+            };
+        };
+    };
+    readonly logoutSession: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["LogoutResponseDto"];
+                };
+            };
+        };
+    };
+    readonly getCurrentSession: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CurrentAuthenticationResponseDto"];
+                };
+            };
+        };
+    };
     readonly requestPasswordReset: {
         readonly parameters: {
             readonly query?: never;
@@ -271,6 +503,84 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    readonly refreshSession: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["SessionResponseDto"];
+                };
+            };
+        };
+    };
+    readonly listSessions: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["SessionListResponseDto"];
+                };
+            };
+        };
+    };
+    readonly revokeSession: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly sessionId: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["RevokeDeviceResponseDto"];
+                };
+            };
+        };
+    };
+    readonly revokeOtherSessions: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["RevokeOtherSessionsResponseDto"];
+                };
             };
         };
     };
