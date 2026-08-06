@@ -30,19 +30,13 @@ it("blocks malformed email without sending credentials", async () => {
   await user.type(screen.getByLabelText("Password"), "correct-password");
   await user.click(screen.getByRole("button", { name: "Sign in" }));
 
-  expect((await screen.findByRole("alert")).textContent).toContain(
-    "Enter a valid email address.",
-  );
+  expect((await screen.findByRole("alert")).textContent).toContain("Enter a valid email address.");
   expect(fetchMock).not.toHaveBeenCalled();
   expect(onAuthenticated).not.toHaveBeenCalled();
 });
 
 it("normalizes email, posts only credentials, and follows a safe return path", async () => {
-  window.history.replaceState(
-    null,
-    "",
-    "/login?returnTo=%2Fsecurity%2Fsessions%3Ffrom%3Dlogin",
-  );
+  window.history.replaceState(null, "", "/login?returnTo=%2Fsecurity%2Fsessions%3Ffrom%3Dlogin");
   vi.spyOn(globalThis, "fetch").mockResolvedValue(
     Response.json({
       session: {
@@ -60,7 +54,9 @@ it("normalizes email, posts only credentials, and follows a safe return path", a
   await user.type(screen.getByLabelText("Password"), "correct-password");
   await user.click(screen.getByRole("button", { name: "Sign in" }));
 
-  await waitFor(() => expect(onAuthenticated).toHaveBeenCalledWith("/security/sessions?from=login"));
+  await waitFor(() =>
+    expect(onAuthenticated).toHaveBeenCalledWith("/security/sessions?from=login"),
+  );
   expect(globalThis.fetch).toHaveBeenCalledWith(
     "/api/auth/login",
     expect.objectContaining({
