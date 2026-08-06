@@ -61,7 +61,6 @@ function deriveKey(rootKey: Uint8Array, label: string, value: string): Uint8Arra
     .digest();
 }
 
-@Injectable()
 @Controller("auth")
 export class CsrfController {
   private readonly now: () => Date;
