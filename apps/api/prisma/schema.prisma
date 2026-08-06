@@ -23,6 +23,15 @@ enum IdentityScopeType {
   @@map("identity_scope_type")
 }
 
+enum AuthSessionState {
+  active
+  invitationPending @map("invitation_pending")
+  compromised
+  revoked
+
+  @@map("auth_session_state")
+}
+
 enum RoleScopeLevel {
   platform
   tenant
@@ -31,15 +40,17 @@ enum RoleScopeLevel {
 }
 
 model Tenant {
-  id                       String                   @id @db.Uuid
-  slug                     String                   @unique
-  name                     String
-  createdAt                DateTime                 @default(now()) @db.Timestamptz(6) @map("created_at")
-  probes                   TenantProbe[]
-  outboxEvents             OutboxEvent[]
-  accountActivationTokens  AccountActivationToken[]
-  passwordResetTokens      PasswordResetToken[]
-  roleAssignments          RoleAssignment[]
+  id                      String                   @id @db.Uuid
+  slug                    String                   @unique
+  name                    String
+  createdAt               DateTime                 @default(now()) @db.Timestamptz(6) @map("created_at")
+  probes                  TenantProbe[]
+  outboxEvents            OutboxEvent[]
+  accountActivationTokens AccountActivationToken[]
+  passwordResetTokens     PasswordResetToken[]
+  roleAssignments         RoleAssignment[]
+  authSessions            AuthSession[]
+  authSessionTokens       AuthSessionToken[]
 
   @@map("tenants")
 }
@@ -59,6 +70,7 @@ model User {
   activationTokens     AccountActivationToken[]
   passwordResetTokens  PasswordResetToken[]
   roleAssignments      RoleAssignment[]
+  authSessions         AuthSession[]
   auditEventsAsActor   SecurityAuditEvent[]     @relation("SecurityAuditActor")
   auditEventsAsSubject SecurityAuditEvent[]     @relation("SecurityAuditSubject")
 
@@ -120,6 +132,59 @@ model PasswordResetToken {
   @@index([tenantId])
   @@index([expiresAt])
   @@map("password_reset_tokens")
+}
+
+model AuthSession {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId               String            @db.Uuid @map("user_id")
+  scopeType            IdentityScopeType @map("scope_type")
+  tenantId             String?           @db.Uuid @map("tenant_id")
+  hostname             String
+  state                AuthSessionState  @default(active)
+  authorizationVersion Int               @map("authorization_version")
+  version              Int               @default(1)
+  idleExpiresAt        DateTime           @db.Timestamptz(6) @map("idle_expires_at")
+  absoluteExpiresAt    DateTime           @db.Timestamptz(6) @map("absolute_expires_at")
+  lastSeenAt           DateTime           @default(now()) @db.Timestamptz(6) @map("last_seen_at")
+  revokedAt            DateTime?          @db.Timestamptz(6) @map("revoked_at")
+  revocationReason     String?            @map("revocation_reason")
+  compromisedAt        DateTime?          @db.Timestamptz(6) @map("compromised_at")
+  createdAt            DateTime           @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt            DateTime           @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant               Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tokens               AuthSessionToken[]
+
+  @@index([userId])
+  @@index([tenantId])
+  @@index([hostname, state])
+  @@index([idleExpiresAt, absoluteExpiresAt])
+  @@map("auth_sessions")
+}
+
+model AuthSessionToken {
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId        String            @db.Uuid @map("session_id")
+  scopeType        IdentityScopeType @map("scope_type")
+  tenantId         String?           @db.Uuid @map("tenant_id")
+  selector         String            @unique
+  tokenHash        String            @db.Char(64) @map("token_hash")
+  issuedAt         DateTime          @default(now()) @db.Timestamptz(6) @map("issued_at")
+  expiresAt        DateTime          @db.Timestamptz(6) @map("expires_at")
+  replacedAt       DateTime?         @db.Timestamptz(6) @map("replaced_at")
+  overlapUntil     DateTime?         @db.Timestamptz(6) @map("overlap_until")
+  successorTokenId String?           @unique @db.Uuid @map("successor_token_id")
+  reuseDetectedAt  DateTime?         @db.Timestamptz(6) @map("reuse_detected_at")
+  revokedAt        DateTime?         @db.Timestamptz(6) @map("revoked_at")
+  session          AuthSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  tenant           Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  successorToken   AuthSessionToken? @relation("AuthSessionTokenSuccessor", fields: [successorTokenId], references: [id], onDelete: SetNull)
+  predecessorToken AuthSessionToken? @relation("AuthSessionTokenSuccessor")
+
+  @@index([sessionId])
+  @@index([tenantId])
+  @@index([expiresAt])
+  @@map("auth_session_tokens")
 }
 
 model Role {

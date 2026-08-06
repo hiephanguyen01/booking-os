@@ -2,97 +2,73 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  hashSessionToken,
-  type OpaqueSessionRepository,
-  OpaqueSessionStore,
-  type StoredOpaqueSession,
+  createSessionToken,
+  deriveSessionSecretDigest,
+  parseSessionToken,
+  SESSION_SECRET_BYTES,
+  SESSION_SELECTOR_BYTES,
+  verifySessionSecretDigest,
 } from "../src/opaque-session.js";
 
-class MemorySessionRepository implements OpaqueSessionRepository {
-  private readonly records = new Map<string, StoredOpaqueSession>();
+const digestKey = Buffer.alloc(32, 0xa5);
 
-  async insert(record: StoredOpaqueSession): Promise<void> {
-    this.records.set(record.tokenHash, structuredClone(record));
-  }
-
-  async find(tokenHash: string): Promise<StoredOpaqueSession | null> {
-    const record = this.records.get(tokenHash);
-    return record ? structuredClone(record) : null;
-  }
-
-  async replace(oldTokenHash: string, record: StoredOpaqueSession): Promise<boolean> {
-    if (!this.records.has(oldTokenHash)) {
-      return false;
-    }
-
-    this.records.delete(oldTokenHash);
-    this.records.set(record.tokenHash, structuredClone(record));
-    return true;
-  }
-
-  async delete(tokenHash: string): Promise<boolean> {
-    return this.records.delete(tokenHash);
-  }
-
-  hasRawValue(value: string): boolean {
-    return [...this.records.keys()].includes(value);
-  }
-
-  hasHash(value: string): boolean {
-    return this.records.has(value);
-  }
-}
-
-const fixedNow = new Date("2026-08-04T00:00:00.000Z");
-
-function createStore(repository: MemorySessionRepository): OpaqueSessionStore {
-  return new OpaqueSessionStore(repository, {
-    now: () => fixedNow,
-    ttlSeconds: 60 * 60,
+test("creates a selector.secret token with independent required entropy", () => {
+  const requestedSizes: number[] = [];
+  const token = createSessionToken({
+    randomBytes(size) {
+      requestedSizes.push(size);
+      return Buffer.alloc(size, requestedSizes.length);
+    },
   });
-}
+  const parsed = parseSessionToken(token);
 
-test("stores only the hash of the presented token", async () => {
-  const repository = new MemorySessionRepository();
-  const store = createStore(repository);
-
-  const created = await store.create({ userId: "user-1", tenantId: "tenant-1" });
-
-  assert.equal(created.token.length >= 43, true);
-  assert.equal(repository.hasRawValue(created.token), false);
-  assert.equal(repository.hasHash(hashSessionToken(created.token)), true);
-  assert.deepEqual(created.session, {
-    userId: "user-1",
-    tenantId: "tenant-1",
-    expiresAt: "2026-08-04T01:00:00.000Z",
-  });
+  assert.deepEqual(requestedSizes, [SESSION_SELECTOR_BYTES, SESSION_SECRET_BYTES]);
+  assert.notEqual(parsed, null);
+  assert.equal(Buffer.from(parsed?.selector ?? "", "base64url").byteLength, SESSION_SELECTOR_BYTES);
+  assert.equal(Buffer.from(parsed?.secret ?? "", "base64url").byteLength, SESSION_SECRET_BYTES);
 });
 
-test("rotation invalidates the old token", async () => {
-  const repository = new MemorySessionRepository();
-  const store = createStore(repository);
-  const first = await store.create({ userId: "user-1", tenantId: "tenant-1" });
+test("parser rejects malformed or non-canonical session tokens", () => {
+  const valid = createSessionToken({ randomBytes: (size) => Buffer.alloc(size, 7) });
+  const [selector, secret] = valid.split(".");
 
-  const rotated = await store.rotate(first.token);
-
-  assert.notEqual(rotated, null);
-  assert.equal(await store.read(first.token), null);
-  assert.equal((await store.read(rotated?.token ?? ""))?.userId, "user-1");
+  assert.equal(parseSessionToken(valid)?.selector, selector);
+  for (const candidate of [
+    "",
+    ` ${valid}`,
+    `${valid} `,
+    `${selector}.${secret}.extra`,
+    `${selector}.`,
+    `.${secret}`,
+    `${selector}.${secret}=`,
+    "plain-token",
+  ]) {
+    assert.equal(parseSessionToken(candidate), null, candidate);
+  }
 });
 
-test("expired and revoked sessions cannot be read", async () => {
-  const repository = new MemorySessionRepository();
-  let now = fixedNow;
-  const store = new OpaqueSessionStore(repository, {
-    now: () => now,
-    ttlSeconds: 60,
-  });
-  const created = await store.create({ userId: "user-1", tenantId: "tenant-1" });
+test("derives and verifies only an HMAC digest of the session secret", () => {
+  const token = createSessionToken({ randomBytes: (size) => Buffer.alloc(size, 9) });
+  const parsed = parseSessionToken(token);
+  assert.notEqual(parsed, null);
 
-  now = new Date("2026-08-04T00:02:00.000Z");
-  assert.equal(await store.read(created.token), null);
-
-  const second = await store.create({ userId: "user-2", tenantId: "tenant-2" });
-  assert.equal(await store.revoke(second.token), true);
-  assert.equal(await store.read(second.token), null);
+  const digest = deriveSessionSecretDigest({ digestKey, secret: parsed?.secret ?? "" });
+  assert.match(digest, /^[0-9a-f]{64}$/);
+  assert.equal(digest.includes(parsed?.secret ?? "missing"), false);
+  assert.equal(
+    verifySessionSecretDigest({
+      digestKey,
+      secret: parsed?.secret ?? "",
+      expectedDigest: digest,
+    }),
+    true,
+  );
+  assert.equal(
+    verifySessionSecretDigest({
+      digestKey,
+      secret: createSessionToken().split(".")[1] ?? "",
+      expectedDigest: digest,
+    }),
+    false,
+  );
 });

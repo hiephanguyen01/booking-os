@@ -1,6 +1,18 @@
-import { ROLES, type Session } from "@booking-os/auth";
+import { ROLES, type Role } from "@booking-os/auth";
 
-export const samplePartnerSession: Session = {
+export interface SampleConsoleUser {
+  readonly id: string;
+  readonly email: string;
+  readonly displayName: string;
+  readonly role: Role;
+}
+
+export interface SampleConsoleSession {
+  readonly user: SampleConsoleUser;
+  readonly expiresAt: string;
+}
+
+export const samplePartnerSession: SampleConsoleSession = {
   user: {
     id: "partner-demo",
     email: "partner@example.com",

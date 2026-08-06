@@ -18,4 +18,16 @@ export const TENANT_POLICY_MANIFEST = Object.freeze([
     tenantColumnNullable: true,
     applicationRole: "booking_app",
   }),
+  Object.freeze({
+    table: "auth_sessions",
+    tenantColumn: "tenant_id",
+    tenantColumnNullable: true,
+    applicationRole: "booking_app",
+  }),
+  Object.freeze({
+    table: "auth_session_tokens",
+    tenantColumn: "tenant_id",
+    tenantColumnNullable: true,
+    applicationRole: "booking_app",
+  }),
 ]) satisfies readonly TenantOwnedTablePolicy[];

@@ -1,37 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { getPermissions, hasPermission, PERMISSIONS, ROLES, type Session } from "../src/index.js";
-
-const platformSession: Session = {
-  user: {
-    id: "platform-user",
-    email: "platform@example.com",
-    displayName: "Platform Admin",
-    role: ROLES.platformAdmin,
-  },
-  expiresAt: "2026-08-04T00:00:00.000Z",
-};
-
-const partnerSession: Session = {
-  user: {
-    id: "partner-user",
-    email: "partner@example.com",
-    displayName: "Partner User",
-    role: ROLES.partner,
-  },
-  expiresAt: "2026-08-04T00:00:00.000Z",
-};
+import { getPermissions, hasPermission, PERMISSIONS, ROLES } from "../src/index.js";
 
 test("platform admin has platform management permission", () => {
-  assert.equal(hasPermission(platformSession, PERMISSIONS.platformManage), true);
+  assert.equal(hasPermission(ROLES.platformAdmin, PERMISSIONS.platformManage), true);
 });
 
 test("partner does not have platform management permission", () => {
-  assert.equal(hasPermission(partnerSession, PERMISSIONS.platformManage), false);
+  assert.equal(hasPermission(ROLES.partner, PERMISSIONS.platformManage), false);
 });
 
-test("missing session has no booking permission", () => {
+test("missing role has no booking permission", () => {
   assert.equal(hasPermission(null, PERMISSIONS.bookingView), false);
 });
 

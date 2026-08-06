@@ -1,11 +1,10 @@
-import type { OpaqueSessionStore } from "@booking-os/auth";
-
 import { csrfOriginMismatchResponse, hasMatchingOrigin } from "./csrf";
 import {
   readSessionToken,
   serializeExpiredSessionCookie,
   serializeSessionCookie,
 } from "./session-cookie";
+import type { SampleSessionStore } from "./session-store";
 
 export interface SessionRouteHandlers {
   readonly GET: (request: Request) => Promise<Response>;
@@ -29,7 +28,7 @@ function requestToken(request: Request): string | undefined {
   return readSessionToken(request.headers.get("cookie"));
 }
 
-export function createSessionRouteHandlers(store: OpaqueSessionStore): SessionRouteHandlers {
+export function createSessionRouteHandlers(store: SampleSessionStore): SessionRouteHandlers {
   return {
     async GET(request): Promise<Response> {
       const token = requestToken(request);

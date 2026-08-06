@@ -24,7 +24,10 @@ async function loadApiStatus(apiBaseUrl: string): Promise<ApiServiceStatus> {
 export default async function ConsolePage() {
   const config = resolveAppConfig();
   const apiStatus = await loadApiStatus(config.apiBaseUrl);
-  const canManageListings = hasPermission(samplePartnerSession, PERMISSIONS.listingManage);
+  const canManageListings = hasPermission(
+    samplePartnerSession.user.role,
+    PERMISSIONS.listingManage,
+  );
   const statusDescription =
     apiStatus.state === "healthy"
       ? `${getMessage(config.locale, "api.status.healthy")} API ${apiStatus.version}`
