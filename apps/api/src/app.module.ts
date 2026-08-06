@@ -22,8 +22,8 @@ import { ReliabilityModule } from "./reliability/reliability.module.js";
     DatabaseModule,
     HealthModule,
     IdentityModule,
-    SessionsModule,
     TenancyModule,
+    SessionsModule,
     ReliabilityModule,
   ],
 })
