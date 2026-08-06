@@ -8,18 +8,17 @@ import { PrismaCredentialVerifierAdapter } from "./prisma-credential-verifier.ad
 
 const USER_ID = "11111111-1111-4111-8111-111111111111";
 
+interface CapturedUpdate {
+  readonly where: { readonly userId: string };
+  readonly data: Readonly<Record<string, unknown>>;
+}
+
 test("rehashes Argon2 parameters without recording a user password change", async () => {
-  let updateInput: {
-    readonly where: { readonly userId: string };
-    readonly data: Readonly<Record<string, unknown>>;
-  } | null = null;
+  const updates: CapturedUpdate[] = [];
   const prisma = {
     passwordCredential: {
-      async update(input: {
-        readonly where: { readonly userId: string };
-        readonly data: Readonly<Record<string, unknown>>;
-      }): Promise<void> {
-        updateInput = input;
+      async update(input: CapturedUpdate): Promise<void> {
+        updates.push(input);
       },
     },
   } as unknown as PrismaService;
@@ -27,6 +26,7 @@ test("rehashes Argon2 parameters without recording a user password change", asyn
 
   await adapter.rehashPassword({ userId: USER_ID, password: "correct horse battery staple" });
 
+  const updateInput = updates[0];
   assert.ok(updateInput);
   assert.deepEqual(updateInput.where, { userId: USER_ID });
   assert.equal(updateInput.data.algorithm, "argon2id");
