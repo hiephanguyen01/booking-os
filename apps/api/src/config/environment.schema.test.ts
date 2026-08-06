@@ -128,7 +128,8 @@ test("parseEnvironment rejects non-canonical session origins", () => {
     "https://console.example.com,https://console.example.com",
   ]) {
     assert.throws(
-      () => parseEnvironment({ ...validEnvironment, SESSION_ALLOWED_ORIGINS: sessionAllowedOrigins }),
+      () =>
+        parseEnvironment({ ...validEnvironment, SESSION_ALLOWED_ORIGINS: sessionAllowedOrigins }),
       /SESSION_ALLOWED_ORIGINS/,
     );
   }
