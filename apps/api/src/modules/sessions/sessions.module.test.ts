@@ -9,6 +9,7 @@ import { REDIS_CLIENT_TOKEN } from "../../dependencies/tokens.js";
 import { API_LOGGER_TOKEN } from "../../observability/tokens.js";
 import { TenancyModule } from "../tenancy/tenancy.module.js";
 import { ListSessionsUseCase } from "./application/use-cases/list-sessions.js";
+import { RefreshSessionUseCase } from "./application/use-cases/refresh-session.js";
 import { RevokeOtherSessionsUseCase } from "./application/use-cases/revoke-other-sessions.js";
 import { RedisLoginAbuseProtectionAdapter } from "./infrastructure/abuse/redis-login-abuse-protection.adapter.js";
 import { SessionHttpController } from "./infrastructure/http/session-http.controller.js";
@@ -92,6 +93,7 @@ test("wires the session HTTP controller and device-management use cases", () => 
   const providers = metadata<FactoryProvider>(MODULE_METADATA.providers, SessionsModule);
   assert.ok(providers.some((provider) => provider.provide === ListSessionsUseCase));
   assert.ok(providers.some((provider) => provider.provide === RevokeOtherSessionsUseCase));
+  assert.ok(providers.some((provider) => provider.provide === RefreshSessionUseCase));
 });
 
 test("orders trusted tenant resolution before session authentication", () => {
