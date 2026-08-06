@@ -1,22 +1,20 @@
-import type { Role } from "./roles.js";
+export type SessionScope =
+  | { readonly type: "platform" }
+  | { readonly type: "tenant"; readonly tenantId: string };
 
-export interface AuthUser {
-  readonly id: string;
-  readonly email: string;
-  readonly displayName: string;
-  readonly role: Role;
-}
-
-export interface Session {
-  readonly user: AuthUser;
-  readonly expiresAt: string;
-}
+export type SessionState = "active" | "invitation_pending" | "compromised" | "revoked";
+export type PublicSessionState = Extract<SessionState, "active" | "invitation_pending">;
 
 export interface SessionSubject {
   readonly userId: string;
-  readonly tenantId: string;
+  readonly scope: SessionScope;
+  readonly hostname: string;
+  readonly authorizationVersion: number;
 }
 
 export interface PublicSession extends SessionSubject {
-  readonly expiresAt: string;
+  readonly id: string;
+  readonly state: PublicSessionState;
+  readonly idleExpiresAt: string;
+  readonly absoluteExpiresAt: string;
 }

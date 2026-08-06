@@ -1,143 +1,114 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
-import type { PublicSession, SessionSubject } from "./session.js";
+export const SESSION_SELECTOR_BYTES = 18;
+export const SESSION_SECRET_BYTES = 32;
+export const SESSION_SECRET_DIGEST_HEX_LENGTH = 64;
 
-const DEFAULT_SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
+const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;
+const HEX_SHA256_PATTERN = /^[0-9a-f]{64}$/;
 
-export interface StoredOpaqueSession extends SessionSubject {
-  readonly tokenHash: string;
-  readonly createdAt: Date;
-  readonly expiresAt: Date;
+export interface ParsedSessionToken {
+  readonly selector: string;
+  readonly secret: string;
 }
 
-export interface CreatedOpaqueSession {
-  readonly token: string;
-  readonly session: PublicSession;
+export interface CreateSessionTokenOptions {
+  readonly randomBytes?: (size: number) => Uint8Array;
 }
 
-export interface OpaqueSessionRepository {
-  insert(record: StoredOpaqueSession): Promise<void>;
-  find(tokenHash: string): Promise<StoredOpaqueSession | null>;
-  replace(oldTokenHash: string, record: StoredOpaqueSession): Promise<boolean>;
-  delete(tokenHash: string): Promise<boolean>;
+export interface SessionSecretDigestInput {
+  readonly digestKey: Uint8Array;
+  readonly secret: string;
 }
 
-export interface OpaqueSessionStoreOptions {
-  readonly now?: () => Date;
-  readonly ttlSeconds?: number;
-  readonly tokenFactory?: () => string;
+export interface VerifySessionSecretDigestInput extends SessionSecretDigestInput {
+  readonly expectedDigest: string;
 }
 
-export function createSessionToken(): string {
-  return randomBytes(32).toString("base64url");
+function encodeBase64Url(bytes: Uint8Array): string {
+  return Buffer.from(bytes).toString("base64url");
 }
 
-export function hashSessionToken(token: string): string {
-  return createHash("sha256").update(token, "utf8").digest("hex");
-}
-
-function assertSubject(subject: SessionSubject): void {
-  if (subject.userId.trim().length === 0 || subject.tenantId.trim().length === 0) {
-    throw new TypeError("Opaque sessions require non-empty user and tenant IDs.");
+function assertRandomBytes(bytes: Uint8Array, expectedLength: number, label: string): void {
+  if (bytes.byteLength !== expectedLength) {
+    throw new RangeError(`${label} entropy must contain exactly ${String(expectedLength)} bytes.`);
   }
 }
 
-function publicSession(record: StoredOpaqueSession): PublicSession {
-  return {
-    userId: record.userId,
-    tenantId: record.tenantId,
-    expiresAt: record.expiresAt.toISOString(),
-  };
+function assertDigestKey(digestKey: Uint8Array): void {
+  if (digestKey.byteLength < 32) {
+    throw new RangeError("Session digest keys must contain at least 32 bytes.");
+  }
 }
 
-export class OpaqueSessionStore {
-  private readonly now: () => Date;
-  private readonly ttlSeconds: number;
-  private readonly tokenFactory: () => string;
+function isCanonicalBase64Url(value: string, expectedBytes: number): boolean {
+  if (!BASE64URL_PATTERN.test(value)) {
+    return false;
+  }
 
-  constructor(
-    private readonly repository: OpaqueSessionRepository,
-    options: OpaqueSessionStoreOptions = {},
+  try {
+    const decoded = Buffer.from(value, "base64url");
+    return decoded.byteLength === expectedBytes && decoded.toString("base64url") === value;
+  } catch {
+    return false;
+  }
+}
+
+export function createSessionToken(options: CreateSessionTokenOptions = {}): string {
+  const entropy = options.randomBytes ?? ((size: number): Uint8Array => randomBytes(size));
+  const selectorBytes = entropy(SESSION_SELECTOR_BYTES);
+  const secretBytes = entropy(SESSION_SECRET_BYTES);
+
+  assertRandomBytes(selectorBytes, SESSION_SELECTOR_BYTES, "Session selector");
+  assertRandomBytes(secretBytes, SESSION_SECRET_BYTES, "Session secret");
+
+  return `${encodeBase64Url(selectorBytes)}.${encodeBase64Url(secretBytes)}`;
+}
+
+export function parseSessionToken(token: string): ParsedSessionToken | null {
+  if (token.length === 0 || token.trim() !== token) {
+    return null;
+  }
+
+  const separator = token.indexOf(".");
+  if (separator <= 0 || separator !== token.lastIndexOf(".")) {
+    return null;
+  }
+
+  const selector = token.slice(0, separator);
+  const secret = token.slice(separator + 1);
+
+  if (
+    !isCanonicalBase64Url(selector, SESSION_SELECTOR_BYTES) ||
+    !isCanonicalBase64Url(secret, SESSION_SECRET_BYTES)
   ) {
-    this.now = options.now ?? (() => new Date());
-    this.ttlSeconds = options.ttlSeconds ?? DEFAULT_SESSION_TTL_SECONDS;
-    this.tokenFactory = options.tokenFactory ?? createSessionToken;
-
-    if (!Number.isSafeInteger(this.ttlSeconds) || this.ttlSeconds <= 0) {
-      throw new RangeError("Session TTL must be a positive integer number of seconds.");
-    }
+    return null;
   }
 
-  async create(subject: SessionSubject): Promise<CreatedOpaqueSession> {
-    assertSubject(subject);
-    const token = this.tokenFactory();
-    const now = this.now();
-    const record: StoredOpaqueSession = {
-      tokenHash: hashSessionToken(token),
-      userId: subject.userId,
-      tenantId: subject.tenantId,
-      createdAt: new Date(now),
-      expiresAt: new Date(now.getTime() + this.ttlSeconds * 1000),
-    };
+  return { selector, secret };
+}
 
-    await this.repository.insert(record);
+export function deriveSessionSecretDigest(input: SessionSecretDigestInput): string {
+  assertDigestKey(input.digestKey);
 
-    return { token, session: publicSession(record) };
+  if (!isCanonicalBase64Url(input.secret, SESSION_SECRET_BYTES)) {
+    throw new TypeError("Session secrets must be canonical base64url values with 32 bytes of entropy.");
   }
 
-  async read(token: string): Promise<PublicSession | null> {
-    if (token.length === 0) {
-      return null;
-    }
+  return createHmac("sha256", input.digestKey).update(input.secret, "utf8").digest("hex");
+}
 
-    const tokenHash = hashSessionToken(token);
-    const record = await this.repository.find(tokenHash);
-
-    if (!record) {
-      return null;
-    }
-
-    if (record.expiresAt.getTime() <= this.now().getTime()) {
-      await this.repository.delete(tokenHash);
-      return null;
-    }
-
-    return publicSession(record);
+export function verifySessionSecretDigest(input: VerifySessionSecretDigestInput): boolean {
+  if (!HEX_SHA256_PATTERN.test(input.expectedDigest)) {
+    return false;
   }
 
-  async rotate(token: string): Promise<CreatedOpaqueSession | null> {
-    if (token.length === 0) {
-      return null;
-    }
-
-    const oldTokenHash = hashSessionToken(token);
-    const existing = await this.repository.find(oldTokenHash);
-
-    if (!existing) {
-      return null;
-    }
-
-    const now = this.now();
-
-    if (existing.expiresAt.getTime() <= now.getTime()) {
-      await this.repository.delete(oldTokenHash);
-      return null;
-    }
-
-    const rotatedToken = this.tokenFactory();
-    const rotatedRecord: StoredOpaqueSession = {
-      tokenHash: hashSessionToken(rotatedToken),
-      userId: existing.userId,
-      tenantId: existing.tenantId,
-      createdAt: new Date(now),
-      expiresAt: new Date(now.getTime() + this.ttlSeconds * 1000),
-    };
-    const replaced = await this.repository.replace(oldTokenHash, rotatedRecord);
-
-    return replaced ? { token: rotatedToken, session: publicSession(rotatedRecord) } : null;
+  let actualDigest: string;
+  try {
+    actualDigest = deriveSessionSecretDigest(input);
+  } catch {
+    return false;
   }
 
-  revoke(token: string): Promise<boolean> {
-    return this.repository.delete(hashSessionToken(token));
-  }
+  return timingSafeEqual(Buffer.from(actualDigest, "hex"), Buffer.from(input.expectedDigest, "hex"));
 }
