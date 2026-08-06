@@ -3,7 +3,9 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
+  Param,
   Post,
   Req,
   Res,
@@ -81,6 +83,10 @@ export interface CurrentAuthenticationResponse {
 
 export interface SessionListResponse {
   readonly sessions: readonly SessionSummary[];
+}
+
+export interface RevokeDeviceResponse {
+  readonly revoked: boolean;
 }
 
 function firstHeaderValue(value: string | string[] | undefined): string | undefined {
@@ -207,5 +213,30 @@ export class AuthController {
         currentSessionId: authenticated.sessionId,
       }),
     };
+  }
+
+  @SessionRequired()
+  @Delete("sessions/:sessionId")
+  async revokeSession(
+    @Param("sessionId") sessionId: string,
+    @Res({ passthrough: true }) response: HeaderResponse,
+  ): Promise<RevokeDeviceResponse> {
+    response.setHeader("Cache-Control", "private, no-store");
+
+    const authenticated = this.requestContext.requireAuthenticated();
+    if (!this.revokeSessionUseCase) {
+      throw new ServiceUnavailableException("Session revocation is unavailable.");
+    }
+
+    const result = await this.revokeSessionUseCase.execute({
+      sessionId,
+      userId: authenticated.actorId,
+      reason: "device_revoked",
+      requestId: authenticated.requestId,
+    });
+    if (sessionId === authenticated.sessionId) {
+      response.setHeader("Set-Cookie", serializeExpiredSessionCookie());
+    }
+    return result;
   }
 }
