@@ -33,10 +33,7 @@ test("rehashes Argon2 parameters without recording a user password change", asyn
   assert.equal("passwordChangedAt" in updateInput.data, false);
   assert.equal(typeof updateInput.data.passwordHash, "string");
   assert.equal(
-    await argon2.verify(
-      updateInput.data.passwordHash as string,
-      "correct horse battery staple",
-    ),
+    await argon2.verify(updateInput.data.passwordHash as string, "correct horse battery staple"),
     true,
   );
 });
