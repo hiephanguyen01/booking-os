@@ -26,6 +26,7 @@ const AUTHENTICATED_CONTEXT = Object.freeze({
   sessionId: SESSION_ID,
   authScope: { type: "platform" as const },
   sessionState: "active" as const,
+  authorizationVersion: 3,
 });
 
 function derivedKey(label: string, value: string): Uint8Array {
