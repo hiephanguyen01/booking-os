@@ -3,12 +3,12 @@ import { Inject, Injectable, type NestMiddleware } from "@nestjs/common";
 
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import type { RequestHeaders } from "../../../../common/request-context/request-context.types.js";
-import { SessionUnavailableError } from "../../domain/session-errors.js";
 import type {
   CurrentSession,
   GetCurrentSessionInput,
 } from "../../application/use-cases/get-current-session.use-case.js";
 import { GetCurrentSessionUseCase } from "../../application/use-cases/get-current-session.use-case.js";
+import { SessionUnavailableError } from "../../domain/session-errors.js";
 
 interface SessionAuthRequest {
   readonly headers: RequestHeaders;
