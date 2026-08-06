@@ -1,4 +1,9 @@
 import type {
+  LoginAbuseDelayBucket,
+  LoginAbuseMetric,
+  LoginAbuseMetricsPort,
+} from "../../application/ports/login-abuse-metrics.port.js";
+import type {
   LoginAbuseProtectionPort,
   LoginAttemptKey,
 } from "../../application/ports/login-abuse-protection.port.js";
@@ -7,6 +12,10 @@ const DEFAULT_KEY_PREFIX = "booking:login-abuse";
 const DEFAULT_TTL_MS = 15 * 60 * 1000;
 const DEFAULT_BASE_DELAY_MS = 250;
 const DEFAULT_MAX_DELAY_MS = 8_000;
+
+const NOOP_LOGIN_ABUSE_METRICS: LoginAbuseMetricsPort = Object.freeze({
+  record: (): void => undefined,
+});
 
 const READ_DELAY_SCRIPT = `
 local values = redis.call('MGET', KEYS[1], KEYS[2], KEYS[3])
@@ -106,6 +115,19 @@ function redisKeys(prefix: string, input: LoginAttemptKey): readonly [string, st
   ];
 }
 
+function delayBucket(delayMs: number): LoginAbuseDelayBucket {
+  if (delayMs === 0) {
+    return "none";
+  }
+  if (delayMs < 1_000) {
+    return "lt_1s";
+  }
+  if (delayMs < 4_000) {
+    return "1_4s";
+  }
+  return "gte_4s";
+}
+
 export class RedisLoginAbuseProtectionAdapter implements LoginAbuseProtectionPort {
   private readonly keyPrefix: string;
   private readonly ttlMs: number;
@@ -115,6 +137,7 @@ export class RedisLoginAbuseProtectionAdapter implements LoginAbuseProtectionPor
   constructor(
     private readonly redis: LoginAbuseRedisClient,
     options: RedisLoginAbuseProtectionOptions = {},
+    private readonly metrics: LoginAbuseMetricsPort = NOOP_LOGIN_ABUSE_METRICS,
   ) {
     this.keyPrefix = options.keyPrefix ?? DEFAULT_KEY_PREFIX;
     this.ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
@@ -131,6 +154,14 @@ export class RedisLoginAbuseProtectionAdapter implements LoginAbuseProtectionPor
     });
   }
 
+  private recordMetric(metric: LoginAbuseMetric): void {
+    try {
+      this.metrics.record(metric);
+    } catch {
+      // Authentication availability must not depend on telemetry delivery.
+    }
+  }
+
   async beforeAttempt(input: LoginAttemptKey): Promise<{ readonly delayMs: number }> {
     const keys = redisKeys(this.keyPrefix, input);
     try {
@@ -145,8 +176,21 @@ export class RedisLoginAbuseProtectionAdapter implements LoginAbuseProtectionPor
       if (!Number.isSafeInteger(delayMs) || delayMs < 0) {
         throw new TypeError("Redis returned an invalid login delay.");
       }
-      return { delayMs: Math.min(delayMs, this.maxDelayMs) };
+      const boundedDelayMs = Math.min(delayMs, this.maxDelayMs);
+      this.recordMetric({
+        purpose: "before_attempt",
+        outcome: boundedDelayMs === 0 ? "allowed" : "delayed",
+        delayBucket: delayBucket(boundedDelayMs),
+        availability: "available",
+      });
+      return { delayMs: boundedDelayMs };
     } catch (error) {
+      this.recordMetric({
+        purpose: "before_attempt",
+        outcome: "unavailable",
+        delayBucket: "none",
+        availability: "unavailable",
+      });
       if (error instanceof LoginAbuseProtectionUnavailableError) {
         throw error;
       }
@@ -158,7 +202,19 @@ export class RedisLoginAbuseProtectionAdapter implements LoginAbuseProtectionPor
     const keys = redisKeys(this.keyPrefix, input);
     try {
       await this.redis.eval(RECORD_FAILURE_SCRIPT, keys.length, ...keys, String(this.ttlMs));
+      this.recordMetric({
+        purpose: "record_failure",
+        outcome: "failure",
+        delayBucket: "none",
+        availability: "available",
+      });
     } catch (error) {
+      this.recordMetric({
+        purpose: "record_failure",
+        outcome: "unavailable",
+        delayBucket: "none",
+        availability: "unavailable",
+      });
       throw new LoginAbuseProtectionUnavailableError(error);
     }
   }
@@ -167,7 +223,19 @@ export class RedisLoginAbuseProtectionAdapter implements LoginAbuseProtectionPor
     const keys = redisKeys(this.keyPrefix, input);
     try {
       await this.redis.eval(RECORD_SUCCESS_SCRIPT, keys.length, ...keys, String(this.ttlMs));
+      this.recordMetric({
+        purpose: "record_success",
+        outcome: "success",
+        delayBucket: "none",
+        availability: "available",
+      });
     } catch (error) {
+      this.recordMetric({
+        purpose: "record_success",
+        outcome: "unavailable",
+        delayBucket: "none",
+        availability: "unavailable",
+      });
       throw new LoginAbuseProtectionUnavailableError(error);
     }
   }
