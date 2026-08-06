@@ -5,9 +5,9 @@ import { createSessionToken } from "../src/opaque-session.js";
 import {
   BOOKING_SESSION_COOKIE,
   readSessionToken,
+  SESSION_COOKIE_MAX_AGE_SECONDS,
   serializeExpiredSessionCookie,
   serializeSessionCookie,
-  SESSION_COOKIE_MAX_AGE_SECONDS,
 } from "../src/session-cookie.js";
 
 const token = createSessionToken({ randomBytes: (size) => Buffer.alloc(size, 4) });
