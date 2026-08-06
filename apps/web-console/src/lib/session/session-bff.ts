@@ -1,3 +1,10 @@
+import {
+  BOOKING_SESSION_COOKIE,
+  readSessionToken,
+  serializeExpiredSessionCookie,
+  serializeSessionCookie,
+} from "@booking-os/auth";
+
 export interface SessionBffDependencies {
   readonly apiBaseUrl: string;
   readonly fetch: typeof fetch;
@@ -14,30 +21,200 @@ export interface SessionBffHandlers {
   readonly revokeOtherSessions: (request: Request) => Promise<Response>;
 }
 
-function unavailable(): Promise<Response> {
-  return Promise.resolve(
-    Response.json(
-      { error: "Session service is unavailable." },
-      {
-        status: 501,
-        headers: {
-          "cache-control": "no-store",
-          "referrer-policy": "no-referrer",
-        },
-      },
-    ),
+interface LoginBody {
+  readonly email: string;
+  readonly password: string;
+}
+
+const SAFE_RESPONSE_HEADERS = Object.freeze({
+  "cache-control": "no-store",
+  "referrer-policy": "no-referrer",
+});
+
+function apiEndpoint(apiBaseUrl: string, path: string): string {
+  return `${apiBaseUrl.replace(/\/$/, "")}${path}`;
+}
+
+function jsonError(status: number, message: string): Response {
+  return Response.json(
+    { error: message },
+    {
+      status,
+      headers: SAFE_RESPONSE_HEADERS,
+    },
   );
 }
 
+function unavailable(): Promise<Response> {
+  return Promise.resolve(jsonError(501, "Session service is unavailable."));
+}
+
+function isSameOrigin(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  return origin !== null && origin === new URL(request.url).origin;
+}
+
+async function readLoginBody(request: Request): Promise<LoginBody | null> {
+  try {
+    const value: unknown = await request.json();
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      return null;
+    }
+
+    const candidate = value as Record<string, unknown>;
+    if (typeof candidate.email !== "string" || typeof candidate.password !== "string") {
+      return null;
+    }
+
+    return {
+      email: candidate.email,
+      password: candidate.password,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function exactSessionCookie(cookieHeader: string | null): string | null {
+  const token = readSessionToken(cookieHeader);
+  return token === undefined
+    ? null
+    : `${BOOKING_SESSION_COOKIE}=${encodeURIComponent(token)}`;
+}
+
+function sanitizedSetCookie(setCookie: string | null): string | null {
+  if (setCookie === null) {
+    return null;
+  }
+
+  const [pair, ...attributes] = setCookie.split(";").map((part) => part.trim());
+  const separator = pair?.indexOf("=") ?? -1;
+  if (separator <= 0 || pair?.slice(0, separator) !== BOOKING_SESSION_COOKIE) {
+    return null;
+  }
+
+  const encodedValue = pair.slice(separator + 1);
+  if (encodedValue === "") {
+    const expires = attributes.some((attribute) => attribute.toLowerCase() === "max-age=0");
+    return expires ? serializeExpiredSessionCookie() : null;
+  }
+
+  const token = readSessionToken(`${BOOKING_SESSION_COOKIE}=${encodedValue}`);
+  return token === undefined ? null : serializeSessionCookie(token);
+}
+
+async function forwardResponse(
+  upstream: Response,
+  options: { readonly allowSessionCookie: boolean },
+): Promise<Response> {
+  const headers = new Headers(SAFE_RESPONSE_HEADERS);
+  const contentType = upstream.headers.get("content-type");
+  if (contentType !== null) {
+    headers.set("content-type", contentType);
+  }
+
+  if (options.allowSessionCookie) {
+    const setCookie = sanitizedSetCookie(upstream.headers.get("set-cookie"));
+    if (setCookie !== null) {
+      headers.set("set-cookie", setCookie);
+    }
+  }
+
+  const body = await upstream.text();
+  return new Response(body === "" ? null : body, {
+    status: upstream.status,
+    headers,
+  });
+}
+
 export function createSessionBffHandlers(
-  _dependencies: SessionBffDependencies,
+  dependencies: SessionBffDependencies,
 ): SessionBffHandlers {
+  const apiOrigin = new URL(dependencies.apiBaseUrl).origin;
+
   return {
     sessionCsrf: unavailable,
-    login: unavailable,
+    async login(request) {
+      if (!isSameOrigin(request)) {
+        return jsonError(403, "Request origin is not allowed.");
+      }
+
+      const body = await readLoginBody(request);
+      if (body === null) {
+        return jsonError(400, "Invalid authentication request.");
+      }
+
+      try {
+        const csrfResponse = await dependencies.fetch(
+          apiEndpoint(dependencies.apiBaseUrl, "/auth/session/csrf"),
+          {
+            method: "GET",
+            headers: { accept: "application/json" },
+            cache: "no-store",
+            redirect: "error",
+          },
+        );
+        if (!csrfResponse.ok) {
+          return jsonError(503, "Session service is unavailable.");
+        }
+
+        const csrfPayload: unknown = await csrfResponse.json();
+        if (
+          typeof csrfPayload !== "object" ||
+          csrfPayload === null ||
+          Array.isArray(csrfPayload) ||
+          typeof (csrfPayload as Record<string, unknown>).csrfToken !== "string" ||
+          (csrfPayload as Record<string, unknown>).csrfToken === ""
+        ) {
+          return jsonError(503, "Session service is unavailable.");
+        }
+
+        const csrfToken = (csrfPayload as { readonly csrfToken: string }).csrfToken;
+        const upstream = await dependencies.fetch(
+          apiEndpoint(dependencies.apiBaseUrl, "/auth/login"),
+          {
+            method: "POST",
+            headers: {
+              accept: "application/json",
+              "content-type": "application/json",
+              origin: apiOrigin,
+              "x-csrf-token": csrfToken,
+            },
+            body: JSON.stringify(body),
+            cache: "no-store",
+            redirect: "error",
+          },
+        );
+
+        return forwardResponse(upstream, { allowSessionCookie: true });
+      } catch {
+        return jsonError(503, "Session service is unavailable.");
+      }
+    },
     logout: unavailable,
     refresh: unavailable,
-    me: unavailable,
+    async me(request) {
+      const cookie = exactSessionCookie(request.headers.get("cookie"));
+      const headers = new Headers({ accept: "application/json" });
+      if (cookie !== null) {
+        headers.set("cookie", cookie);
+      }
+
+      try {
+        const upstream = await dependencies.fetch(
+          apiEndpoint(dependencies.apiBaseUrl, "/auth/me"),
+          {
+            method: "GET",
+            headers,
+            cache: "no-store",
+            redirect: "error",
+          },
+        );
+        return forwardResponse(upstream, { allowSessionCookie: false });
+      } catch {
+        return jsonError(503, "Session service is unavailable.");
+      }
+    },
     sessions: unavailable,
     revokeSession: unavailable,
     revokeOtherSessions: unavailable,
