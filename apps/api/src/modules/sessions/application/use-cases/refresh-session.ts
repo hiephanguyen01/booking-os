@@ -37,8 +37,7 @@ export interface RefreshSessionOptions {
 function sameScope(left: SessionScope, right: SessionScope): boolean {
   return (
     left.type === right.type &&
-    (left.type === "platform" ||
-      (right.type === "tenant" && left.tenantId === right.tenantId))
+    (left.type === "platform" || (right.type === "tenant" && left.tenantId === right.tenantId))
   );
 }
 

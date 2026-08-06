@@ -1,8 +1,4 @@
-import {
-  createSessionToken,
-  deriveSessionSecretDigest,
-  parseSessionToken,
-} from "@booking-os/auth";
+import { createSessionToken, deriveSessionSecretDigest, parseSessionToken } from "@booking-os/auth";
 
 import type { SessionSecurityAuditPort } from "../ports/security-audit.port.js";
 import type {
@@ -45,7 +41,9 @@ export class CreateSessionUseCase {
     this.tokenFactory = options.tokenFactory ?? (() => createSessionToken());
   }
 
-  async execute(input: CreateSessionInput): Promise<{ readonly token: string; readonly session: StoredSession }> {
+  async execute(
+    input: CreateSessionInput,
+  ): Promise<{ readonly token: string; readonly session: StoredSession }> {
     const now = this.now();
     const token = this.tokenFactory();
     const parsed = parseSessionToken(token);

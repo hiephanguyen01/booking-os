@@ -1,7 +1,4 @@
-import {
-  parseSessionToken,
-  verifySessionSecretDigest,
-} from "@booking-os/auth";
+import { parseSessionToken, verifySessionSecretDigest } from "@booking-os/auth";
 
 import {
   SessionAuthorizationStaleError,
@@ -35,12 +32,15 @@ export interface ValidateSessionOptions {
 function sameScope(left: SessionScope, right: SessionScope): boolean {
   return (
     left.type === right.type &&
-    (left.type === "platform" ||
-      (right.type === "tenant" && left.tenantId === right.tenantId))
+    (left.type === "platform" || (right.type === "tenant" && left.tenantId === right.tenantId))
   );
 }
 
-function isAvailable(stored: StoredSessionWithToken, input: ValidateSessionInput, now: Date): boolean {
+function isAvailable(
+  stored: StoredSessionWithToken,
+  input: ValidateSessionInput,
+  now: Date,
+): boolean {
   return (
     stored.session.hostname === input.hostname &&
     sameScope(stored.session.scope, input.scope) &&
