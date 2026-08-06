@@ -1,10 +1,15 @@
-import { serializeExpiredSessionCookie, serializeSessionCookie } from "@booking-os/auth";
+import {
+  readSessionToken,
+  serializeExpiredSessionCookie,
+  serializeSessionCookie,
+} from "@booking-os/auth";
 import {
   BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Post,
   Req,
@@ -12,7 +17,7 @@ import {
   ServiceUnavailableException,
   UnauthorizedException,
 } from "@nestjs/common";
-import { ApiParam } from "@nestjs/swagger";
+import { ApiBody, ApiOkResponse, ApiOperation, ApiParam } from "@nestjs/swagger";
 
 import type { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import type { RequestHeaders } from "../../../../common/request-context/request-context.types.js";
@@ -25,8 +30,19 @@ import type {
   SessionSummary,
 } from "../../application/use-cases/list-sessions.js";
 import { InvalidLoginError, type LoginInput } from "../../application/use-cases/login.use-case.js";
+import type { RefreshSessionInput } from "../../application/use-cases/refresh-session.js";
 import type { RevokeOtherSessionsInput } from "../../application/use-cases/revoke-other-sessions.js";
 import type { RevokeSessionInput } from "../../application/use-cases/revoke-session.js";
+import { SessionUnavailableError } from "../../domain/session-errors.js";
+import {
+  CurrentAuthenticationResponseDto,
+  LoginRequestDto,
+  LogoutResponseDto,
+  RevokeDeviceResponseDto,
+  RevokeOtherSessionsResponseDto,
+  SessionListResponseDto,
+  SessionResponseDto,
+} from "./auth.dto.js";
 import { SessionRequired } from "./session-required.decorator.js";
 
 interface LoginExecutor {
@@ -43,6 +59,14 @@ interface ListSessionsExecutor {
 
 interface RevokeOtherSessionsExecutor {
   execute(input: RevokeOtherSessionsInput): Promise<{ readonly revokedCount: number }>;
+}
+
+interface RefreshSessionExecutor {
+  execute(input: RefreshSessionInput): Promise<{
+    readonly status: "rotated" | "overlap";
+    readonly token: string | null;
+    readonly session: StoredSession;
+  }>;
 }
 
 export interface LoginRequestBody {
@@ -119,6 +143,17 @@ function trustedScope(context: { readonly tenantId?: string }): SessionScope {
   return context.tenantId ? { type: "tenant", tenantId: context.tenantId } : { type: "platform" };
 }
 
+function publicSession(session: StoredSession): LoginResponse["session"] {
+  if (session.state !== "active" && session.state !== "invitation_pending") {
+    throw new SessionUnavailableError();
+  }
+  return {
+    id: session.id,
+    state: session.state,
+    scope: session.scope,
+  };
+}
+
 @Controller("auth")
 export class AuthController {
   constructor(
@@ -128,9 +163,14 @@ export class AuthController {
     private readonly revokeSessionUseCase?: RevokeSessionExecutor,
     private readonly listSessionsUseCase?: ListSessionsExecutor,
     private readonly revokeOtherSessionsUseCase?: RevokeOtherSessionsExecutor,
+    private readonly refreshSessionUseCase?: RefreshSessionExecutor,
   ) {}
 
   @Post("login")
+  @HttpCode(200)
+  @ApiOperation({ operationId: "loginSession" })
+  @ApiBody({ type: LoginRequestDto })
+  @ApiOkResponse({ type: SessionResponseDto })
   async login(
     @Body() body: LoginRequestBody,
     @Req() request: AuthRequest,
@@ -155,13 +195,7 @@ export class AuthController {
         requestId: context.requestId,
       });
       response.setHeader("Set-Cookie", serializeSessionCookie(issued.token));
-      return {
-        session: {
-          id: issued.session.id,
-          state: issued.session.state,
-          scope: issued.session.scope,
-        },
-      };
+      return { session: publicSession(issued.session) };
     } catch (error) {
       if (error instanceof InvalidLoginError) {
         throw new UnauthorizedException("Invalid email or password.");
@@ -172,6 +206,9 @@ export class AuthController {
 
   @SessionRequired()
   @Post("logout")
+  @HttpCode(200)
+  @ApiOperation({ operationId: "logoutSession" })
+  @ApiOkResponse({ type: LogoutResponseDto })
   async logout(@Res({ passthrough: true }) response: HeaderResponse): Promise<LogoutResponse> {
     response.setHeader("Cache-Control", "private, no-store");
 
@@ -192,6 +229,8 @@ export class AuthController {
 
   @SessionRequired()
   @Get("me")
+  @ApiOperation({ operationId: "getCurrentSession" })
+  @ApiOkResponse({ type: CurrentAuthenticationResponseDto })
   me(@Res({ passthrough: true }) response: HeaderResponse): CurrentAuthenticationResponse {
     response.setHeader("Cache-Control", "private, no-store");
 
@@ -207,7 +246,50 @@ export class AuthController {
   }
 
   @SessionRequired()
+  @Post("session/refresh")
+  @HttpCode(200)
+  @ApiOperation({ operationId: "refreshSession" })
+  @ApiOkResponse({ type: SessionResponseDto })
+  async refresh(
+    @Req() request: AuthRequest,
+    @Res({ passthrough: true }) response: HeaderResponse,
+  ): Promise<LoginResponse> {
+    response.setHeader("Cache-Control", "private, no-store");
+
+    const authenticated = this.requestContext.requireAuthenticated();
+    const token = readSessionToken(firstHeaderValue(request.headers.cookie) ?? null);
+    const hostname = effectiveHostname(request.headers, this.options.trustProxy);
+    if (!token || !hostname) {
+      throw new UnauthorizedException("Authentication is required.");
+    }
+    if (!this.refreshSessionUseCase) {
+      throw new ServiceUnavailableException("Session refresh is unavailable.");
+    }
+
+    try {
+      const refreshed = await this.refreshSessionUseCase.execute({
+        token,
+        hostname,
+        scope: authenticated.authScope,
+        authorizationVersion: authenticated.authorizationVersion,
+        requestId: authenticated.requestId,
+      });
+      if (refreshed.token !== null) {
+        response.setHeader("Set-Cookie", serializeSessionCookie(refreshed.token));
+      }
+      return { session: publicSession(refreshed.session) };
+    } catch (error) {
+      if (error instanceof SessionUnavailableError) {
+        throw new UnauthorizedException("Authentication is required.");
+      }
+      throw error;
+    }
+  }
+
+  @SessionRequired()
   @Get("sessions")
+  @ApiOperation({ operationId: "listSessions" })
+  @ApiOkResponse({ type: SessionListResponseDto })
   async sessions(
     @Res({ passthrough: true }) response: HeaderResponse,
   ): Promise<SessionListResponse> {
@@ -228,6 +310,9 @@ export class AuthController {
 
   @SessionRequired()
   @Post("sessions/revoke-others")
+  @HttpCode(200)
+  @ApiOperation({ operationId: "revokeOtherSessions" })
+  @ApiOkResponse({ type: RevokeOtherSessionsResponseDto })
   async revokeOtherSessions(
     @Res({ passthrough: true }) response: HeaderResponse,
   ): Promise<RevokeOtherSessionsResponse> {
@@ -247,7 +332,9 @@ export class AuthController {
 
   @SessionRequired()
   @Delete("sessions/:sessionId")
+  @ApiOperation({ operationId: "revokeSession" })
   @ApiParam({ name: "sessionId", required: true, type: String, format: "uuid" })
+  @ApiOkResponse({ type: RevokeDeviceResponseDto })
   async revokeSession(
     @Param("sessionId") sessionId: string,
     @Res({ passthrough: true }) response: HeaderResponse,
