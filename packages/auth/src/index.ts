@@ -56,6 +56,13 @@ export {
   type SensitiveEnvelope,
   SensitiveEnvelopeError,
 } from "./sensitive-envelope.js";
+export type {
+  PublicSession,
+  PublicSessionState,
+  SessionScope,
+  SessionState,
+  SessionSubject,
+} from "./session.js";
 export {
   BOOKING_SESSION_COOKIE,
   readSessionToken,
@@ -89,10 +96,3 @@ export {
   type SessionTokenDispositionInput,
   shouldRotateSessionToken,
 } from "./session-rotation.js";
-export type {
-  PublicSession,
-  PublicSessionState,
-  SessionScope,
-  SessionState,
-  SessionSubject,
-} from "./session.js";

@@ -1,11 +1,10 @@
-import type { SampleSessionStore } from "./session-store";
-
 import { csrfOriginMismatchResponse, hasMatchingOrigin } from "./csrf";
 import {
   readSessionToken,
   serializeExpiredSessionCookie,
   serializeSessionCookie,
 } from "./session-cookie";
+import type { SampleSessionStore } from "./session-store";
 
 export interface SessionRouteHandlers {
   readonly GET: (request: Request) => Promise<Response>;

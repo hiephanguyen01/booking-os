@@ -55,7 +55,8 @@ export function isSessionExpired(input: SessionExpiryInput): boolean {
 }
 
 export function shouldTouchSession(input: SessionTouchInput): boolean {
-  const elapsedMs = timestamp(input.now, "Current time") - timestamp(input.lastSeenAt, "Last seen time");
+  const elapsedMs =
+    timestamp(input.now, "Current time") - timestamp(input.lastSeenAt, "Last seen time");
   return elapsedMs >= SESSION_TOUCH_INTERVAL_MS;
 }
 

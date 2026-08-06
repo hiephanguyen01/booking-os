@@ -23,8 +23,19 @@ function assertCsrfKey(csrfKey: Uint8Array): void {
   }
 }
 
+function containsControlCharacter(value: string): boolean {
+  for (const character of value) {
+    const codePoint = character.codePointAt(0);
+    if (codePoint !== undefined && (codePoint <= 0x1f || codePoint === 0x7f)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function assertBindingValue(value: string, label: string): void {
-  if (value.length === 0 || value.trim() !== value || /[\u0000-\u001f\u007f]/.test(value)) {
+  if (value.length === 0 || value.trim() !== value || containsControlCharacter(value)) {
     throw new TypeError(`${label} must be a non-empty canonical value.`);
   }
 }
@@ -48,7 +59,9 @@ export function createCsrfNonce(
 ): string {
   const bytes = entropy(CSRF_NONCE_BYTES);
   if (bytes.byteLength !== CSRF_NONCE_BYTES) {
-    throw new RangeError(`CSRF nonce entropy must contain exactly ${String(CSRF_NONCE_BYTES)} bytes.`);
+    throw new RangeError(
+      `CSRF nonce entropy must contain exactly ${String(CSRF_NONCE_BYTES)} bytes.`,
+    );
   }
   return Buffer.from(bytes).toString("base64url");
 }
@@ -96,5 +109,8 @@ export function verifyCsrfToken(input: VerifyCsrfTokenInput): boolean {
   const presentedBytes = Buffer.from(presentedDigest, "base64url");
   const expectedBytes = Buffer.from(expectedDigest, "base64url");
 
-  return presentedBytes.byteLength === expectedBytes.byteLength && timingSafeEqual(presentedBytes, expectedBytes);
+  return (
+    presentedBytes.byteLength === expectedBytes.byteLength &&
+    timingSafeEqual(presentedBytes, expectedBytes)
+  );
 }

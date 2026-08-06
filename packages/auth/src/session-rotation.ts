@@ -45,7 +45,8 @@ function timestamp(value: Date, label: string): number {
 }
 
 export function shouldRotateSessionToken(input: SessionRotationInput): boolean {
-  const ageMs = timestamp(input.now, "Current time") - timestamp(input.issuedAt, "Token issue time");
+  const ageMs =
+    timestamp(input.now, "Current time") - timestamp(input.issuedAt, "Token issue time");
   if (ageMs < 0) {
     throw new RangeError("Session token issue time cannot be in the future.");
   }

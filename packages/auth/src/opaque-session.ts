@@ -92,7 +92,9 @@ export function deriveSessionSecretDigest(input: SessionSecretDigestInput): stri
   assertDigestKey(input.digestKey);
 
   if (!isCanonicalBase64Url(input.secret, SESSION_SECRET_BYTES)) {
-    throw new TypeError("Session secrets must be canonical base64url values with 32 bytes of entropy.");
+    throw new TypeError(
+      "Session secrets must be canonical base64url values with 32 bytes of entropy.",
+    );
   }
 
   return createHmac("sha256", input.digestKey).update(input.secret, "utf8").digest("hex");
@@ -110,5 +112,8 @@ export function verifySessionSecretDigest(input: VerifySessionSecretDigestInput)
     return false;
   }
 
-  return timingSafeEqual(Buffer.from(actualDigest, "hex"), Buffer.from(input.expectedDigest, "hex"));
+  return timingSafeEqual(
+    Buffer.from(actualDigest, "hex"),
+    Buffer.from(input.expectedDigest, "hex"),
+  );
 }
