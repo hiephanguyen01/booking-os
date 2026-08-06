@@ -31,6 +31,7 @@ test("hydrates authentication only from the opaque cookie and trusted tenant con
         sessionId: SESSION_ID,
         authScope: { type: "tenant" as const, tenantId: TENANT_ID },
         sessionState: "active" as const,
+        authorizationVersion: 7,
         tokenDisposition: "active" as const,
         rotationRequired: false,
       };
@@ -72,6 +73,7 @@ test("hydrates authentication only from the opaque cookie and trusted tenant con
     sessionId: SESSION_ID,
     authScope: { type: "tenant", tenantId: TENANT_ID },
     sessionState: "active",
+    authorizationVersion: 7,
   });
 });
 
