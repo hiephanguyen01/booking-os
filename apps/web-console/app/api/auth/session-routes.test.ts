@@ -154,15 +154,19 @@ test("App Router exposes the complete same-origin session BFF surface", async ()
       refresh.POST?.(request("/api/auth/session/refresh", { method: "POST", cookie })),
       me.GET?.(request("/api/auth/me", { cookie })),
       sessions.GET?.(request("/api/auth/sessions", { cookie })),
-      revokeSession.DELETE?.(request(`/api/auth/sessions/${SESSION_ID}`, { method: "DELETE", cookie }), {
-        params: Promise.resolve({ sessionId: SESSION_ID }),
-      }),
-      revokeOthers.POST?.(
-        request("/api/auth/sessions/revoke-others", { method: "POST", cookie }),
+      revokeSession.DELETE?.(
+        request(`/api/auth/sessions/${SESSION_ID}`, { method: "DELETE", cookie }),
+        {
+          params: Promise.resolve({ sessionId: SESSION_ID }),
+        },
       ),
+      revokeOthers.POST?.(request("/api/auth/sessions/revoke-others", { method: "POST", cookie })),
     ]);
 
-    assert.equal(responses.every((response) => response?.status === 200), true);
+    assert.equal(
+      responses.every((response) => response?.status === 200),
+      true,
+    );
     assert.equal(
       calls.some((call) => call.url === `${API_BASE_URL}/auth/login` && call.method === "POST"),
       true,
