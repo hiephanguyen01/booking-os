@@ -1,5 +1,5 @@
-import { createHmac } from "node:crypto";
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import test from "node:test";
 
 import {
@@ -93,25 +93,28 @@ function guard(storage: RequestContextStorage): CsrfGuard {
   });
 }
 
-test("accepts an unsafe authenticated request only with exact origin and current-cookie CSRF binding", () => {
-  const storage = new RequestContextStorage();
-  const sessionToken = createSessionToken();
-  const csrfToken = sessionCsrfToken(sessionToken);
+test(
+  "accepts an unsafe authenticated request only with exact origin and current-cookie CSRF binding",
+  () => {
+    const storage = new RequestContextStorage();
+    const sessionToken = createSessionToken();
+    const csrfToken = sessionCsrfToken(sessionToken);
 
-  storage.run(AUTHENTICATED_CONTEXT, () => {
-    assert.equal(
-      guard(storage).canActivate(
-        executionContext({
-          host: HOSTNAME,
-          origin: ORIGIN,
-          csrfToken,
-          sessionToken,
-        }),
-      ),
-      true,
-    );
-  });
-});
+    storage.run(AUTHENTICATED_CONTEXT, () => {
+      assert.equal(
+        guard(storage).canActivate(
+          executionContext({
+            host: HOSTNAME,
+            origin: ORIGIN,
+            csrfToken,
+            sessionToken,
+          }),
+        ),
+        true,
+      );
+    });
+  },
+);
 
 test("rejects authenticated CSRF replay after the opaque session cookie rotates", () => {
   const storage = new RequestContextStorage();
@@ -187,9 +190,7 @@ test("rejects expired pre-auth CSRF and bypasses validation for safe methods", (
     );
 
     assert.equal(
-      guard(storage).canActivate(
-        executionContext({ method: "GET", host: HOSTNAME }),
-      ),
+      guard(storage).canActivate(executionContext({ method: "GET", host: HOSTNAME })),
       true,
     );
   });
