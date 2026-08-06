@@ -6,6 +6,7 @@ import type {
   AuthenticatedRequestContext,
   RequestHeaders,
 } from "../../../../common/request-context/request-context.types.js";
+import { EnvironmentService } from "../../../../config/environment.service.js";
 import type {
   CurrentSession,
   GetCurrentSessionInput,
@@ -15,10 +16,6 @@ import { SessionUnavailableError } from "../../domain/session-errors.js";
 
 interface SessionAuthRequest {
   readonly headers: RequestHeaders;
-}
-
-interface SessionAuthOptions {
-  readonly trustProxy: boolean;
 }
 
 type Next = (error?: unknown) => void;
@@ -50,7 +47,8 @@ export class SessionAuthMiddleware implements NestMiddleware {
     private readonly currentSession: CurrentSessionResolver,
     @Inject(RequestContextStorage)
     private readonly requestContext: RequestContextStorage,
-    private readonly options: SessionAuthOptions,
+    @Inject(EnvironmentService)
+    private readonly environment: Pick<EnvironmentService, "trustProxy">,
   ) {}
 
   async use(request: SessionAuthRequest, _response: unknown, next: Next): Promise<void> {
@@ -63,7 +61,7 @@ export class SessionAuthMiddleware implements NestMiddleware {
 
     try {
       const current = this.requestContext.require();
-      const hostname = effectiveHostname(request.headers, this.options.trustProxy);
+      const hostname = effectiveHostname(request.headers, this.environment.trustProxy);
       if (!hostname) {
         throw new SessionUnavailableError();
       }
