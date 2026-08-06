@@ -26,7 +26,9 @@ export function resolveSafeReturnPath(value: string | null): string {
     }
 
     const target = new URL(decoded, "https://console.invalid");
-    return target.origin === "https://console.invalid" ? `${target.pathname}${target.search}${target.hash}` : "/";
+    return target.origin === "https://console.invalid"
+      ? `${target.pathname}${target.search}${target.hash}`
+      : "/";
   } catch {
     return "/";
   }
