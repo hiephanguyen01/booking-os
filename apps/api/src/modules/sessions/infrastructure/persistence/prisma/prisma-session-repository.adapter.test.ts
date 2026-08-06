@@ -96,10 +96,7 @@ test("two concurrent rotations create one successor and return it to the loser",
   ]);
 
   assert.equal(successors.size, 1);
-  assert.deepEqual(
-    [first.status, second.status].sort(),
-    ["existing", "rotated"],
-  );
+  assert.deepEqual([first.status, second.status].sort(), ["existing", "rotated"]);
   const existing = first.status === "existing" ? first : second;
   assert.equal(existing.successorTokenId, [...successors.keys()][0]);
 });

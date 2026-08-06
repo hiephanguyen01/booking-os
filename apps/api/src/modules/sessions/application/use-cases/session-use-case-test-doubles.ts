@@ -1,14 +1,13 @@
 import { createSessionToken } from "@booking-os/auth";
-
+import type {
+  SessionSecurityAuditPort,
+  SessionSecurityAuditRecord,
+} from "../ports/security-audit.port.js";
 import type {
   RotationResult,
   SessionRepositoryPort,
   StoredSessionWithToken,
 } from "../ports/session-repository.port.js";
-import type {
-  SessionSecurityAuditPort,
-  SessionSecurityAuditRecord,
-} from "../ports/security-audit.port.js";
 
 export const NOW = new Date("2026-08-06T02:00:00.000Z");
 export const USER_ID = "11111111-1111-4111-8111-111111111111";

@@ -9,7 +9,6 @@ import {
   SessionUnavailableError,
 } from "../../domain/session-errors.js";
 import type { SessionSecurityAuditRecord } from "../ports/security-audit.port.js";
-import { ValidateSessionUseCase } from "./validate-session.js";
 import {
   createSecurityAudit,
   createSessionRepository,
@@ -22,6 +21,7 @@ import {
   TOKEN,
   USER_ID,
 } from "./session-use-case-test-doubles.js";
+import { ValidateSessionUseCase } from "./validate-session.js";
 
 function validStoredSession() {
   const parsed = parseSessionToken(TOKEN);

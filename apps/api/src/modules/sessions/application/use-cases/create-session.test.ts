@@ -2,9 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { parseSessionToken } from "@booking-os/auth";
-
-import type { CreateSessionRecord } from "../ports/session-repository.port.js";
 import type { SessionSecurityAuditRecord } from "../ports/security-audit.port.js";
+import type { CreateSessionRecord } from "../ports/session-repository.port.js";
 import { CreateSessionUseCase } from "./create-session.js";
 import {
   createSecurityAudit,
