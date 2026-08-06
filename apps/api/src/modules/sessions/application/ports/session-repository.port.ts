@@ -1,7 +1,4 @@
-import type {
-  SessionScope,
-  StoredSession,
-} from "../../domain/auth-session.js";
+import type { SessionScope, StoredSession } from "../../domain/auth-session.js";
 import type { StoredSessionToken } from "../../domain/auth-session-token.js";
 
 export type {
