@@ -1,14 +1,7 @@
 import { createHmac } from "node:crypto";
 
 import { createCsrfNonce, deriveCsrfToken, readSessionToken } from "@booking-os/auth";
-import {
-  Controller,
-  ForbiddenException,
-  Get,
-  Inject,
-  Req,
-  Res,
-} from "@nestjs/common";
+import { Controller, ForbiddenException, Get, Inject, Req, Res } from "@nestjs/common";
 
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import type { RequestHeaders } from "../../../../common/request-context/request-context.types.js";
