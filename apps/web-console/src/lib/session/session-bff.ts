@@ -32,6 +32,11 @@ interface AuthenticatedMutationOptions {
   readonly allowSessionCookie: boolean;
 }
 
+interface SessionApiTarget {
+  readonly baseUrl: string;
+  readonly origin: string;
+}
+
 const SAFE_RESPONSE_HEADERS = Object.freeze({
   "cache-control": "no-store",
   "referrer-policy": "no-referrer",
@@ -40,8 +45,36 @@ const SAFE_RESPONSE_HEADERS = Object.freeze({
 const SESSION_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
+function normalizeSessionApiTarget(value: string): SessionApiTarget {
+  const url = new URL(value);
+  const loopback =
+    url.hostname === "localhost" ||
+    url.hostname === "127.0.0.1" ||
+    url.hostname === "::1" ||
+    url.hostname === "[::1]";
+  const allowedProtocol = url.protocol === "https:" || (url.protocol === "http:" && loopback);
+
+  if (
+    !allowedProtocol ||
+    url.username !== "" ||
+    url.password !== "" ||
+    url.search !== "" ||
+    url.hash !== ""
+  ) {
+    throw new Error(
+      "Session API base URL must be a canonical HTTPS URL or loopback HTTP URL.",
+    );
+  }
+
+  const pathname = url.pathname.replace(/\/+$/u, "");
+  return Object.freeze({
+    baseUrl: `${url.origin}${pathname}`,
+    origin: url.origin,
+  });
+}
+
 function apiEndpoint(apiBaseUrl: string, path: string): string {
-  return `${apiBaseUrl.replace(/\/$/, "")}${path}`;
+  return `${apiBaseUrl}${path}`;
 }
 
 function jsonError(status: number, message: string): Response {
@@ -140,7 +173,7 @@ async function forwardResponse(
 }
 
 export function createSessionBffHandlers(dependencies: SessionBffDependencies): SessionBffHandlers {
-  const apiOrigin = new URL(dependencies.apiBaseUrl).origin;
+  const apiTarget = normalizeSessionApiTarget(dependencies.apiBaseUrl);
 
   async function fetchSessionCsrf(cookie: string | null): Promise<Response> {
     const headers = new Headers({ accept: "application/json" });
@@ -148,7 +181,7 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
       headers.set("cookie", cookie);
     }
 
-    return dependencies.fetch(apiEndpoint(dependencies.apiBaseUrl, "/auth/session/csrf"), {
+    return dependencies.fetch(apiEndpoint(apiTarget.baseUrl, "/auth/session/csrf"), {
       method: "GET",
       headers,
       cache: "no-store",
@@ -180,20 +213,17 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
         return jsonError(503, "Session service is unavailable.");
       }
 
-      const upstream = await dependencies.fetch(
-        apiEndpoint(dependencies.apiBaseUrl, options.path),
-        {
-          method: options.method,
-          headers: {
-            accept: "application/json",
-            cookie,
-            origin: apiOrigin,
-            "x-csrf-token": csrfToken,
-          },
-          cache: "no-store",
-          redirect: "error",
+      const upstream = await dependencies.fetch(apiEndpoint(apiTarget.baseUrl, options.path), {
+        method: options.method,
+        headers: {
+          accept: "application/json",
+          cookie,
+          origin: apiTarget.origin,
+          "x-csrf-token": csrfToken,
         },
-      );
+        cache: "no-store",
+        redirect: "error",
+      });
 
       return forwardResponse(upstream, {
         allowSessionCookie: options.allowSessionCookie,
@@ -238,21 +268,18 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
           return jsonError(503, "Session service is unavailable.");
         }
 
-        const upstream = await dependencies.fetch(
-          apiEndpoint(dependencies.apiBaseUrl, "/auth/login"),
-          {
-            method: "POST",
-            headers: {
-              accept: "application/json",
-              "content-type": "application/json",
-              origin: apiOrigin,
-              "x-csrf-token": csrfToken,
-            },
-            body: JSON.stringify(body),
-            cache: "no-store",
-            redirect: "error",
+        const upstream = await dependencies.fetch(apiEndpoint(apiTarget.baseUrl, "/auth/login"), {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "content-type": "application/json",
+            origin: apiTarget.origin,
+            "x-csrf-token": csrfToken,
           },
-        );
+          body: JSON.stringify(body),
+          cache: "no-store",
+          redirect: "error",
+        });
 
         return forwardResponse(upstream, { allowSessionCookie: true });
       } catch {
@@ -279,15 +306,12 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
       }
 
       try {
-        const upstream = await dependencies.fetch(
-          apiEndpoint(dependencies.apiBaseUrl, "/auth/me"),
-          {
-            method: "GET",
-            headers,
-            cache: "no-store",
-            redirect: "error",
-          },
-        );
+        const upstream = await dependencies.fetch(apiEndpoint(apiTarget.baseUrl, "/auth/me"), {
+          method: "GET",
+          headers,
+          cache: "no-store",
+          redirect: "error",
+        });
         return forwardResponse(upstream, { allowSessionCookie: false });
       } catch {
         return jsonError(503, "Session service is unavailable.");
@@ -300,18 +324,15 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
       }
 
       try {
-        const upstream = await dependencies.fetch(
-          apiEndpoint(dependencies.apiBaseUrl, "/auth/sessions"),
-          {
-            method: "GET",
-            headers: {
-              accept: "application/json",
-              cookie,
-            },
-            cache: "no-store",
-            redirect: "error",
+        const upstream = await dependencies.fetch(apiEndpoint(apiTarget.baseUrl, "/auth/sessions"), {
+          method: "GET",
+          headers: {
+            accept: "application/json",
+            cookie,
           },
-        );
+          cache: "no-store",
+          redirect: "error",
+        });
         return forwardResponse(upstream, { allowSessionCookie: false });
       } catch {
         return jsonError(503, "Session service is unavailable.");
