@@ -56,6 +56,13 @@ export interface RevokeSessionInput {
   readonly reason: string;
 }
 
+export interface RevokeOtherSessionsInput {
+  readonly userId: string;
+  readonly exceptSessionId: string;
+  readonly revokedAt: Date;
+  readonly reason: string;
+}
+
 export interface SessionRepositoryPort {
   create(input: CreateSessionRecord): Promise<CreateSessionRecord>;
   findBySelector(input: FindSessionInput): Promise<StoredSessionWithToken | null>;
@@ -68,5 +75,6 @@ export interface SessionRepositoryPort {
     readonly revokedAt: Date;
     readonly reason: string;
   }): Promise<number>;
+  revokeOthersForUser(input: RevokeOtherSessionsInput): Promise<number>;
   listForUser(input: { readonly userId: string }): Promise<readonly StoredSession[]>;
 }

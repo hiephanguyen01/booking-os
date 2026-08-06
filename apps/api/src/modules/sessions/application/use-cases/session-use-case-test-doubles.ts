@@ -87,6 +87,9 @@ export function createSessionRepository(
     async revokeAllForUser(): Promise<number> {
       return 0;
     },
+    async revokeOthersForUser(): Promise<number> {
+      return 0;
+    },
     async listForUser(): Promise<readonly never[]> {
       return [];
     },
