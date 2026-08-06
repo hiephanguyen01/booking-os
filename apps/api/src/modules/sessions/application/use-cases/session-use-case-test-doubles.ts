@@ -6,6 +6,8 @@ import type {
 import type {
   RotationResult,
   SessionRepositoryPort,
+  StoredSession,
+  StoredSessionToken,
   StoredSessionWithToken,
 } from "../ports/session-repository.port.js";
 
@@ -22,15 +24,18 @@ export const SUCCESSOR_TOKEN = createSessionToken({
   randomBytes: (size) => Buffer.alloc(size, 0x52),
 });
 
-export function storedSession(
-  overrides: Partial<StoredSessionWithToken> = {},
-): StoredSessionWithToken {
-  const session = {
+interface StoredSessionOverrides {
+  readonly session?: Partial<StoredSession>;
+  readonly token?: Partial<StoredSessionToken>;
+}
+
+export function storedSession(overrides: StoredSessionOverrides = {}): StoredSessionWithToken {
+  const session: StoredSession = {
     id: SESSION_ID,
     userId: USER_ID,
-    scope: { type: "tenant" as const, tenantId: TENANT_ID },
+    scope: { type: "tenant", tenantId: TENANT_ID },
     hostname: HOSTNAME,
-    state: "active" as const,
+    state: "active",
     authorizationVersion: 4,
     version: 1,
     idleExpiresAt: new Date("2026-08-13T02:00:00.000Z"),
@@ -43,10 +48,10 @@ export function storedSession(
     updatedAt: new Date("2026-08-06T01:30:00.000Z"),
     ...overrides.session,
   };
-  const token = {
+  const token: StoredSessionToken = {
     id: TOKEN_ID,
     sessionId: SESSION_ID,
-    selector: "MTExMTExMTExMTExMTExMTExMTEx",
+    selector: "MTExMTExMTExMTExMTExMTEx",
     tokenHash: "a".repeat(64),
     issuedAt: new Date("2026-08-06T01:40:00.000Z"),
     expiresAt: session.absoluteExpiresAt,
