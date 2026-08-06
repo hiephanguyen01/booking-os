@@ -46,11 +46,17 @@ function methodNames(prototype: object): readonly string[] {
   return [...names].sort();
 }
 
+function normalizePathSegment(segment: string): string {
+  const parameter = /^:([A-Za-z0-9_]+)$/.exec(segment);
+  return parameter === null ? segment : `{${parameter[1]}}`;
+}
+
 function joinPath(...parts: readonly string[]): string {
   const segments = parts
     .flatMap((part) => part.split("/"))
     .map((part) => part.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .map(normalizePathSegment);
   return `/${segments.join("/")}`;
 }
 
