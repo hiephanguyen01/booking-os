@@ -259,12 +259,15 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
       }
 
       try {
-        const upstream = await dependencies.fetch(apiEndpoint(dependencies.apiBaseUrl, "/auth/me"), {
-          method: "GET",
-          headers,
-          cache: "no-store",
-          redirect: "error",
-        });
+        const upstream = await dependencies.fetch(
+          apiEndpoint(dependencies.apiBaseUrl, "/auth/me"),
+          {
+            method: "GET",
+            headers,
+            cache: "no-store",
+            redirect: "error",
+          },
+        );
         return forwardResponse(upstream, { allowSessionCookie: false });
       } catch {
         return jsonError(503, "Session service is unavailable.");
