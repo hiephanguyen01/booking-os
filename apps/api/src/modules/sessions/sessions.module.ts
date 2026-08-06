@@ -4,15 +4,23 @@ import { Module } from "@nestjs/common";
 
 import { EnvironmentService } from "../../config/environment.service.js";
 import { DatabaseModule } from "../../database/database.module.js";
+import { DependenciesModule } from "../../dependencies/dependencies.module.js";
+import { REDIS_CLIENT_TOKEN } from "../../dependencies/tokens.js";
+import type { LoginAbuseProtectionPort } from "./application/ports/login-abuse-protection.port.js";
 import type { SessionSecurityAuditPort } from "./application/ports/security-audit.port.js";
 import type { SessionRepositoryPort } from "./application/ports/session-repository.port.js";
 import { CreateSessionUseCase } from "./application/use-cases/create-session.js";
 import { RefreshSessionUseCase } from "./application/use-cases/refresh-session.js";
 import { RevokeSessionUseCase } from "./application/use-cases/revoke-session.js";
 import { ValidateSessionUseCase } from "./application/use-cases/validate-session.js";
+import {
+  type LoginAbuseRedisClient,
+  RedisLoginAbuseProtectionAdapter,
+} from "./infrastructure/abuse/redis-login-abuse-protection.adapter.js";
 import { PrismaSessionRepositoryAdapter } from "./infrastructure/persistence/prisma/prisma-session-repository.adapter.js";
 import { PrismaSessionSecurityAuditAdapter } from "./infrastructure/persistence/prisma/prisma-session-security-audit.adapter.js";
 import {
+  LOGIN_ABUSE_PROTECTION_PORT,
   SESSION_DIGEST_KEY,
   SESSION_REPOSITORY_PORT,
   SESSION_SECURITY_AUDIT_PORT,
@@ -26,7 +34,7 @@ function deriveSessionDigestKey(secret: string): Uint8Array {
 }
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, DependenciesModule],
   providers: [
     {
       provide: SESSION_REPOSITORY_PORT,
@@ -41,6 +49,12 @@ function deriveSessionDigestKey(secret: string): Uint8Array {
       inject: [EnvironmentService],
       useFactory: (environment: EnvironmentService): Uint8Array =>
         deriveSessionDigestKey(environment.sessionSecret),
+    },
+    {
+      provide: LOGIN_ABUSE_PROTECTION_PORT,
+      inject: [REDIS_CLIENT_TOKEN],
+      useFactory: (redis: LoginAbuseRedisClient): LoginAbuseProtectionPort =>
+        new RedisLoginAbuseProtectionAdapter(redis),
     },
     {
       provide: CreateSessionUseCase,
@@ -80,6 +94,7 @@ function deriveSessionDigestKey(secret: string): Uint8Array {
   ],
   exports: [
     SESSION_REPOSITORY_PORT,
+    LOGIN_ABUSE_PROTECTION_PORT,
     CreateSessionUseCase,
     ValidateSessionUseCase,
     RefreshSessionUseCase,
