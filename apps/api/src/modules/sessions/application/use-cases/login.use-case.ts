@@ -74,7 +74,7 @@ export class LoginUseCase {
       normalizedEmail,
       password: input.password,
     });
-    if (!credential || credential.status !== "active") {
+    if (credential?.status !== "active") {
       return this.rejectLogin(attemptKey);
     }
 
