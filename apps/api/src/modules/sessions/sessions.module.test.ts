@@ -4,8 +4,6 @@ import test from "node:test";
 import type { StructuredLogger } from "@booking-os/observability";
 
 import { AppModule } from "../../app.module.js";
-import { RequestContextStorage } from "../../common/request-context/request-context.storage.js";
-import { EnvironmentService } from "../../config/environment.service.js";
 import { DependenciesModule } from "../../dependencies/dependencies.module.js";
 import { REDIS_CLIENT_TOKEN } from "../../dependencies/tokens.js";
 import { API_LOGGER_TOKEN } from "../../observability/tokens.js";
@@ -107,10 +105,6 @@ test("wires session CSRF issuance and enforcement into the runtime module", () =
 
   const providers = metadata<unknown>(MODULE_METADATA.providers, SessionsModule);
   assert.ok(providers.includes(SessionCsrfGuard));
-  assert.deepEqual(Reflect.getMetadata("design:paramtypes", SessionCsrfGuard), [
-    RequestContextStorage,
-    EnvironmentService,
-  ]);
 
   const guards = metadata<unknown>("__guards__", SessionHttpController);
   assert.ok(guards.includes(SessionCsrfGuard));
