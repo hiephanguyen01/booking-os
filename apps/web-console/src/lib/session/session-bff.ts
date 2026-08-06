@@ -34,7 +34,11 @@ interface AuthenticatedMutationOptions {
 
 interface SessionApiTarget {
   readonly baseUrl: string;
+}
+
+interface TrustedBrowserTarget {
   readonly origin: string;
+  readonly host: string;
 }
 
 const SAFE_RESPONSE_HEADERS = Object.freeze({
@@ -67,7 +71,14 @@ function normalizeSessionApiTarget(value: string): SessionApiTarget {
   const pathname = url.pathname.replace(/\/+$/u, "");
   return Object.freeze({
     baseUrl: `${url.origin}${pathname}`,
+  });
+}
+
+function trustedBrowserTarget(request: Request): TrustedBrowserTarget {
+  const url = new URL(request.url);
+  return Object.freeze({
     origin: url.origin,
+    host: url.host,
   });
 }
 
@@ -87,7 +98,7 @@ function jsonError(status: number, message: string): Response {
 
 function isSameOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
-  return origin !== null && origin === new URL(request.url).origin;
+  return origin !== null && origin === trustedBrowserTarget(request).origin;
 }
 
 async function readLoginBody(request: Request): Promise<LoginBody | null> {
@@ -173,8 +184,12 @@ async function forwardResponse(
 export function createSessionBffHandlers(dependencies: SessionBffDependencies): SessionBffHandlers {
   const apiTarget = normalizeSessionApiTarget(dependencies.apiBaseUrl);
 
-  async function fetchSessionCsrf(cookie: string | null): Promise<Response> {
-    const headers = new Headers({ accept: "application/json" });
+  async function fetchSessionCsrf(request: Request, cookie: string | null): Promise<Response> {
+    const browserTarget = trustedBrowserTarget(request);
+    const headers = new Headers({
+      accept: "application/json",
+      "x-forwarded-host": browserTarget.host,
+    });
     if (cookie !== null) {
       headers.set("cookie", cookie);
     }
@@ -195,13 +210,14 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
       return jsonError(403, "Request origin is not allowed.");
     }
 
+    const browserTarget = trustedBrowserTarget(request);
     const cookie = exactSessionCookie(request.headers.get("cookie"));
     if (cookie === null) {
       return jsonError(401, "Authentication is required.");
     }
 
     try {
-      const csrfResponse = await fetchSessionCsrf(cookie);
+      const csrfResponse = await fetchSessionCsrf(request, cookie);
       if (!csrfResponse.ok) {
         return jsonError(503, "Session service is unavailable.");
       }
@@ -216,8 +232,9 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
         headers: {
           accept: "application/json",
           cookie,
-          origin: apiTarget.origin,
+          origin: browserTarget.origin,
           "x-csrf-token": csrfToken,
+          "x-forwarded-host": browserTarget.host,
         },
         cache: "no-store",
         redirect: "error",
@@ -239,7 +256,7 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
       }
 
       try {
-        const upstream = await fetchSessionCsrf(cookie);
+        const upstream = await fetchSessionCsrf(request, cookie);
         return forwardResponse(upstream, { allowSessionCookie: false });
       } catch {
         return jsonError(503, "Session service is unavailable.");
@@ -250,13 +267,14 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
         return jsonError(403, "Request origin is not allowed.");
       }
 
+      const browserTarget = trustedBrowserTarget(request);
       const body = await readLoginBody(request);
       if (body === null) {
         return jsonError(400, "Invalid authentication request.");
       }
 
       try {
-        const csrfResponse = await fetchSessionCsrf(null);
+        const csrfResponse = await fetchSessionCsrf(request, null);
         if (!csrfResponse.ok) {
           return jsonError(503, "Session service is unavailable.");
         }
@@ -271,8 +289,9 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
           headers: {
             accept: "application/json",
             "content-type": "application/json",
-            origin: apiTarget.origin,
+            origin: browserTarget.origin,
             "x-csrf-token": csrfToken,
+            "x-forwarded-host": browserTarget.host,
           },
           body: JSON.stringify(body),
           cache: "no-store",
@@ -297,8 +316,12 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
         allowSessionCookie: true,
       }),
     async me(request) {
+      const browserTarget = trustedBrowserTarget(request);
       const cookie = exactSessionCookie(request.headers.get("cookie"));
-      const headers = new Headers({ accept: "application/json" });
+      const headers = new Headers({
+        accept: "application/json",
+        "x-forwarded-host": browserTarget.host,
+      });
       if (cookie !== null) {
         headers.set("cookie", cookie);
       }
@@ -316,6 +339,7 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
       }
     },
     async sessions(request) {
+      const browserTarget = trustedBrowserTarget(request);
       const cookie = exactSessionCookie(request.headers.get("cookie"));
       if (cookie === null) {
         return jsonError(401, "Authentication is required.");
@@ -329,6 +353,7 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
             headers: {
               accept: "application/json",
               cookie,
+              "x-forwarded-host": browserTarget.host,
             },
             cache: "no-store",
             redirect: "error",
