@@ -6,6 +6,7 @@ import type { StructuredLogger } from "@booking-os/observability";
 import { AppModule } from "../../app.module.js";
 import { DependenciesModule } from "../../dependencies/dependencies.module.js";
 import { REDIS_CLIENT_TOKEN } from "../../dependencies/tokens.js";
+import { API_LOGGER_TOKEN } from "../../observability/tokens.js";
 import { TenancyModule } from "../tenancy/tenancy.module.js";
 import { RedisLoginAbuseProtectionAdapter } from "./infrastructure/abuse/redis-login-abuse-protection.adapter.js";
 import { StructuredLoginAbuseMetricsAdapter } from "./infrastructure/observability/structured-login-abuse-metrics.adapter.js";
