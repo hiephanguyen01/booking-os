@@ -75,6 +75,15 @@ async function readLoginBody(request: Request): Promise<LoginBody | null> {
   }
 }
 
+function readCsrfToken(payload: unknown): string | null {
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
+    return null;
+  }
+
+  const csrfToken = (payload as Record<string, unknown>).csrfToken;
+  return typeof csrfToken === "string" && csrfToken !== "" ? csrfToken : null;
+}
+
 function exactSessionCookie(cookieHeader: string | null): string | null {
   const token = readSessionToken(cookieHeader);
   return token === undefined ? null : `${BOOKING_SESSION_COOKIE}=${encodeURIComponent(token)}`;
@@ -128,8 +137,76 @@ async function forwardResponse(
 export function createSessionBffHandlers(dependencies: SessionBffDependencies): SessionBffHandlers {
   const apiOrigin = new URL(dependencies.apiBaseUrl).origin;
 
+  async function fetchSessionCsrf(cookie: string | null): Promise<Response> {
+    const headers = new Headers({ accept: "application/json" });
+    if (cookie !== null) {
+      headers.set("cookie", cookie);
+    }
+
+    return dependencies.fetch(apiEndpoint(dependencies.apiBaseUrl, "/auth/session/csrf"), {
+      method: "GET",
+      headers,
+      cache: "no-store",
+      redirect: "error",
+    });
+  }
+
+  async function authenticatedMutation(
+    request: Request,
+    path: "/auth/logout" | "/auth/session/refresh",
+  ): Promise<Response> {
+    if (!isSameOrigin(request)) {
+      return jsonError(403, "Request origin is not allowed.");
+    }
+
+    const cookie = exactSessionCookie(request.headers.get("cookie"));
+    if (cookie === null) {
+      return jsonError(401, "Authentication is required.");
+    }
+
+    try {
+      const csrfResponse = await fetchSessionCsrf(cookie);
+      if (!csrfResponse.ok) {
+        return jsonError(503, "Session service is unavailable.");
+      }
+
+      const csrfToken = readCsrfToken(await csrfResponse.json());
+      if (csrfToken === null) {
+        return jsonError(503, "Session service is unavailable.");
+      }
+
+      const upstream = await dependencies.fetch(apiEndpoint(dependencies.apiBaseUrl, path), {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          cookie,
+          origin: apiOrigin,
+          "x-csrf-token": csrfToken,
+        },
+        cache: "no-store",
+        redirect: "error",
+      });
+
+      return forwardResponse(upstream, { allowSessionCookie: true });
+    } catch {
+      return jsonError(503, "Session service is unavailable.");
+    }
+  }
+
   return {
-    sessionCsrf: unavailable,
+    async sessionCsrf(request) {
+      const cookie = exactSessionCookie(request.headers.get("cookie"));
+      if (cookie === null) {
+        return jsonError(401, "Authentication is required.");
+      }
+
+      try {
+        const upstream = await fetchSessionCsrf(cookie);
+        return forwardResponse(upstream, { allowSessionCookie: false });
+      } catch {
+        return jsonError(503, "Session service is unavailable.");
+      }
+    },
     async login(request) {
       if (!isSameOrigin(request)) {
         return jsonError(403, "Request origin is not allowed.");
@@ -141,31 +218,16 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
       }
 
       try {
-        const csrfResponse = await dependencies.fetch(
-          apiEndpoint(dependencies.apiBaseUrl, "/auth/session/csrf"),
-          {
-            method: "GET",
-            headers: { accept: "application/json" },
-            cache: "no-store",
-            redirect: "error",
-          },
-        );
+        const csrfResponse = await fetchSessionCsrf(null);
         if (!csrfResponse.ok) {
           return jsonError(503, "Session service is unavailable.");
         }
 
-        const csrfPayload: unknown = await csrfResponse.json();
-        if (
-          typeof csrfPayload !== "object" ||
-          csrfPayload === null ||
-          Array.isArray(csrfPayload) ||
-          typeof (csrfPayload as Record<string, unknown>).csrfToken !== "string" ||
-          (csrfPayload as Record<string, unknown>).csrfToken === ""
-        ) {
+        const csrfToken = readCsrfToken(await csrfResponse.json());
+        if (csrfToken === null) {
           return jsonError(503, "Session service is unavailable.");
         }
 
-        const csrfToken = (csrfPayload as { readonly csrfToken: string }).csrfToken;
         const upstream = await dependencies.fetch(
           apiEndpoint(dependencies.apiBaseUrl, "/auth/login"),
           {
@@ -187,8 +249,8 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
         return jsonError(503, "Session service is unavailable.");
       }
     },
-    logout: unavailable,
-    refresh: unavailable,
+    logout: (request) => authenticatedMutation(request, "/auth/logout"),
+    refresh: (request) => authenticatedMutation(request, "/auth/session/refresh"),
     async me(request) {
       const cookie = exactSessionCookie(request.headers.get("cookie"));
       const headers = new Headers({ accept: "application/json" });
@@ -197,15 +259,12 @@ export function createSessionBffHandlers(dependencies: SessionBffDependencies): 
       }
 
       try {
-        const upstream = await dependencies.fetch(
-          apiEndpoint(dependencies.apiBaseUrl, "/auth/me"),
-          {
-            method: "GET",
-            headers,
-            cache: "no-store",
-            redirect: "error",
-          },
-        );
+        const upstream = await dependencies.fetch(apiEndpoint(dependencies.apiBaseUrl, "/auth/me"), {
+          method: "GET",
+          headers,
+          cache: "no-store",
+          redirect: "error",
+        });
         return forwardResponse(upstream, { allowSessionCookie: false });
       } catch {
         return jsonError(503, "Session service is unavailable.");
