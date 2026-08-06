@@ -6,9 +6,7 @@ import { BOOKING_SESSION_COOKIE, createSessionToken, deriveCsrfToken } from "@bo
 import type { ExecutionContext } from "@nestjs/common";
 import { ForbiddenException } from "@nestjs/common";
 
-import {
-  RequestContextStorage,
-} from "../../../../common/request-context/request-context.storage.js";
+import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import { CsrfGuard } from "./csrf.guard.js";
 
 const CSRF_KEY = Buffer.alloc(32, 7);
@@ -91,28 +89,25 @@ function guard(storage: RequestContextStorage): CsrfGuard {
   });
 }
 
-test(
-  "accepts an unsafe authenticated request only with exact origin and current-cookie CSRF binding",
-  () => {
-    const storage = new RequestContextStorage();
-    const sessionToken = createSessionToken();
-    const csrfToken = sessionCsrfToken(sessionToken);
+test("accepts an unsafe authenticated request only with exact origin and current-cookie CSRF binding", () => {
+  const storage = new RequestContextStorage();
+  const sessionToken = createSessionToken();
+  const csrfToken = sessionCsrfToken(sessionToken);
 
-    storage.run(AUTHENTICATED_CONTEXT, () => {
-      assert.equal(
-        guard(storage).canActivate(
-          executionContext({
-            host: HOSTNAME,
-            origin: ORIGIN,
-            csrfToken,
-            sessionToken,
-          }),
-        ),
-        true,
-      );
-    });
-  },
-);
+  storage.run(AUTHENTICATED_CONTEXT, () => {
+    assert.equal(
+      guard(storage).canActivate(
+        executionContext({
+          host: HOSTNAME,
+          origin: ORIGIN,
+          csrfToken,
+          sessionToken,
+        }),
+      ),
+      true,
+    );
+  });
+});
 
 test("rejects authenticated CSRF replay after the opaque session cookie rotates", () => {
   const storage = new RequestContextStorage();
@@ -142,9 +137,7 @@ test("accepts recent pre-auth CSRF only for the exact request hostname and origi
 
   storage.run(BASE_CONTEXT, () => {
     assert.equal(
-      guard(storage).canActivate(
-        executionContext({ host: HOSTNAME, origin: ORIGIN, csrfToken }),
-      ),
+      guard(storage).canActivate(executionContext({ host: HOSTNAME, origin: ORIGIN, csrfToken })),
       true,
     );
 
