@@ -147,3 +147,41 @@ test("expires the host cookie when the current device is revoked", async () => {
   assert.equal(headers.get("set-cookie"), serializeExpiredSessionCookie());
   assert.equal(headers.get("cache-control"), "private, no-store");
 });
+
+test("revokes all other devices without clearing the current session cookie", async () => {
+  const storage = new RequestContextStorage();
+  const calls: unknown[] = [];
+  const revokeOtherSessions = {
+    async execute(input: unknown) {
+      calls.push(input);
+      return { revokedCount: 2 };
+    },
+  };
+  const controller = Reflect.construct(AuthController, [
+    { execute: async () => assert.fail("login must not run") },
+    storage,
+    { trustProxy: false },
+    undefined,
+    undefined,
+    revokeOtherSessions,
+  ]) as AuthController & {
+    revokeOtherSessions(response: { setHeader(name: string, value: string): void }): Promise<{
+      readonly revokedCount: number;
+    }>;
+  };
+  const { headers, response } = responseHeaders();
+
+  await storage.run(AUTHENTICATED_CONTEXT, async () => {
+    assert.deepEqual(await controller.revokeOtherSessions(response), { revokedCount: 2 });
+  });
+
+  assert.deepEqual(calls, [
+    {
+      userId: USER_ID,
+      currentSessionId: SESSION_ID,
+      requestId: "request-list-sessions",
+    },
+  ]);
+  assert.equal(headers.get("cache-control"), "private, no-store");
+  assert.equal(headers.has("set-cookie"), false);
+});
