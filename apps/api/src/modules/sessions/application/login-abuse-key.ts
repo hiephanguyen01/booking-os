@@ -115,11 +115,7 @@ export function deriveLoginAttemptKey(input: DeriveLoginAttemptKeyInput): LoginA
   const summary = sourceSummary(input.ipAddress.trim());
   const accountDigest = hmac(input.hmacKey, "account", normalizedEmail);
   const sourceDigest = hmac(input.hmacKey, "source", summary);
-  const combinedDigest = hmac(
-    input.hmacKey,
-    "combined",
-    `${accountDigest}:${sourceDigest}`,
-  );
+  const combinedDigest = hmac(input.hmacKey, "combined", `${accountDigest}:${sourceDigest}`);
 
   return Object.freeze({
     accountDigest,
