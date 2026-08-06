@@ -5,6 +5,7 @@ const databaseUrl =
 const redisUrl = process.env.REDIS_URL ?? "redis://127.0.0.1:6379/1";
 const apiBaseUrl = "http://127.0.0.1:3001/api";
 const consoleOrigin = "http://127.0.0.1:3002";
+const sessionAllowedOrigins = `${consoleOrigin},http://localhost:3002`;
 const reuseExistingServer = process.env.CI !== "true";
 
 export default defineConfig({
@@ -40,7 +41,7 @@ export default defineConfig({
         DATABASE_URL: databaseUrl,
         REDIS_URL: redisUrl,
         SESSION_SECRET: "e2e-only-session-secret-at-least-32-characters",
-        SESSION_ALLOWED_ORIGINS: consoleOrigin,
+        SESSION_ALLOWED_ORIGINS: sessionAllowedOrigins,
         PAYMENT_PROVIDER: "mock",
       },
     },
