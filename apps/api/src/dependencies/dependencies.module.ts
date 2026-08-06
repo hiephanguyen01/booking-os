@@ -42,10 +42,6 @@ import {
     },
     DependencyLifecycleService,
   ],
-  exports: [
-    POSTGRES_READINESS_PROBE_TOKEN,
-    REDIS_CLIENT_TOKEN,
-    REDIS_READINESS_PROBE_TOKEN,
-  ],
+  exports: [POSTGRES_READINESS_PROBE_TOKEN, REDIS_CLIENT_TOKEN, REDIS_READINESS_PROBE_TOKEN],
 })
 export class DependenciesModule {}
