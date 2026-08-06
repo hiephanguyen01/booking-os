@@ -106,6 +106,53 @@ const optionalBootstrapEmailSchema = z.preprocess(
     .optional(),
 );
 
+const sessionAllowedOriginsSchema = z.preprocess(
+  (value) => (typeof value === "string" && value.trim().length === 0 ? undefined : value),
+  z
+    .string()
+    .trim()
+    .transform((value, context): readonly string[] => {
+      const origins = value.split(",").map((origin) => origin.trim());
+      const seen = new Set<string>();
+
+      for (const origin of origins) {
+        let parsed: URL;
+
+        try {
+          parsed = new URL(origin);
+        } catch {
+          context.addIssue({
+            code: "custom",
+            message: "SESSION_ALLOWED_ORIGINS must contain canonical HTTPS origins",
+          });
+          return z.NEVER;
+        }
+
+        const canonical =
+          parsed.protocol === "https:" &&
+          parsed.username === "" &&
+          parsed.password === "" &&
+          parsed.pathname === "/" &&
+          parsed.search === "" &&
+          parsed.hash === "" &&
+          parsed.origin === origin;
+
+        if (!canonical || seen.has(origin)) {
+          context.addIssue({
+            code: "custom",
+            message: "SESSION_ALLOWED_ORIGINS must contain unique canonical HTTPS origins",
+          });
+          return z.NEVER;
+        }
+
+        seen.add(origin);
+      }
+
+      return Object.freeze(origins);
+    })
+    .optional(),
+);
+
 const apiPrefixSchema = z
   .string()
   .trim()
@@ -162,6 +209,8 @@ const rawEnvironmentSchema = z
 
     SESSION_SECRET: z.string().min(32, "SESSION_SECRET must contain at least 32 characters"),
 
+    SESSION_ALLOWED_ORIGINS: sessionAllowedOriginsSchema,
+
     PAYMENT_PROVIDER: z.enum(["mock", "payos"]).default("mock"),
 
     IDENTITY_TOKEN_PEPPER: secretKeySchema("IDENTITY_TOKEN_PEPPER"),
@@ -180,6 +229,17 @@ const rawEnvironmentSchema = z
         code: "custom",
         path: ["TENANT_BASE_DOMAIN"],
         message: "TENANT_BASE_DOMAIN is required in production",
+      });
+    }
+
+    if (
+      values.NODE_ENV === "production" &&
+      (!values.SESSION_ALLOWED_ORIGINS || values.SESSION_ALLOWED_ORIGINS.length === 0)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["SESSION_ALLOWED_ORIGINS"],
+        message: "SESSION_ALLOWED_ORIGINS requires at least one origin in production",
       });
     }
 
@@ -221,6 +281,7 @@ export const environmentSchema = rawEnvironmentSchema.transform((values) => ({
   redisUrl: values.REDIS_URL,
   readinessTimeoutMs: values.READINESS_TIMEOUT_MS,
   sessionSecret: values.SESSION_SECRET,
+  sessionAllowedOrigins: Object.freeze([...(values.SESSION_ALLOWED_ORIGINS ?? [])]),
   paymentProvider: values.PAYMENT_PROVIDER,
   identitySecurity: Object.freeze({
     tokenPepper: values.IDENTITY_TOKEN_PEPPER,
@@ -237,7 +298,7 @@ export type ValidatedEnvironment = z.output<typeof environmentSchema>;
 
 export type IdentitySecurityConfig = ValidatedEnvironment["identitySecurity"];
 
-export type Environment = Omit<ValidatedEnvironment, "identitySecurity"> &
-  Partial<Pick<ValidatedEnvironment, "identitySecurity">>;
+export type Environment = Omit<ValidatedEnvironment, "identitySecurity" | "sessionAllowedOrigins"> &
+  Partial<Pick<ValidatedEnvironment, "identitySecurity" | "sessionAllowedOrigins">>;
 
 export type RawEnvironment = z.input<typeof environmentSchema>;

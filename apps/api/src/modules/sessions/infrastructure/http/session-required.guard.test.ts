@@ -20,6 +20,7 @@ const AUTHENTICATED_CONTEXT = Object.freeze({
   sessionId: "33333333-3333-4333-8333-333333333333",
   authScope: { type: "platform" as const },
   sessionState: "active" as const,
+  authorizationVersion: 3,
 });
 
 const executionContext = {

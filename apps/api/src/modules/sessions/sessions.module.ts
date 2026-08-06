@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { StructuredLogger } from "@booking-os/observability";
-import { Module } from "@nestjs/common";
+import { type MiddlewareConsumer, Module, type NestModule } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 
 import { RequestContextModule } from "../../common/request-context/request-context.module.js";
@@ -19,8 +19,10 @@ import type { SessionRepositoryPort } from "./application/ports/session-reposito
 import type { SessionSubjectPort } from "./application/ports/session-subject.port.js";
 import { CreateSessionUseCase } from "./application/use-cases/create-session.js";
 import { GetCurrentSessionUseCase } from "./application/use-cases/get-current-session.use-case.js";
+import { ListSessionsUseCase } from "./application/use-cases/list-sessions.js";
 import { LoginUseCase } from "./application/use-cases/login.use-case.js";
 import { RefreshSessionUseCase } from "./application/use-cases/refresh-session.js";
+import { RevokeOtherSessionsUseCase } from "./application/use-cases/revoke-other-sessions.js";
 import { RevokeSessionUseCase } from "./application/use-cases/revoke-session.js";
 import { ValidateSessionUseCase } from "./application/use-cases/validate-session.js";
 import {
@@ -28,6 +30,9 @@ import {
   RedisLoginAbuseProtectionAdapter,
 } from "./infrastructure/abuse/redis-login-abuse-protection.adapter.js";
 import { SessionAuthMiddleware } from "./infrastructure/http/session-auth.middleware.js";
+import { SessionCsrfGuard } from "./infrastructure/http/session-csrf.guard.js";
+import { SessionCsrfHttpController } from "./infrastructure/http/session-csrf-http.controller.js";
+import { SessionHttpController } from "./infrastructure/http/session-http.controller.js";
 import { SessionRequiredGuard } from "./infrastructure/http/session-required.guard.js";
 import { StructuredLoginAbuseMetricsAdapter } from "./infrastructure/observability/structured-login-abuse-metrics.adapter.js";
 import { PrismaCredentialVerifierAdapter } from "./infrastructure/persistence/prisma/prisma-credential-verifier.adapter.js";
@@ -51,6 +56,7 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
 
 @Module({
   imports: [DatabaseModule, DependenciesModule, RequestContextModule],
+  controllers: [SessionHttpController, SessionCsrfHttpController],
   providers: [
     {
       provide: SESSION_REPOSITORY_PORT,
@@ -130,6 +136,20 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
       ): RevokeSessionUseCase => new RevokeSessionUseCase(repository, audit),
     },
     {
+      provide: ListSessionsUseCase,
+      inject: [SESSION_REPOSITORY_PORT],
+      useFactory: (repository: SessionRepositoryPort): ListSessionsUseCase =>
+        new ListSessionsUseCase(repository),
+    },
+    {
+      provide: RevokeOtherSessionsUseCase,
+      inject: [SESSION_REPOSITORY_PORT, SESSION_SECURITY_AUDIT_PORT],
+      useFactory: (
+        repository: SessionRepositoryPort,
+        audit: SessionSecurityAuditPort,
+      ): RevokeOtherSessionsUseCase => new RevokeOtherSessionsUseCase(repository, audit),
+    },
+    {
       provide: LoginUseCase,
       inject: [
         CREDENTIAL_VERIFIER_PORT,
@@ -167,6 +187,7 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
           trustProxy: environment.trustProxy,
         }),
     },
+    SessionCsrfGuard,
     SessionRequiredGuard,
     {
       provide: APP_GUARD,
@@ -180,9 +201,17 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
     ValidateSessionUseCase,
     RefreshSessionUseCase,
     RevokeSessionUseCase,
+    ListSessionsUseCase,
+    RevokeOtherSessionsUseCase,
     LoginUseCase,
     GetCurrentSessionUseCase,
     SessionAuthMiddleware,
   ],
 })
-export class SessionsModule {}
+export class SessionsModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply(SessionAuthMiddleware)
+      .forRoutes(SessionHttpController, SessionCsrfHttpController);
+  }
+}

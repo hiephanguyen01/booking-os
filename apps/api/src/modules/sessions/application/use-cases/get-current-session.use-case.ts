@@ -21,6 +21,7 @@ export interface CurrentSession {
   readonly sessionId: string;
   readonly authScope: SessionScope;
   readonly sessionState: Extract<StoredSession["state"], "active" | "invitation_pending">;
+  readonly authorizationVersion: number;
   readonly tokenDisposition: "active" | "overlap";
   readonly rotationRequired: boolean;
 }
@@ -78,6 +79,7 @@ export class GetCurrentSessionUseCase {
       sessionId: validated.session.id,
       authScope: validated.session.scope,
       sessionState: validated.session.state,
+      authorizationVersion,
       tokenDisposition: validated.tokenDisposition,
       rotationRequired: validated.rotationRequired,
     };

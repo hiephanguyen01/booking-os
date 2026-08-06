@@ -28,6 +28,35 @@ async function reservePort(): Promise<{
   };
 }
 
+interface OpenApiOperation {
+  readonly operationId?: string;
+  readonly parameters?: readonly {
+    readonly in?: string;
+    readonly name?: string;
+    readonly required?: boolean;
+    readonly schema?: { readonly format?: string; readonly type?: string };
+  }[];
+  readonly requestBody?: {
+    readonly content?: {
+      readonly "application/json"?: {
+        readonly schema?: { readonly $ref?: string };
+      };
+    };
+  };
+  readonly responses?: Readonly<
+    Record<
+      string,
+      {
+        readonly content?: {
+          readonly "application/json"?: {
+            readonly schema?: { readonly $ref?: string };
+          };
+        };
+      }
+    >
+  >;
+}
+
 test("generates the contract without binding a port or reaching infrastructure", async () => {
   const temporaryDirectory = await mkdtemp(join(tmpdir(), "booking-os-openapi-"));
   const outputPath = join(temporaryDirectory, "openapi.json");
@@ -55,15 +84,21 @@ test("generates the contract without binding a port or reaching infrastructure",
     assert.equal(result.status, 0, `generator failed:\n${result.stdout}\n${result.stderr}`);
     const source = await readFile(outputPath, "utf8");
     const document = JSON.parse(source) as {
-      readonly paths: Readonly<
-        Record<string, Readonly<Record<string, { readonly operationId?: string }>>>
-      >;
+      readonly paths: Readonly<Record<string, Readonly<Record<string, OpenApiOperation>>>>;
     };
     assert.deepEqual(Object.keys(document.paths), [
       "/api/auth/activation/complete",
       "/api/auth/csrf",
+      "/api/auth/login",
+      "/api/auth/logout",
+      "/api/auth/me",
       "/api/auth/password/forgot",
       "/api/auth/password/reset",
+      "/api/auth/session/csrf",
+      "/api/auth/session/refresh",
+      "/api/auth/sessions",
+      "/api/auth/sessions/{sessionId}",
+      "/api/auth/sessions/revoke-others",
       "/api/health",
       "/api/ready",
     ]);
@@ -76,11 +111,55 @@ test("generates the contract without binding a port or reaching infrastructure",
       [
         "completeAccountActivation",
         "completePasswordReset",
+        "getCurrentSession",
         "getHealth",
         "getPreAuthCsrf",
         "getReadiness",
+        "getSessionCsrf",
+        "listSessions",
+        "loginSession",
+        "logoutSession",
+        "refreshSession",
         "requestPasswordReset",
+        "revokeOtherSessions",
+        "revokeSession",
       ],
+    );
+
+    const login = document.paths["/api/auth/login"]?.post;
+    assert.equal(
+      login?.requestBody?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/LoginRequestDto",
+    );
+    assert.equal(
+      login?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/SessionResponseDto",
+    );
+
+    const sessionCsrf = document.paths["/api/auth/session/csrf"]?.get;
+    assert.equal(
+      sessionCsrf?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/SessionCsrfResponseDto",
+    );
+
+    const refresh = document.paths["/api/auth/session/refresh"]?.post;
+    assert.equal(
+      refresh?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/SessionResponseDto",
+    );
+
+    const revoke = document.paths["/api/auth/sessions/{sessionId}"]?.delete;
+    assert.deepEqual(revoke?.parameters, [
+      {
+        in: "path",
+        name: "sessionId",
+        required: true,
+        schema: { format: "uuid", type: "string" },
+      },
+    ]);
+    assert.equal(
+      revoke?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/RevokeDeviceResponseDto",
     );
   } finally {
     await reservedPort.close();

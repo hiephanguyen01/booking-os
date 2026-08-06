@@ -8,7 +8,13 @@ import { DependenciesModule } from "../../dependencies/dependencies.module.js";
 import { REDIS_CLIENT_TOKEN } from "../../dependencies/tokens.js";
 import { API_LOGGER_TOKEN } from "../../observability/tokens.js";
 import { TenancyModule } from "../tenancy/tenancy.module.js";
+import { ListSessionsUseCase } from "./application/use-cases/list-sessions.js";
+import { RefreshSessionUseCase } from "./application/use-cases/refresh-session.js";
+import { RevokeOtherSessionsUseCase } from "./application/use-cases/revoke-other-sessions.js";
 import { RedisLoginAbuseProtectionAdapter } from "./infrastructure/abuse/redis-login-abuse-protection.adapter.js";
+import { SessionCsrfGuard } from "./infrastructure/http/session-csrf.guard.js";
+import { SessionCsrfHttpController } from "./infrastructure/http/session-csrf-http.controller.js";
+import { SessionHttpController } from "./infrastructure/http/session-http.controller.js";
 import { StructuredLoginAbuseMetricsAdapter } from "./infrastructure/observability/structured-login-abuse-metrics.adapter.js";
 import { SessionsModule } from "./sessions.module.js";
 import { LOGIN_ABUSE_METRICS_PORT, LOGIN_ABUSE_PROTECTION_PORT } from "./sessions.tokens.js";
@@ -16,6 +22,7 @@ import { LOGIN_ABUSE_METRICS_PORT, LOGIN_ABUSE_PROTECTION_PORT } from "./session
 const MODULE_METADATA = Object.freeze({
   imports: "imports",
   providers: "providers",
+  controllers: "controllers",
   exports: "exports",
 });
 
@@ -79,6 +86,28 @@ test("composes distributed login abuse protection with bounded telemetry", () =>
 
   const sessionExports = metadata<unknown>(MODULE_METADATA.exports, SessionsModule);
   assert.ok(sessionExports.includes(LOGIN_ABUSE_PROTECTION_PORT));
+});
+
+test("wires the session HTTP controller and device-management use cases", () => {
+  const controllers = metadata<unknown>(MODULE_METADATA.controllers, SessionsModule);
+  assert.ok(controllers.includes(SessionHttpController));
+
+  const providers = metadata<FactoryProvider>(MODULE_METADATA.providers, SessionsModule);
+  assert.ok(providers.some((provider) => provider.provide === ListSessionsUseCase));
+  assert.ok(providers.some((provider) => provider.provide === RevokeOtherSessionsUseCase));
+  assert.ok(providers.some((provider) => provider.provide === RefreshSessionUseCase));
+});
+
+test("wires session CSRF issuance and enforcement into the runtime module", () => {
+  const controllers = metadata<unknown>(MODULE_METADATA.controllers, SessionsModule);
+  assert.ok(controllers.includes(SessionCsrfHttpController));
+  assert.equal(Reflect.getMetadata("path", SessionCsrfHttpController), "auth/session");
+
+  const providers = metadata<unknown>(MODULE_METADATA.providers, SessionsModule);
+  assert.ok(providers.includes(SessionCsrfGuard));
+
+  const guards = metadata<unknown>("__guards__", SessionHttpController);
+  assert.ok(guards.includes(SessionCsrfGuard));
 });
 
 test("orders trusted tenant resolution before session authentication", () => {

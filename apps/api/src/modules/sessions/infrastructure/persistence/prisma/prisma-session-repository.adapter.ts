@@ -5,6 +5,7 @@ import type {
   CreateSessionRecord,
   FindSessionInput,
   MarkSessionCompromisedInput,
+  RevokeOtherSessionsInput,
   RevokeSessionInput,
   RotateSessionInput,
   RotationResult,
@@ -392,6 +393,40 @@ export class PrismaSessionRepositoryAdapter implements SessionRepositoryPort {
       const sessionIds = activeSessions.map((session) => session.id);
       const result = await transaction.authSession.updateMany({
         where: { id: { in: sessionIds } },
+        data: {
+          state: "revoked",
+          revokedAt: input.revokedAt,
+          revocationReason: input.reason,
+          compromisedAt: null,
+          version: { increment: 1 },
+          updatedAt: input.revokedAt,
+        },
+      });
+      await transaction.authSessionToken.updateMany({
+        where: { sessionId: { in: sessionIds }, revokedAt: null },
+        data: { revokedAt: input.revokedAt },
+      });
+      return result.count;
+    });
+  }
+
+  async revokeOthersForUser(input: RevokeOtherSessionsInput): Promise<number> {
+    return this.prisma.$transaction(async (transaction) => {
+      const activeSessions = await transaction.authSession.findMany({
+        where: {
+          userId: input.userId,
+          id: { not: input.exceptSessionId },
+          revokedAt: null,
+        },
+        select: { id: true },
+      });
+      if (activeSessions.length === 0) {
+        return 0;
+      }
+
+      const sessionIds = activeSessions.map((session) => session.id);
+      const result = await transaction.authSession.updateMany({
+        where: { id: { in: sessionIds }, revokedAt: null },
         data: {
           state: "revoked",
           revokedAt: input.revokedAt,

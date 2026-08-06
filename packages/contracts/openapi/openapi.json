@@ -13,6 +13,18 @@
         ],
         "type": "object"
       },
+      "ActorDto": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
       "CompletedResponseDto": {
         "properties": {
           "completed": {
@@ -50,6 +62,21 @@
           "scopeType",
           "token",
           "newPassword"
+        ],
+        "type": "object"
+      },
+      "CurrentAuthenticationResponseDto": {
+        "properties": {
+          "actor": {
+            "$ref": "#/components/schemas/ActorDto"
+          },
+          "session": {
+            "$ref": "#/components/schemas/PublicSessionDto"
+          }
+        },
+        "required": [
+          "actor",
+          "session"
         ],
         "type": "object"
       },
@@ -116,6 +143,36 @@
         ],
         "type": "object"
       },
+      "LoginRequestDto": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "type": "string"
+          },
+          "password": {
+            "minLength": 1,
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object"
+      },
+      "LogoutResponseDto": {
+        "properties": {
+          "loggedOut": {
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "loggedOut"
+        ],
+        "type": "object"
+      },
       "PreAuthCsrfResponseDto": {
         "properties": {
           "csrfToken": {
@@ -129,6 +186,30 @@
         "required": [
           "csrfToken",
           "expiresAt"
+        ],
+        "type": "object"
+      },
+      "PublicSessionDto": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/SessionScopeDto"
+          },
+          "state": {
+            "enum": [
+              "active",
+              "invitation_pending"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "scope"
         ],
         "type": "object"
       },
@@ -153,6 +234,138 @@
         "required": [
           "scopeType",
           "email"
+        ],
+        "type": "object"
+      },
+      "RevokeDeviceResponseDto": {
+        "properties": {
+          "revoked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "revoked"
+        ],
+        "type": "object"
+      },
+      "RevokeOtherSessionsResponseDto": {
+        "properties": {
+          "revokedCount": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "revokedCount"
+        ],
+        "type": "object"
+      },
+      "SessionCsrfResponseDto": {
+        "properties": {
+          "csrfToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "csrfToken"
+        ],
+        "type": "object"
+      },
+      "SessionListResponseDto": {
+        "properties": {
+          "sessions": {
+            "items": {
+              "$ref": "#/components/schemas/SessionSummaryDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "sessions"
+        ],
+        "type": "object"
+      },
+      "SessionResponseDto": {
+        "properties": {
+          "session": {
+            "$ref": "#/components/schemas/PublicSessionDto"
+          }
+        },
+        "required": [
+          "session"
+        ],
+        "type": "object"
+      },
+      "SessionScopeDto": {
+        "properties": {
+          "tenantId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "platform",
+              "tenant"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "SessionSummaryDto": {
+        "properties": {
+          "absoluteExpiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "current": {
+            "type": "boolean"
+          },
+          "hostname": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "idleExpiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "lastSeenAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/SessionScopeDto"
+          },
+          "state": {
+            "enum": [
+              "active",
+              "invitation_pending",
+              "compromised",
+              "revoked"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "scope",
+          "hostname",
+          "state",
+          "current",
+          "createdAt",
+          "lastSeenAt",
+          "idleExpiresAt",
+          "absoluteExpiresAt"
         ],
         "type": "object"
       }
@@ -240,6 +453,82 @@
         ]
       }
     },
+    "/api/auth/login": {
+      "post": {
+        "operationId": "loginSession",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "logoutSession",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "operationId": "getCurrentSession",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentAuthenticationResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
     "/api/auth/password/forgot": {
       "post": {
         "operationId": "requestPasswordReset",
@@ -307,6 +596,126 @@
         "summary": "",
         "tags": [
           "identity"
+        ]
+      }
+    },
+    "/api/auth/session/csrf": {
+      "get": {
+        "operationId": "getSessionCsrf",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionCsrfResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/api/auth/session/refresh": {
+      "post": {
+        "operationId": "refreshSession",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/api/auth/sessions": {
+      "get": {
+        "operationId": "listSessions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionListResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/api/auth/sessions/{sessionId}": {
+      "delete": {
+        "operationId": "revokeSession",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevokeDeviceResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/api/auth/sessions/revoke-others": {
+      "post": {
+        "operationId": "revokeOtherSessions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevokeOtherSessionsResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "sessions"
         ]
       }
     },
