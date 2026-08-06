@@ -13,8 +13,9 @@ import type {
   VerifyCredentialInput,
 } from "../../../application/ports/credential-verifier.port.js";
 
-function userStatus(status: "pendingActivation" | "active" | "suspended" | "disabled"):
-  CredentialUserStatus {
+function userStatus(
+  status: "pendingActivation" | "active" | "suspended" | "disabled",
+): CredentialUserStatus {
   return status === "pendingActivation" ? "pending_activation" : status;
 }
 
