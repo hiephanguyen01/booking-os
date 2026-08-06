@@ -1,40 +1,15 @@
-export type SessionScope =
-  | { readonly type: "platform" }
-  | { readonly type: "tenant"; readonly tenantId: string };
+import type {
+  SessionScope,
+  StoredSession,
+} from "../../domain/auth-session.js";
+import type { StoredSessionToken } from "../../domain/auth-session-token.js";
 
-export type SessionState = "active" | "invitation_pending" | "compromised" | "revoked";
-
-export interface StoredSession {
-  readonly id: string;
-  readonly userId: string;
-  readonly scope: SessionScope;
-  readonly hostname: string;
-  readonly state: SessionState;
-  readonly authorizationVersion: number;
-  readonly version: number;
-  readonly idleExpiresAt: Date;
-  readonly absoluteExpiresAt: Date;
-  readonly lastSeenAt: Date;
-  readonly revokedAt: Date | null;
-  readonly revocationReason: string | null;
-  readonly compromisedAt: Date | null;
-  readonly createdAt: Date;
-  readonly updatedAt: Date;
-}
-
-export interface StoredSessionToken {
-  readonly id: string;
-  readonly sessionId: string;
-  readonly selector: string;
-  readonly tokenHash: string;
-  readonly issuedAt: Date;
-  readonly expiresAt: Date;
-  readonly replacedAt: Date | null;
-  readonly overlapUntil: Date | null;
-  readonly successorTokenId: string | null;
-  readonly reuseDetectedAt: Date | null;
-  readonly revokedAt: Date | null;
-}
+export type {
+  SessionScope,
+  SessionState,
+  StoredSession,
+} from "../../domain/auth-session.js";
+export type { StoredSessionToken } from "../../domain/auth-session-token.js";
 
 export interface StoredSessionWithToken {
   readonly session: StoredSession;
