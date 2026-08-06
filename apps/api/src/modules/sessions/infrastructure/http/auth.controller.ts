@@ -9,18 +9,16 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 
-import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
+import type { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import type { RequestHeaders } from "../../../../common/request-context/request-context.types.js";
-import type { SessionScope, StoredSession } from "../../application/ports/session-repository.port.js";
-import {
-  InvalidLoginError,
-  type LoginInput,
-} from "../../application/use-cases/login.use-case.js";
+import type {
+  SessionScope,
+  StoredSession,
+} from "../../application/ports/session-repository.port.js";
+import { InvalidLoginError, type LoginInput } from "../../application/use-cases/login.use-case.js";
 
 interface LoginExecutor {
-  execute(
-    input: LoginInput,
-  ): Promise<{ readonly token: string; readonly session: StoredSession }>;
+  execute(input: LoginInput): Promise<{ readonly token: string; readonly session: StoredSession }>;
 }
 
 export interface LoginRequestBody {
@@ -67,9 +65,7 @@ function effectiveHostname(headers: RequestHeaders, trustProxy: boolean): string
 }
 
 function trustedScope(context: { readonly tenantId?: string }): SessionScope {
-  return context.tenantId
-    ? { type: "tenant", tenantId: context.tenantId }
-    : { type: "platform" };
+  return context.tenantId ? { type: "tenant", tenantId: context.tenantId } : { type: "platform" };
 }
 
 @Controller("auth")
