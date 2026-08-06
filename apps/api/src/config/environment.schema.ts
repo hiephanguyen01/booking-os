@@ -298,10 +298,7 @@ export type ValidatedEnvironment = z.output<typeof environmentSchema>;
 
 export type IdentitySecurityConfig = ValidatedEnvironment["identitySecurity"];
 
-export type Environment = Omit<
-  ValidatedEnvironment,
-  "identitySecurity" | "sessionAllowedOrigins"
-> &
+export type Environment = Omit<ValidatedEnvironment, "identitySecurity" | "sessionAllowedOrigins"> &
   Partial<Pick<ValidatedEnvironment, "identitySecurity" | "sessionAllowedOrigins">>;
 
 export type RawEnvironment = z.input<typeof environmentSchema>;
