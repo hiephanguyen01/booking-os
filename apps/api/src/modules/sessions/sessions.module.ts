@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { StructuredLogger } from "@booking-os/observability";
-import { Module } from "@nestjs/common";
+import { type MiddlewareConsumer, Module, type NestModule } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 
 import { RequestContextModule } from "../../common/request-context/request-context.module.js";
@@ -208,4 +208,10 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
     SessionAuthMiddleware,
   ],
 })
-export class SessionsModule {}
+export class SessionsModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply(SessionAuthMiddleware)
+      .forRoutes(SessionHttpController, SessionCsrfHttpController);
+  }
+}
