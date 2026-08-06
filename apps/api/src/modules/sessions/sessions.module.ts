@@ -19,14 +19,17 @@ import type { SessionRepositoryPort } from "./application/ports/session-reposito
 import type { SessionSubjectPort } from "./application/ports/session-subject.port.js";
 import { CreateSessionUseCase } from "./application/use-cases/create-session.js";
 import { GetCurrentSessionUseCase } from "./application/use-cases/get-current-session.use-case.js";
+import { ListSessionsUseCase } from "./application/use-cases/list-sessions.js";
 import { LoginUseCase } from "./application/use-cases/login.use-case.js";
 import { RefreshSessionUseCase } from "./application/use-cases/refresh-session.js";
+import { RevokeOtherSessionsUseCase } from "./application/use-cases/revoke-other-sessions.js";
 import { RevokeSessionUseCase } from "./application/use-cases/revoke-session.js";
 import { ValidateSessionUseCase } from "./application/use-cases/validate-session.js";
 import {
   type LoginAbuseRedisClient,
   RedisLoginAbuseProtectionAdapter,
 } from "./infrastructure/abuse/redis-login-abuse-protection.adapter.js";
+import { AuthController } from "./infrastructure/http/auth.controller.js";
 import { SessionAuthMiddleware } from "./infrastructure/http/session-auth.middleware.js";
 import { SessionRequiredGuard } from "./infrastructure/http/session-required.guard.js";
 import { StructuredLoginAbuseMetricsAdapter } from "./infrastructure/observability/structured-login-abuse-metrics.adapter.js";
@@ -51,6 +54,7 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
 
 @Module({
   imports: [DatabaseModule, DependenciesModule, RequestContextModule],
+  controllers: [AuthController],
   providers: [
     {
       provide: SESSION_REPOSITORY_PORT,
@@ -130,6 +134,20 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
       ): RevokeSessionUseCase => new RevokeSessionUseCase(repository, audit),
     },
     {
+      provide: ListSessionsUseCase,
+      inject: [SESSION_REPOSITORY_PORT],
+      useFactory: (repository: SessionRepositoryPort): ListSessionsUseCase =>
+        new ListSessionsUseCase(repository),
+    },
+    {
+      provide: RevokeOtherSessionsUseCase,
+      inject: [SESSION_REPOSITORY_PORT, SESSION_SECURITY_AUDIT_PORT],
+      useFactory: (
+        repository: SessionRepositoryPort,
+        audit: SessionSecurityAuditPort,
+      ): RevokeOtherSessionsUseCase => new RevokeOtherSessionsUseCase(repository, audit),
+    },
+    {
       provide: LoginUseCase,
       inject: [
         CREDENTIAL_VERIFIER_PORT,
@@ -180,6 +198,8 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
     ValidateSessionUseCase,
     RefreshSessionUseCase,
     RevokeSessionUseCase,
+    ListSessionsUseCase,
+    RevokeOtherSessionsUseCase,
     LoginUseCase,
     GetCurrentSessionUseCase,
     SessionAuthMiddleware,
