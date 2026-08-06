@@ -1,4 +1,4 @@
-import { serializeSessionCookie } from "@booking-os/auth";
+import { serializeExpiredSessionCookie, serializeSessionCookie } from "@booking-os/auth";
 import {
   BadRequestException,
   Body,
@@ -6,6 +6,7 @@ import {
   Post,
   Req,
   Res,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from "@nestjs/common";
 
@@ -16,9 +17,15 @@ import type {
   StoredSession,
 } from "../../application/ports/session-repository.port.js";
 import { InvalidLoginError, type LoginInput } from "../../application/use-cases/login.use-case.js";
+import type { RevokeSessionInput } from "../../application/use-cases/revoke-session.js";
+import { SessionRequired } from "./session-required.decorator.js";
 
 interface LoginExecutor {
   execute(input: LoginInput): Promise<{ readonly token: string; readonly session: StoredSession }>;
+}
+
+interface RevokeSessionExecutor {
+  execute(input: RevokeSessionInput): Promise<{ readonly revoked: boolean }>;
 }
 
 export interface LoginRequestBody {
@@ -48,6 +55,10 @@ export interface LoginResponse {
   };
 }
 
+export interface LogoutResponse {
+  readonly loggedOut: true;
+}
+
 function firstHeaderValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -74,6 +85,7 @@ export class AuthController {
     private readonly loginUseCase: LoginExecutor,
     private readonly requestContext: RequestContextStorage,
     private readonly options: AuthControllerOptions,
+    private readonly revokeSessionUseCase?: RevokeSessionExecutor,
   ) {}
 
   @Post("login")
@@ -114,5 +126,25 @@ export class AuthController {
       }
       throw error;
     }
+  }
+
+  @SessionRequired()
+  @Post("logout")
+  async logout(@Res({ passthrough: true }) response: HeaderResponse): Promise<LogoutResponse> {
+    response.setHeader("Cache-Control", "private, no-store");
+
+    const authenticated = this.requestContext.requireAuthenticated();
+    if (!this.revokeSessionUseCase) {
+      throw new ServiceUnavailableException("Logout is unavailable.");
+    }
+
+    await this.revokeSessionUseCase.execute({
+      sessionId: authenticated.sessionId,
+      userId: authenticated.actorId,
+      reason: "logout",
+      requestId: authenticated.requestId,
+    });
+    response.setHeader("Set-Cookie", serializeExpiredSessionCookie());
+    return { loggedOut: true };
   }
 }
