@@ -188,3 +188,36 @@ test("logs out idempotently, revokes the current session, and expires the host c
   assert.equal(headers.get("set-cookie"), serializeExpiredSessionCookie());
   assert.equal(headers.get("cache-control"), "private, no-store");
 });
+
+test("returns only trusted current authentication state with private no-store", () => {
+  const storage = new RequestContextStorage();
+  const controller = new AuthController(
+    { execute: async () => assert.fail("login must not run") },
+    storage,
+    { trustProxy: false },
+  ) as AuthController & {
+    me(response: { setHeader(name: string, value: string): void }): {
+      readonly actor: { readonly id: string };
+      readonly session: {
+        readonly id: string;
+        readonly state: "active" | "invitation_pending";
+        readonly scope: { readonly type: "platform" } | { readonly type: "tenant"; tenantId: string };
+      };
+    };
+  };
+  const { headers, response } = responseHeaders();
+
+  storage.run(AUTHENTICATED_CONTEXT, () => {
+    assert.deepEqual(controller.me(response), {
+      actor: { id: USER_ID },
+      session: {
+        id: SESSION_ID,
+        state: "active",
+        scope: { type: "platform" },
+      },
+    });
+  });
+
+  assert.equal(headers.get("cache-control"), "private, no-store");
+  assert.equal(headers.has("set-cookie"), false);
+});
