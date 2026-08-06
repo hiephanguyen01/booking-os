@@ -7,6 +7,7 @@ import { DatabaseModule } from "./database/database.module.js";
 import { DependenciesModule } from "./dependencies/dependencies.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { IdentityModule } from "./modules/identity/identity.module.js";
+import { SessionsModule } from "./modules/sessions/sessions.module.js";
 import { TenancyModule } from "./modules/tenancy/tenancy.module.js";
 import { ObservabilityModule } from "./observability/observability.module.js";
 import { ReliabilityModule } from "./reliability/reliability.module.js";
@@ -21,6 +22,7 @@ import { ReliabilityModule } from "./reliability/reliability.module.js";
     DatabaseModule,
     HealthModule,
     IdentityModule,
+    SessionsModule,
     TenancyModule,
     ReliabilityModule,
   ],
