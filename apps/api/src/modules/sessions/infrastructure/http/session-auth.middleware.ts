@@ -82,6 +82,7 @@ export class SessionAuthMiddleware implements NestMiddleware {
         sessionId: authenticated.sessionId,
         authScope: authenticated.authScope,
         sessionState: authenticated.sessionState,
+        authorizationVersion: authenticated.authorizationVersion,
       };
 
       this.requestContext.run(authenticatedContext, next);
