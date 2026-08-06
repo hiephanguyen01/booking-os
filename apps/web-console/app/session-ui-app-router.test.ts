@@ -8,3 +8,9 @@ test("login exposes an App Router page and same-origin BFF route", async () => {
   assert.equal(typeof page.default, "function");
   assert.equal(typeof route.POST, "function");
 });
+
+test("session security exposes an App Router page", async () => {
+  const page = await import("./security/sessions/page.js");
+
+  assert.equal(typeof page.default, "function");
+});
