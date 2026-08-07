@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { MembershipDataSession } from "../ports/membership-data-session.js";
-import type { PlatformTenantProvisioningTransactionPort } from "../ports/platform-tenant-provisioning-transaction.port.js";
+import type {
+  PlatformTenantProvisioningDataSession,
+  PlatformTenantProvisioningTransactionPort,
+} from "../ports/platform-tenant-provisioning-transaction.port.js";
 import type {
   ProvisionPlatformTenantInput,
   ProvisionPlatformTenantResult,
@@ -41,6 +43,7 @@ const COMMITTED_RESULT: ProvisionPlatformTenantResult = Object.freeze({
 });
 
 test("replays a completed provisioning request without entering tenant scope", async () => {
+  let identityCalls = 0;
   let runTenantCalls = 0;
   let completeCalls = 0;
   const idempotency: TenantProvisioningIdempotencyPort = {
@@ -61,9 +64,18 @@ test("replays a completed provisioning request without entering tenant scope", a
     async run(work) {
       return work({
         idempotency,
+        identity: {
+          async findOrCreatePendingIdentity() {
+            identityCalls += 1;
+            throw new Error("identity must not be resolved for an idempotent replay");
+          },
+          async issueTenantActivation() {
+            identityCalls += 1;
+          },
+        },
         async runTenant<T>(
           _tenantId: string,
-          _tenantWork: (session: MembershipDataSession) => Promise<T>,
+          _tenantWork: (session: PlatformTenantProvisioningDataSession) => Promise<T>,
         ): Promise<T> {
           runTenantCalls += 1;
           throw new Error("tenant scope must not be entered for an idempotent replay");
@@ -76,6 +88,7 @@ test("replays a completed provisioning request without entering tenant scope", a
   const result = await workflow.provision(INPUT);
 
   assert.deepEqual(result, COMMITTED_RESULT);
+  assert.equal(identityCalls, 0);
   assert.equal(runTenantCalls, 0);
   assert.equal(completeCalls, 0);
 });
@@ -173,7 +186,12 @@ test("provisions an existing owner inside one target-tenant scope before complet
         calls.push("audit:append");
       },
     },
-  } as unknown as MembershipDataSession;
+    outbox: {
+      async append() {
+        calls.push("outbox:append");
+      },
+    },
+  } as unknown as PlatformTenantProvisioningDataSession;
 
   const idempotency: TenantProvisioningIdempotencyPort = {
     async claim() {
@@ -196,7 +214,7 @@ test("provisions an existing owner inside one target-tenant scope before complet
       return work({
         idempotency,
         identity: {
-          async findOrCreatePendingIdentity(input: Record<string, unknown>) {
+          async findOrCreatePendingIdentity(input) {
             calls.push("identity:resolve");
             assert.deepEqual(input, {
               normalizedEmail: INPUT.normalizedOwnerEmail,
@@ -211,30 +229,17 @@ test("provisions an existing owner inside one target-tenant scope before complet
         },
         async runTenant<T>(
           tenantId: string,
-          tenantWork: (tenantSession: MembershipDataSession) => Promise<T>,
+          tenantWork: (tenantSession: PlatformTenantProvisioningDataSession) => Promise<T>,
         ): Promise<T> {
           calls.push("tenant:scope");
           assert.equal(tenantId, TENANT_ID);
           return tenantWork(session);
         },
-      } as never);
+      });
     },
   };
 
-  const Workflow = PlatformTenantProvisioningWorkflow as unknown as new (
-    transaction: PlatformTenantProvisioningTransactionPort,
-    dependencies: {
-      createTenantId: () => string;
-      invitationTokens: {
-        issue(input: Record<string, unknown>): {
-          selector: string;
-          serialized: string;
-          tokenHash: string;
-        };
-      };
-    },
-  ) => PlatformTenantProvisioningWorkflow;
-  const workflow = new Workflow(transaction, {
+  const workflow = new PlatformTenantProvisioningWorkflow(transaction, {
     createTenantId: () => TENANT_ID,
     invitationTokens: {
       issue(input) {
