@@ -12,20 +12,14 @@ test("sample console session uses the tenant administrator role", () => {
 
 test("sample tenant administrator can invite tenant administrators", () => {
   assert.equal(
-    hasPermission(
-      sampleTenantAdminSession.user.role,
-      PERMISSION_KEYS.tenantMembershipAdminInvite,
-    ),
+    hasPermission(sampleTenantAdminSession.user.role, PERMISSION_KEYS.tenantMembershipAdminInvite),
     true,
   );
 });
 
 test("sample tenant administrator cannot promote owners", () => {
   assert.equal(
-    hasPermission(
-      sampleTenantAdminSession.user.role,
-      PERMISSION_KEYS.tenantMembershipOwnerPromote,
-    ),
+    hasPermission(sampleTenantAdminSession.user.role, PERMISSION_KEYS.tenantMembershipOwnerPromote),
     false,
   );
 });
