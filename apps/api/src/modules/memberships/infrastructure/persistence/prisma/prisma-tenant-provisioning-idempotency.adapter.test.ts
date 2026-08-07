@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { TenantProvisioningIdempotencyConflictError } from "../../../domain/membership-errors.js";
+import {
+  MembershipError,
+  TenantProvisioningIdempotencyConflictError,
+} from "../../../domain/membership-errors.js";
 import { PrismaTenantProvisioningIdempotencyAdapter } from "./prisma-tenant-provisioning-idempotency.adapter.js";
 
 const now = new Date("2026-08-07T05:20:00.000Z");
@@ -109,6 +112,24 @@ test("rejects reusing an idempotency key with a different payload", async () => 
       now,
     }),
     TenantProvisioningIdempotencyConflictError,
+  );
+});
+
+test("reports an in-progress idempotency key as a stable domain conflict", async () => {
+  const transaction = new RecordingTransaction();
+  transaction.results.push([]);
+  transaction.results.push([completedRow({ status: "in_progress", completedAt: null })]);
+  const adapter = new PrismaTenantProvisioningIdempotencyAdapter(transaction);
+
+  await assert.rejects(
+    adapter.claim({
+      key: "create-acme",
+      requestHash,
+      actorUserId: "10000000-0000-4000-8000-000000000001",
+      now,
+    }),
+    (error: unknown) =>
+      error instanceof MembershipError && error.code === "TENANT_PROVISIONING_IN_PROGRESS",
   );
 });
 

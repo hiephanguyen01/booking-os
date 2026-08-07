@@ -8,6 +8,9 @@ import {
   MembershipRequiredError,
   RoleGrantNotAllowedError,
   TenantNotAvailableError,
+  TenantProvisioningConflictError,
+  TenantProvisioningIdempotencyConflictError,
+  TenantProvisioningInProgressError,
 } from "./membership-errors.js";
 
 const cases = [
@@ -17,6 +20,9 @@ const cases = [
   [RoleGrantNotAllowedError, "ROLE_GRANT_NOT_ALLOWED"],
   [LastTenantOwnerError, "LAST_TENANT_OWNER"],
   [TenantNotAvailableError, "TENANT_NOT_AVAILABLE"],
+  [TenantProvisioningConflictError, "TENANT_PROVISIONING_CONFLICT"],
+  [TenantProvisioningIdempotencyConflictError, "TENANT_PROVISIONING_IDEMPOTENCY_CONFLICT"],
+  [TenantProvisioningInProgressError, "TENANT_PROVISIONING_IN_PROGRESS"],
 ] as const;
 
 for (const [ErrorType, code] of cases) {

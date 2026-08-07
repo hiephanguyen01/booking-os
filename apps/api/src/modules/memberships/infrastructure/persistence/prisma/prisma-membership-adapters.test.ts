@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-
+import { MembershipError } from "../../../domain/membership-errors.js";
 import { PrismaInvitationRepositoryAdapter } from "./prisma-invitation-repository.adapter.js";
 import { PrismaMembershipRepositoryAdapter } from "./prisma-membership-repository.adapter.js";
 import { PrismaTenantOutboxAdapter } from "./prisma-tenant-outbox.adapter.js";
@@ -169,4 +169,28 @@ test("tenant outbox append is bound to the constructed tenant", async () => {
   assert.ok(transaction.executions[0]?.values.includes(tenantId));
   assert.ok(transaction.executions[0]?.values.includes("membership.owner_invitation.requested.v1"));
   assert.ok(transaction.executions[0]?.values.includes(invitationId));
+});
+
+test("maps tenant slug and hostname unique violations to a stable provisioning conflict", async () => {
+  const uniqueViolation = Object.assign(new Error("duplicate key"), { code: "23505" });
+  const transaction = {
+    async $queryRawUnsafe() {
+      throw uniqueViolation;
+    },
+    async $executeRawUnsafe() {
+      throw uniqueViolation;
+    },
+  };
+  const tenants = new PrismaTenantProvisioningRepositoryAdapter(transaction as never, tenantId);
+
+  for (const operation of [
+    () => tenants.createProvisioning({ slug: "acme", name: "Acme", now }),
+    () => tenants.addPrimaryDomain("acme.example.test", now),
+  ]) {
+    await assert.rejects(
+      operation(),
+      (error: unknown) =>
+        error instanceof MembershipError && error.code === "TENANT_PROVISIONING_CONFLICT",
+    );
+  }
 });

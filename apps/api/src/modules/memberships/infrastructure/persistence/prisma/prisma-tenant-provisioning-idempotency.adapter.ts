@@ -4,7 +4,10 @@ import type {
   CompleteTenantProvisioningInput,
   TenantProvisioningIdempotencyPort,
 } from "../../../application/ports/tenant-provisioning-idempotency.port.js";
-import { TenantProvisioningIdempotencyConflictError } from "../../../domain/membership-errors.js";
+import {
+  TenantProvisioningIdempotencyConflictError,
+  TenantProvisioningInProgressError,
+} from "../../../domain/membership-errors.js";
 import type { MembershipPrismaTransaction } from "./prisma-membership-transaction.js";
 
 type InsertedRow = Readonly<{ inserted: boolean }>;
@@ -28,7 +31,7 @@ function requireCompletedResult(row: ProvisioningRequestRow): ClaimTenantProvisi
     row.ownerInvitationId === null ||
     row.completedAt === null
   ) {
-    throw new Error("Tenant provisioning request is already in progress.");
+    throw new TenantProvisioningInProgressError();
   }
 
   return {

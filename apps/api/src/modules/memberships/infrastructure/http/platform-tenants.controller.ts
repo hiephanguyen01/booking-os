@@ -1,18 +1,21 @@
 import {
   BadRequestException,
   Body,
+  ConflictException,
   Controller,
   ForbiddenException,
   Get,
   Headers,
   HttpCode,
   Inject,
+  NotFoundException,
   Param,
   Post,
   Req,
   UseGuards,
 } from "@nestjs/common";
 import {
+  ApiAcceptedResponse,
   ApiBody,
   ApiHeader,
   ApiOkResponse,
@@ -38,6 +41,12 @@ import {
 } from "../../application/use-cases/provision-tenant.use-case.js";
 import { ResendOwnerInvitationUseCase } from "../../application/use-cases/resend-owner-invitation.use-case.js";
 import {
+  TenantNotAvailableError,
+  TenantProvisioningConflictError,
+  TenantProvisioningIdempotencyConflictError,
+  TenantProvisioningInProgressError,
+} from "../../domain/membership-errors.js";
+import {
   OwnerInvitationResendResponseDto,
   ProvisionTenantRequestDto,
   TenantProvisioningResponseDto,
@@ -61,9 +70,27 @@ function effectiveHostname(headers: RequestHeaders, trustProxy: boolean): string
   return bracketed?.[1] ?? normalized.replace(/:\d+$/, "");
 }
 
-function requireNonEmpty(value: string | undefined, field: string): string {
-  const normalized = value?.trim();
+function requireNonEmpty(value: unknown, field: string): string {
+  const normalized = typeof value === "string" ? value.trim() : undefined;
   if (!normalized) throw new BadRequestException(`${field} is required.`);
+  return normalized;
+}
+
+function requireUuid(value: unknown, field: string): string {
+  const normalized = requireNonEmpty(value, field);
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(normalized)
+  ) {
+    throw new BadRequestException(`${field} must be a UUID.`);
+  }
+  return normalized;
+}
+
+function requireEmail(value: unknown, field: string): string {
+  const normalized = requireNonEmpty(value, field);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+    throw new BadRequestException(`${field} must be an email address.`);
+  }
   return normalized;
 }
 
@@ -99,15 +126,17 @@ export class PlatformTenantsController {
     const hostname = effectiveHostname(request.headers, this.environment.trustProxy);
     if (!hostname) throw new BadRequestException("A valid host is required.");
     const authorization = await this.buildAuthorization(authenticated);
-    return this.provision.execute({
-      authorization,
-      hostname,
-      idempotencyKey: requireNonEmpty(idempotencyKey, "Idempotency-Key"),
-      slug: requireNonEmpty(body.slug, "slug"),
-      tenantName: requireNonEmpty(body.tenantName, "tenantName"),
-      ownerEmail: requireNonEmpty(body.ownerEmail, "ownerEmail"),
-      requestId: authenticated.requestId,
-    });
+    return this.executeProvisioning(() =>
+      this.provision.execute({
+        authorization,
+        hostname,
+        idempotencyKey: requireNonEmpty(idempotencyKey, "Idempotency-Key"),
+        slug: requireNonEmpty(body?.slug, "slug"),
+        tenantName: requireNonEmpty(body?.tenantName, "tenantName"),
+        ownerEmail: requireEmail(body?.ownerEmail, "ownerEmail"),
+        requestId: authenticated.requestId,
+      }),
+    );
   }
 
   @SessionRequired()
@@ -119,11 +148,13 @@ export class PlatformTenantsController {
     const authenticated = this.requestContext.requireAuthenticated();
     const hostname = effectiveHostname(request.headers, this.environment.trustProxy);
     if (!hostname) throw new BadRequestException("A valid host is required.");
-    return this.getProvisioning.execute({
-      authorization: await this.buildAuthorization(authenticated),
-      hostname,
-      tenantId: requireNonEmpty(tenantId, "tenantId"),
-    });
+    return this.executeProvisioning(async () =>
+      this.getProvisioning.execute({
+        authorization: await this.buildAuthorization(authenticated),
+        hostname,
+        tenantId: requireUuid(tenantId, "tenantId"),
+      }),
+    );
   }
 
   @SessionRequired()
@@ -131,7 +162,7 @@ export class PlatformTenantsController {
   @HttpCode(202)
   @ApiOperation({ operationId: "resendPlatformTenantOwnerInvitation" })
   @ApiParam({ name: "tenantId", type: String, format: "uuid" })
-  @ApiOkResponse({ type: OwnerInvitationResendResponseDto })
+  @ApiAcceptedResponse({ type: OwnerInvitationResendResponseDto })
   async resendOwnerInvitation(
     @Param("tenantId") tenantId: string,
     @Req() request: PlatformTenantRequest,
@@ -139,12 +170,14 @@ export class PlatformTenantsController {
     const authenticated = this.requestContext.requireAuthenticated();
     const hostname = effectiveHostname(request.headers, this.environment.trustProxy);
     if (!hostname) throw new BadRequestException("A valid host is required.");
-    return this.resend.execute({
-      authorization: await this.buildAuthorization(authenticated),
-      hostname,
-      tenantId: requireNonEmpty(tenantId, "tenantId"),
-      requestId: authenticated.requestId,
-    });
+    return this.executeProvisioning(async () =>
+      this.resend.execute({
+        authorization: await this.buildAuthorization(authenticated),
+        hostname,
+        tenantId: requireUuid(tenantId, "tenantId"),
+        requestId: authenticated.requestId,
+      }),
+    );
   }
 
   private async buildAuthorization(
@@ -159,6 +192,38 @@ export class PlatformTenantsController {
       if (error instanceof PlatformTenantProvisioningError) {
         throw new ForbiddenException("Platform authorization is required.");
       }
+      throw error;
+    }
+  }
+
+  private async executeProvisioning<T>(operation: () => Promise<T>): Promise<T> {
+    try {
+      return await operation();
+    } catch (error: unknown) {
+      if (error instanceof PlatformTenantProvisioningError) {
+        switch (error.code) {
+          case "TENANT_SLUG_INVALID":
+            throw new BadRequestException("Tenant provisioning input is invalid.");
+          case "PLATFORM_HOST_REQUIRED":
+            throw new NotFoundException();
+          case "PLATFORM_SCOPE_REQUIRED":
+          case "PLATFORM_PERMISSION_REQUIRED":
+            throw new ForbiddenException("Platform authorization is required.");
+        }
+      }
+
+      if (error instanceof TenantNotAvailableError) {
+        throw new NotFoundException();
+      }
+
+      if (
+        error instanceof TenantProvisioningConflictError ||
+        error instanceof TenantProvisioningIdempotencyConflictError ||
+        error instanceof TenantProvisioningInProgressError
+      ) {
+        throw new ConflictException("Tenant provisioning conflicts with an existing request.");
+      }
+
       throw error;
     }
   }

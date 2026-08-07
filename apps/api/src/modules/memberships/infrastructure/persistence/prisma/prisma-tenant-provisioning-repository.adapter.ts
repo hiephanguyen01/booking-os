@@ -5,7 +5,10 @@ import type {
   ProvisioningTenantStatus,
   TenantProvisioningRepositoryPort,
 } from "../../../application/ports/tenant-provisioning.port.js";
-import { TenantNotAvailableError } from "../../../domain/membership-errors.js";
+import {
+  TenantNotAvailableError,
+  TenantProvisioningConflictError,
+} from "../../../domain/membership-errors.js";
 import type { MembershipPrismaTransaction } from "./prisma-membership-transaction.js";
 
 interface TenantRow {
@@ -16,6 +19,15 @@ interface TenantRow {
 }
 
 const TENANT_COLUMNS = `"id", "slug", "name", "status"::text AS "status"`;
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error.code === "23505" || error.code === "P2002")
+  );
+}
 
 function firstTenant(rows: readonly TenantRow[]): ProvisioningTenant | null {
   const row = rows[0];
@@ -66,28 +78,42 @@ export class PrismaTenantProvisioningRepositoryAdapter implements TenantProvisio
   }
 
   async createProvisioning(input: CreateProvisioningTenantInput): Promise<NewlyProvisionedTenant> {
-    const rows = await this.transaction.$queryRawUnsafe<readonly TenantRow[]>(
-      `INSERT INTO "tenants" ("id", "slug", "name", "status", "created_at")
-       VALUES ($1::uuid, $2, $3, 'provisioning'::tenant_status, $4::timestamptz)
-       RETURNING ${TENANT_COLUMNS}`,
-      this.tenantId,
-      input.slug,
-      input.name,
-      input.now,
-    );
-    return requireNewlyProvisionedTenant(rows);
+    try {
+      const rows = await this.transaction.$queryRawUnsafe<readonly TenantRow[]>(
+        `INSERT INTO "tenants" ("id", "slug", "name", "status", "created_at")
+         VALUES ($1::uuid, $2, $3, 'provisioning'::tenant_status, $4::timestamptz)
+         RETURNING ${TENANT_COLUMNS}`,
+        this.tenantId,
+        input.slug,
+        input.name,
+        input.now,
+      );
+      return requireNewlyProvisionedTenant(rows);
+    } catch (error: unknown) {
+      if (isUniqueConstraintError(error)) {
+        throw new TenantProvisioningConflictError();
+      }
+      throw error;
+    }
   }
 
   async addPrimaryDomain(hostname: string, now: Date): Promise<void> {
-    await this.transaction.$executeRawUnsafe(
-      `INSERT INTO "tenant_domains" (
-         "id", "tenant_id", "hostname", "is_primary", "created_at"
-       )
-       VALUES (gen_random_uuid(), $1::uuid, $2, TRUE, $3::timestamptz)`,
-      this.tenantId,
-      hostname,
-      now,
-    );
+    try {
+      await this.transaction.$executeRawUnsafe(
+        `INSERT INTO "tenant_domains" (
+           "id", "tenant_id", "hostname", "is_primary", "created_at"
+         )
+         VALUES (gen_random_uuid(), $1::uuid, $2, TRUE, $3::timestamptz)`,
+        this.tenantId,
+        hostname,
+        now,
+      );
+    } catch (error: unknown) {
+      if (isUniqueConstraintError(error)) {
+        throw new TenantProvisioningConflictError();
+      }
+      throw error;
+    }
   }
 
   async activate(_now: Date): Promise<void> {

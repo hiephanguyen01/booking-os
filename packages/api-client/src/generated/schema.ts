@@ -773,7 +773,7 @@ export interface operations {
         };
         readonly requestBody?: never;
         readonly responses: {
-            readonly 200: {
+            readonly 202: {
                 headers: {
                     readonly [name: string]: unknown;
                 };

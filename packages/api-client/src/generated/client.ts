@@ -71,7 +71,7 @@ export interface GeneratedClient {
   readonly getHealth: (options?: GeneratedRequestOptions) => Promise<operations["getHealth"]["responses"][200]["content"]["application/json"]>;
   readonly provisionPlatformTenant: (parameters: ProvisionPlatformTenantParameters, options?: GeneratedRequestOptions) => Promise<operations["provisionPlatformTenant"]["responses"][200]["content"]["application/json"]>;
   readonly getPlatformTenantProvisioning: (parameters: GetPlatformTenantProvisioningParameters, options?: GeneratedRequestOptions) => Promise<operations["getPlatformTenantProvisioning"]["responses"][200]["content"]["application/json"]>;
-  readonly resendPlatformTenantOwnerInvitation: (parameters: ResendPlatformTenantOwnerInvitationParameters, options?: GeneratedRequestOptions) => Promise<operations["resendPlatformTenantOwnerInvitation"]["responses"][200]["content"]["application/json"]>;
+  readonly resendPlatformTenantOwnerInvitation: (parameters: ResendPlatformTenantOwnerInvitationParameters, options?: GeneratedRequestOptions) => Promise<operations["resendPlatformTenantOwnerInvitation"]["responses"][202]["content"]["application/json"]>;
   readonly getReadiness: (options?: GeneratedRequestOptions) => Promise<operations["getReadiness"]["responses"][200]["content"]["application/json"]>;
 }
 
@@ -175,7 +175,7 @@ export function createGeneratedClient(transport: GeneratedTransport): GeneratedC
       }, options);
     },
     async resendPlatformTenantOwnerInvitation(parameters, options) {
-      return transport<operations["resendPlatformTenantOwnerInvitation"]["responses"][200]["content"]["application/json"]>({
+      return transport<operations["resendPlatformTenantOwnerInvitation"]["responses"][202]["content"]["application/json"]>({
       method: "POST",
       path: `/api/platform/tenants/${encodeURIComponent(String(parameters.path.tenantId))}/owner-invitation/resend`,
       }, options);

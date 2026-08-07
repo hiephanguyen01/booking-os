@@ -5,7 +5,9 @@ export const MEMBERSHIP_ERROR_CODES = {
   roleGrantNotAllowed: "ROLE_GRANT_NOT_ALLOWED",
   lastTenantOwner: "LAST_TENANT_OWNER",
   tenantNotAvailable: "TENANT_NOT_AVAILABLE",
+  tenantProvisioningConflict: "TENANT_PROVISIONING_CONFLICT",
   tenantProvisioningIdempotencyConflict: "TENANT_PROVISIONING_IDEMPOTENCY_CONFLICT",
+  tenantProvisioningInProgress: "TENANT_PROVISIONING_IN_PROGRESS",
 } as const;
 
 export type MembershipErrorCode =
@@ -57,8 +59,20 @@ export class TenantNotAvailableError extends MembershipError {
   }
 }
 
+export class TenantProvisioningConflictError extends MembershipError {
+  constructor() {
+    super(MEMBERSHIP_ERROR_CODES.tenantProvisioningConflict);
+  }
+}
+
 export class TenantProvisioningIdempotencyConflictError extends MembershipError {
   constructor() {
     super(MEMBERSHIP_ERROR_CODES.tenantProvisioningIdempotencyConflict);
+  }
+}
+
+export class TenantProvisioningInProgressError extends MembershipError {
+  constructor() {
+    super(MEMBERSHIP_ERROR_CODES.tenantProvisioningInProgress);
   }
 }
