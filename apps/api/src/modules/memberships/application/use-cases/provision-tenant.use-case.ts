@@ -8,6 +8,8 @@ import type {
   ProvisionPlatformTenantResult,
 } from "../ports/platform-tenant-provisioning-workflow.port.js";
 
+type TenantProvisioningWorkflow = Pick<PlatformTenantProvisioningWorkflowPort, "provision">;
+
 export type PlatformTenantProvisioningErrorCode =
   | "PLATFORM_SCOPE_REQUIRED"
   | "PLATFORM_PERMISSION_REQUIRED"
@@ -92,7 +94,7 @@ function provisioningRequestHash(
 
 export class ProvisionTenantUseCase {
   constructor(
-    private readonly workflow: PlatformTenantProvisioningWorkflowPort,
+    private readonly workflow: TenantProvisioningWorkflow,
     private readonly config: PlatformTenantProvisioningConfig,
     private readonly clock: () => Date = () => new Date(),
   ) {}
