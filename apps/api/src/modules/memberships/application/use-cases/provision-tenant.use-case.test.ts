@@ -51,6 +51,9 @@ function createHarness() {
         replayed: false,
       };
     },
+    async resendOwnerInvitation() {
+      throw new Error("not used");
+    },
   };
   const useCase = new ProvisionTenantUseCase(
     workflow,
