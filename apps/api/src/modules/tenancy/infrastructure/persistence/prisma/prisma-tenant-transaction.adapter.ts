@@ -2,9 +2,8 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 import type { TenantExecutionContext } from "@booking-os/contracts";
 import { Inject, Injectable } from "@nestjs/common";
-
-import { PrismaTenantDataSessionFactory } from "../../../../../database/prisma-tenant-data-session.factory.js";
 import { PrismaService } from "../../../../../database/prisma.service.js";
+import { PrismaTenantDataSessionFactory } from "../../../../../database/prisma-tenant-data-session.factory.js";
 import type {
   TenantDataSession,
   TenantTransactionPort,
