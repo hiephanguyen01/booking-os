@@ -10,7 +10,5 @@ export interface SessionElevationResult {
 }
 
 export interface SessionElevationPort {
-  elevateInvitationSession(
-    input: ElevateInvitationSessionInput,
-  ): Promise<SessionElevationResult>;
+  elevateInvitationSession(input: ElevateInvitationSessionInput): Promise<SessionElevationResult>;
 }
