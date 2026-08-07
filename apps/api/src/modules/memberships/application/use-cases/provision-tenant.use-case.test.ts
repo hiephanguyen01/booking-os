@@ -24,7 +24,9 @@ const PLATFORM_AUTHORIZATION: AuthorizationContext = Object.freeze({
 
 const NOW = new Date("2026-08-07T05:00:00.000Z");
 
-function command(overrides: Partial<Parameters<ProvisionTenantUseCase["execute"]>[0]> = {}) {
+function command(
+  overrides: Partial<Parameters<ProvisionTenantUseCase["execute"]>[0]> = {},
+) {
   return {
     authorization: PLATFORM_AUTHORIZATION,
     hostname: "platform.booking.test",
@@ -74,7 +76,8 @@ test("rejects a tenant-scoped actor before persistence", async () => {
   await assert.rejects(
     useCase.execute(command({ authorization })),
     (error: unknown) =>
-      error instanceof PlatformTenantProvisioningError && error.code === "PLATFORM_SCOPE_REQUIRED",
+      error instanceof PlatformTenantProvisioningError &&
+      error.code === "PLATFORM_SCOPE_REQUIRED",
   );
   assert.equal(calls.length, 0);
 });
@@ -89,7 +92,8 @@ test("rejects an actor without platform tenant provisioning permission", async (
   await assert.rejects(
     useCase.execute(command({ authorization })),
     (error: unknown) =>
-      error instanceof PlatformTenantProvisioningError && error.code === "PLATFORM_PERMISSION_REQUIRED",
+      error instanceof PlatformTenantProvisioningError &&
+      error.code === "PLATFORM_PERMISSION_REQUIRED",
   );
   assert.equal(calls.length, 0);
 });
@@ -100,7 +104,8 @@ test("requires the exact primary platform hostname", async () => {
   await assert.rejects(
     useCase.execute(command({ hostname: "acme.booking.test" })),
     (error: unknown) =>
-      error instanceof PlatformTenantProvisioningError && error.code === "PLATFORM_HOST_REQUIRED",
+      error instanceof PlatformTenantProvisioningError &&
+      error.code === "PLATFORM_HOST_REQUIRED",
   );
   assert.equal(calls.length, 0);
 });
