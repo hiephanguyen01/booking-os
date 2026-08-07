@@ -3,9 +3,8 @@ import test from "node:test";
 
 import { PERMISSION_KEYS } from "@booking-os/auth";
 import type { AuthorizationContext } from "@booking-os/contracts";
-
-import { PlatformTenantProvisioningError } from "./provision-tenant.use-case.js";
 import { GetTenantProvisioningUseCase } from "./get-tenant-provisioning.use-case.js";
+import { PlatformTenantProvisioningError } from "./provision-tenant.use-case.js";
 
 const PLATFORM_AUTHORIZATION: AuthorizationContext = Object.freeze({
   userId: "10000000-0000-4000-8000-000000000001",
