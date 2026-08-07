@@ -135,19 +135,22 @@ test("normalizes input and delegates one idempotent provisioning workflow", asyn
     ownerInvitationId: "50000000-0000-4000-8000-000000000001",
     replayed: false,
   });
-  assert.deepEqual(calls, [
-    {
-      actorUserId: PLATFORM_AUTHORIZATION.userId,
-      idempotencyKey: "create-tenant-acme-20260807",
-      slug: "acme",
-      tenantName: "Acme Ltd",
-      ownerEmail: "Owner@Example.COM",
-      normalizedOwnerEmail: "owner@example.com",
-      tenantHostname: "acme.booking.test",
-      requestId: "request-1",
-      now: NOW,
-    },
-  ]);
+  assert.equal(calls.length, 1);
+  const call = calls[0];
+  assert.ok(call);
+  const { requestHash, ...workflowInput } = call;
+  assert.match(requestHash, /^[a-f0-9]{64}$/);
+  assert.deepEqual(workflowInput, {
+    actorUserId: PLATFORM_AUTHORIZATION.userId,
+    idempotencyKey: "create-tenant-acme-20260807",
+    slug: "acme",
+    tenantName: "Acme Ltd",
+    ownerEmail: "Owner@Example.COM",
+    normalizedOwnerEmail: "owner@example.com",
+    tenantHostname: "acme.booking.test",
+    requestId: "request-1",
+    now: NOW,
+  });
 });
 
 test("derives a stable request hash from the canonical provisioning payload", async () => {
@@ -157,10 +160,7 @@ test("derives a stable request hash from the canonical provisioning payload", as
   await useCase.execute(command({ ownerEmail: " owner@example.com " }));
   await useCase.execute(command({ tenantName: "Acme Holdings" }));
 
-  const requestHashes = calls.map(
-    (call) =>
-      (call as ProvisionPlatformTenantInput & { readonly requestHash?: string }).requestHash,
-  );
+  const requestHashes = calls.map((call) => call.requestHash);
 
   assert.match(requestHashes[0] ?? "", /^[a-f0-9]{64}$/);
   assert.equal(requestHashes[1], requestHashes[0]);
