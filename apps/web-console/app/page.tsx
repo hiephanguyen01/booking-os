@@ -1,10 +1,10 @@
 import { createApiClient } from "@booking-os/api-client";
-import { hasPermission, PERMISSIONS } from "@booking-os/auth";
+import { hasPermission, PERMISSION_KEYS } from "@booking-os/auth";
 import { getMessage } from "@booking-os/i18n";
 import { StatusCard } from "@booking-os/ui";
 
 import { resolveAppConfig } from "../src/app-config";
-import { samplePartnerSession } from "../src/sample-session";
+import { sampleTenantAdminSession } from "../src/sample-session";
 import { type ApiServiceStatus, resolveApiServiceStatus } from "../src/service-status";
 
 export const dynamic = "force-dynamic";
@@ -24,9 +24,9 @@ async function loadApiStatus(apiBaseUrl: string): Promise<ApiServiceStatus> {
 export default async function ConsolePage() {
   const config = resolveAppConfig();
   const apiStatus = await loadApiStatus(config.apiBaseUrl);
-  const canManageListings = hasPermission(
-    samplePartnerSession.user.role,
-    PERMISSIONS.listingManage,
+  const canInviteAdministrators = hasPermission(
+    sampleTenantAdminSession.user.role,
+    PERMISSION_KEYS.tenantMembershipAdminInvite,
   );
   const statusDescription =
     apiStatus.state === "healthy"
@@ -51,18 +51,20 @@ export default async function ConsolePage() {
 
         <article className="session-card" aria-labelledby="session-title">
           <p className="card-eyebrow">{getMessage(config.locale, "console.session.title")}</p>
-          <h2 id="session-title">{samplePartnerSession.user.displayName}</h2>
+          <h2 id="session-title">{sampleTenantAdminSession.user.displayName}</h2>
           <dl>
             <div>
               <dt>Role</dt>
-              <dd>{samplePartnerSession.user.role}</dd>
+              <dd>{sampleTenantAdminSession.user.role}</dd>
             </div>
             <div>
-              <dt>Listing permission</dt>
+              <dt>Membership permission</dt>
               <dd>
                 {getMessage(
                   config.locale,
-                  canManageListings ? "console.permission.allowed" : "console.permission.denied",
+                  canInviteAdministrators
+                    ? "console.permission.allowed"
+                    : "console.permission.denied",
                 )}
               </dd>
             </div>
