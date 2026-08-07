@@ -1,9 +1,8 @@
-import { type MiddlewareConsumer, Module, type NestModule } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 
+import { SessionCsrfGuard } from "../../common/security/session-csrf.guard.js";
 import { EnvironmentService } from "../../config/environment.service.js";
 import { DatabaseModule } from "../../database/database.module.js";
-import { SessionAuthMiddleware } from "../sessions/infrastructure/http/session-auth.middleware.js";
-import { SessionsModule } from "../sessions/sessions.module.js";
 import type { MembershipInvitationEnvelopePort } from "./application/ports/membership-invitation-envelope.port.js";
 import type { MembershipInvitationTokenPort } from "./application/ports/membership-invitation-token.port.js";
 import type { PlatformAuthorizationPort } from "./application/ports/platform-authorization.port.js";
@@ -37,9 +36,10 @@ import {
 } from "./memberships.tokens.js";
 
 @Module({
-  imports: [DatabaseModule, SessionsModule],
+  imports: [DatabaseModule],
   controllers: [PlatformTenantsController],
   providers: [
+    SessionCsrfGuard,
     {
       provide: PLATFORM_AUTHORIZATION_PORT,
       useClass: PrismaPlatformAuthorizationAdapter,
@@ -157,8 +157,4 @@ import {
     BuildPlatformAuthorizationContextUseCase,
   ],
 })
-export class MembershipsModule implements NestModule {
-  configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(SessionAuthMiddleware).forRoutes(PlatformTenantsController);
-  }
-}
+export class MembershipsModule {}

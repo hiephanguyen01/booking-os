@@ -24,9 +24,9 @@ import {
 import { SupportedApi } from "../../../../api-visibility/api-visibility.decorator.js";
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import type { RequestHeaders } from "../../../../common/request-context/request-context.types.js";
+import { SessionCsrfGuard } from "../../../../common/security/session-csrf.guard.js";
+import { SessionRequired } from "../../../../common/security/session-required.decorator.js";
 import { EnvironmentService } from "../../../../config/environment.service.js";
-import { SessionCsrfGuard } from "../../../sessions/infrastructure/http/session-csrf.guard.js";
-import { SessionRequired } from "../../../sessions/infrastructure/http/session-required.decorator.js";
 import {
   BuildPlatformAuthorizationContextUseCase,
   PlatformAuthorizationDeniedError,
