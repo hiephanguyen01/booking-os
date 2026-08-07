@@ -21,6 +21,19 @@ export type ProvisionPlatformTenantResult = Readonly<{
   replayed: boolean;
 }>;
 
+export type GetPlatformTenantProvisioningInput = Readonly<{
+  actorUserId: string;
+  tenantId: string;
+}>;
+
+export type GetPlatformTenantProvisioningResult = Omit<ProvisionPlatformTenantResult, "replayed">;
+
 export interface PlatformTenantProvisioningWorkflowPort {
   provision(input: ProvisionPlatformTenantInput): Promise<ProvisionPlatformTenantResult>;
+}
+
+export interface PlatformTenantProvisioningQueryPort {
+  getProvisioning(
+    input: GetPlatformTenantProvisioningInput,
+  ): Promise<GetPlatformTenantProvisioningResult>;
 }
