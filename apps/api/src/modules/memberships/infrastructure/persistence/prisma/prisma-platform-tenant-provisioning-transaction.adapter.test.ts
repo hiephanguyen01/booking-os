@@ -34,7 +34,7 @@ function createHarness() {
       }
       throw new Error(`Unexpected query: ${sql}`);
     },
-    async $executeRawUnsafe(sql) {
+    async $executeRawUnsafe(sql, ...values) {
       if (sql === "SET LOCAL ROLE booking_app") {
         operations.push("role:tenant");
         return 0;
@@ -42,6 +42,10 @@ function createHarness() {
       if (sql === "SET LOCAL ROLE NONE") {
         operations.push("role:global");
         return 0;
+      }
+      if (sql.includes('INSERT INTO "outbox_events"')) {
+        operations.push(`outbox:${String(values[1])}:${String(values[0])}`);
+        return 1;
       }
       if (sql.includes('UPDATE "tenant_provisioning_requests"')) {
         operations.push("idempotency:complete");
@@ -125,6 +129,34 @@ test("keeps idempotency claim, tenant RLS writes, and completion in one transact
     "tenant:work",
     "role:global",
     "idempotency:complete",
+  ]);
+});
+
+test("provides a tenant-bound outbox inside the provisioning transaction", async () => {
+  const harness = createHarness();
+  const eventId = "550e8400-e29b-41d4-a716-446655440040";
+
+  await harness.adapter.run(async (context) => {
+    await context.runTenant(tenantId, async (session) => {
+      await session.outbox.append({
+        id: eventId,
+        type: "membership.owner_invitation.requested.v1",
+        aggregateType: "membership_invitation",
+        aggregateId: "550e8400-e29b-41d4-a716-446655440030",
+        payload: { version: 1 },
+        occurredAt: now,
+      });
+    });
+  });
+
+  assert.equal(harness.transactionCount(), 1);
+  assert.deepEqual(harness.operations, [
+    "transaction",
+    "role:tenant",
+    `tenant:${tenantId}`,
+    `factory:${tenantId}`,
+    `outbox:${tenantId}:${eventId}`,
+    "role:global",
   ]);
 });
 
