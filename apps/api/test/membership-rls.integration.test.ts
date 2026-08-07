@@ -164,6 +164,7 @@ test("tenant rows deny missing context and cross-tenant access while platform as
   const tenantAUserId = await createUser();
   const tenantBUserId = await createUser();
   const platformUserId = await createUser();
+  const unrelatedPlatformUserId = await createUser();
   await seedTenantRows(tenantAId, tenantAUserId);
   await seedTenantRows(tenantBId, tenantBUserId);
 
@@ -181,6 +182,19 @@ test("tenant rows deny missing context and cross-tenant access while platform as
       )
       VALUES (
         ${randomUUID()}::uuid, ${platformUserId}::uuid, ${platformRoleId}::uuid,
+        'platform'::role_scope_level, CURRENT_TIMESTAMP
+      )
+    `,
+  );
+  await runAsRole(
+    "booking_platform_app",
+    undefined,
+    (transaction) => transaction.$executeRaw`
+      INSERT INTO "role_assignments" (
+        "id", "user_id", "role_id", "scope_level", "created_at"
+      )
+      VALUES (
+        ${randomUUID()}::uuid, ${unrelatedPlatformUserId}::uuid, ${platformRoleId}::uuid,
         'platform'::role_scope_level, CURRENT_TIMESTAMP
       )
     `,
