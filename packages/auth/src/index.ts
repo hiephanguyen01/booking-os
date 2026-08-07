@@ -13,6 +13,12 @@ export {
 } from "./csrf-token.js";
 export { normalizeEmail } from "./email-normalization.js";
 export {
+  canGrantRole,
+  type GrantAction,
+  type GrantDecision,
+  type GrantRoleInput,
+} from "./grant-policy.js";
+export {
   type CreateOneTimeTokenOptions,
   createOneTimeToken,
   type DeriveOneTimeTokenDigestOptions,
@@ -46,8 +52,13 @@ export {
   type PasswordPolicyErrorCode,
   type PasswordPolicyOptions,
 } from "./password-policy.js";
-export { PERMISSIONS, type Permission } from "./permissions.js";
-export { ROLES, type Role } from "./roles.js";
+export {
+  PERMISSION_KEYS,
+  PERMISSIONS,
+  type Permission,
+  type PermissionKey,
+} from "./permissions.js";
+export { ROLES, SYSTEM_ROLES, type Role, type SystemRole } from "./roles.js";
 export {
   type DecryptSensitiveEnvelopeOptions,
   decryptSensitiveEnvelope,
