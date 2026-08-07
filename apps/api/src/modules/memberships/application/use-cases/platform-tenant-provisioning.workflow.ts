@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import type { MembershipInvitationEnvelopePort } from "../ports/membership-invitation-envelope.port.js";
 import type { MembershipInvitationTokenPort } from "../ports/membership-invitation-token.port.js";
 import type { PlatformTenantProvisioningTransactionPort } from "../ports/platform-tenant-provisioning-transaction.port.js";
 import type {
@@ -11,7 +12,9 @@ const INVITATION_TTL_MS = 24 * 60 * 60 * 1000;
 
 export interface PlatformTenantProvisioningWorkflowDependencies {
   readonly createTenantId?: () => string;
+  readonly createOutboxEventId?: () => string;
   readonly invitationTokens?: MembershipInvitationTokenPort;
+  readonly invitationEnvelope?: MembershipInvitationEnvelopePort;
 }
 
 const unavailableInvitationTokens: MembershipInvitationTokenPort = Object.freeze({
@@ -20,16 +23,26 @@ const unavailableInvitationTokens: MembershipInvitationTokenPort = Object.freeze
   },
 });
 
+const unavailableInvitationEnvelope: MembershipInvitationEnvelopePort = Object.freeze({
+  seal() {
+    throw new Error("Membership invitation envelope sealer is not configured.");
+  },
+});
+
 export class PlatformTenantProvisioningWorkflow {
   private readonly createTenantId: () => string;
+  private readonly createOutboxEventId: () => string;
   private readonly invitationTokens: MembershipInvitationTokenPort;
+  private readonly invitationEnvelope: MembershipInvitationEnvelopePort;
 
   constructor(
     private readonly transaction: PlatformTenantProvisioningTransactionPort,
     dependencies: PlatformTenantProvisioningWorkflowDependencies = {},
   ) {
     this.createTenantId = dependencies.createTenantId ?? randomUUID;
+    this.createOutboxEventId = dependencies.createOutboxEventId ?? randomUUID;
     this.invitationTokens = dependencies.invitationTokens ?? unavailableInvitationTokens;
+    this.invitationEnvelope = dependencies.invitationEnvelope ?? unavailableInvitationEnvelope;
   }
 
   async provision(input: ProvisionPlatformTenantInput): Promise<ProvisionPlatformTenantResult> {
@@ -81,6 +94,31 @@ export class PlatformTenantProvisioningWorkflow {
           expiresAt: invitationExpiresAt,
           invitedByUserId: input.actorUserId,
           now: input.now,
+        });
+        const outboxEventId = this.createOutboxEventId();
+        const envelope = this.invitationEnvelope.seal({
+          eventId: outboxEventId,
+          tenantId,
+          invitationId: invitation.id,
+          userId: ownerIdentity.userId,
+          hostname: input.tenantHostname,
+          normalizedEmail: input.normalizedOwnerEmail,
+          intendedRoleKey: "tenant_owner",
+          serializedToken: invitationToken.serialized,
+        });
+        await session.outbox.append({
+          id: outboxEventId,
+          type: "membership.owner_invitation.requested.v1",
+          aggregateType: "membership_invitation",
+          aggregateId: invitation.id,
+          payload: {
+            version: 1,
+            recipient: input.normalizedOwnerEmail,
+            hostname: input.tenantHostname,
+            purpose: "membership_invitation",
+            envelope,
+          },
+          occurredAt: input.now,
         });
         await session.audit.append({
           eventType: "membership.invited",
