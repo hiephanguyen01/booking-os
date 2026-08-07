@@ -1,8 +1,8 @@
 import {
-  type PermissionKey,
   PERMISSION_KEYS,
-  type SystemRole,
+  type PermissionKey,
   SYSTEM_ROLES,
+  type SystemRole,
 } from "@booking-os/auth";
 
 import type {

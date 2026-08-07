@@ -6,6 +6,9 @@ import type {
   PlatformTenantProvisioningDataSession,
   PlatformTenantProvisioningTransactionPort,
 } from "../ports/platform-tenant-provisioning-transaction.port.js";
+import type { TenantActivationEnvelopePort } from "../ports/tenant-activation-envelope.port.js";
+import type { TenantActivationTokenPort } from "../ports/tenant-activation-token.port.js";
+import type { TenantAdminInvitationEnvelopePort } from "../ports/tenant-admin-invitation-envelope.port.js";
 import type {
   CurrentInvitationWorkflowResult,
   GetCurrentInvitationWorkflowInput,
@@ -13,9 +16,6 @@ import type {
   ResendTenantAdminInvitationWorkflowInput,
   TenantAdminInvitationWorkflowPort,
 } from "../ports/tenant-admin-invitation-workflow.port.js";
-import type { TenantActivationEnvelopePort } from "../ports/tenant-activation-envelope.port.js";
-import type { TenantActivationTokenPort } from "../ports/tenant-activation-token.port.js";
-import type { TenantAdminInvitationEnvelopePort } from "../ports/tenant-admin-invitation-envelope.port.js";
 
 const INVITATION_TTL_MS = 24 * 60 * 60 * 1000;
 const ADMIN_INVITATION_EVENT = "membership.admin_invitation.requested.v1" as const;
@@ -38,7 +38,9 @@ export class TenantAdminInvitationWorkflow implements TenantAdminInvitationWorkf
     this.createOutboxEventId = dependencies.createOutboxEventId ?? randomUUID;
   }
 
-  async inviteTenantAdmin(input: InviteTenantAdminWorkflowInput): Promise<{ readonly accepted: true }> {
+  async inviteTenantAdmin(
+    input: InviteTenantAdminWorkflowInput,
+  ): Promise<{ readonly accepted: true }> {
     return this.transaction.run(async (context) => {
       const identity = await context.identity.findOrCreatePendingIdentity({
         normalizedEmail: input.normalizedEmail,
@@ -149,8 +151,7 @@ export class TenantAdminInvitationWorkflow implements TenantAdminInvitationWorkf
         session.invitations.lockPendingById(input.invitationId),
       );
       if (
-        !locked ||
-        !locked.invitedUserId ||
+        !locked?.invitedUserId ||
         locked.intendedRoleKey !== "tenant_admin" ||
         locked.hostname !== input.hostname
       ) {
@@ -251,7 +252,7 @@ export class TenantAdminInvitationWorkflow implements TenantAdminInvitationWorkf
     return this.transaction.run((context) =>
       context.runTenant(input.tenantId, async (session) => {
         const invitation = await session.invitations.findCurrentForUser(input.userId);
-        if (!invitation || !invitation.invitedUserId) return null;
+        if (!invitation?.invitedUserId) return null;
         return Object.freeze({
           id: invitation.id,
           tenantId: invitation.tenantId,

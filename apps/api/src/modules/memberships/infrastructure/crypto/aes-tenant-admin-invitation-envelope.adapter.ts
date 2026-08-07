@@ -8,9 +8,7 @@ import type {
 
 const encoder = new TextEncoder();
 
-export class AesTenantAdminInvitationEnvelopeAdapter
-  implements TenantAdminInvitationEnvelopePort
-{
+export class AesTenantAdminInvitationEnvelopeAdapter implements TenantAdminInvitationEnvelopePort {
   private readonly keyring: Readonly<Record<string, Uint8Array>>;
 
   constructor(

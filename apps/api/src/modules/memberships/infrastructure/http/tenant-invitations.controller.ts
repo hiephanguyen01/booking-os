@@ -169,7 +169,10 @@ export class TenantInvitationsController {
   }
 
   private mapMutationError(error: unknown): never {
-    if (error instanceof TenantAuthorizationDeniedError || error instanceof RoleGrantNotAllowedError) {
+    if (
+      error instanceof TenantAuthorizationDeniedError ||
+      error instanceof RoleGrantNotAllowedError
+    ) {
       throw new ForbiddenException("Tenant membership administration is required.");
     }
     if (error instanceof InvitationInvalidOrExpiredError) throw new NotFoundException();
