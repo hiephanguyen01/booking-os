@@ -12,6 +12,20 @@ import { PrismaTenantProvisioningIdempotencyAdapter } from "./prisma-tenant-prov
 
 const APPLICATION_DATABASE_ROLE = "booking_app";
 
+function isTransactionAbortedError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "P2010" &&
+    "meta" in error &&
+    typeof error.meta === "object" &&
+    error.meta !== null &&
+    "code" in error.meta &&
+    error.meta.code === "25P02"
+  );
+}
+
 @Injectable()
 export class PrismaPlatformTenantProvisioningTransactionAdapter
   implements PlatformTenantProvisioningTransactionPort
@@ -37,6 +51,7 @@ export class PrismaPlatformTenantProvisioningTransactionAdapter
         ): Promise<Result> => {
           await transaction.$executeRawUnsafe(`SET LOCAL ROLE ${APPLICATION_DATABASE_ROLE}`);
 
+          let result: Result;
           try {
             await transaction.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
             const dataSession = this.sessionFactory.create(transaction, tenantId);
@@ -44,10 +59,18 @@ export class PrismaPlatformTenantProvisioningTransactionAdapter
               ...dataSession,
               outbox: new PrismaTenantOutboxAdapter(transaction, tenantId),
             });
-            return await tenantWork(session);
-          } finally {
-            await transaction.$executeRawUnsafe("SET LOCAL ROLE NONE");
+            result = await tenantWork(session);
+          } catch (error: unknown) {
+            try {
+              await transaction.$executeRawUnsafe("SET LOCAL ROLE NONE");
+            } catch (resetError: unknown) {
+              if (!isTransactionAbortedError(resetError)) throw resetError;
+            }
+            throw error;
           }
+
+          await transaction.$executeRawUnsafe("SET LOCAL ROLE NONE");
+          return result;
         },
       });
 

@@ -62,7 +62,7 @@ export class PrismaTenantProvisioningIdempotencyAdapter
          "created_at",
          "updated_at"
        )
-       VALUES ($1, $2, $3, 'in_progress', $4, $4)
+       VALUES ($1, $2, $3::uuid, 'in_progress', $4, $4)
        ON CONFLICT ("idempotency_key") DO NOTHING
        RETURNING TRUE AS "inserted"`,
       input.key,
@@ -105,10 +105,10 @@ export class PrismaTenantProvisioningIdempotencyAdapter
     await this.transaction.$executeRawUnsafe(
       `UPDATE "tenant_provisioning_requests"
        SET "status" = 'completed',
-           "tenant_id" = $3,
+           "tenant_id" = $3::uuid,
            "tenant_slug" = $4,
-           "owner_membership_id" = $5,
-           "owner_invitation_id" = $6,
+           "owner_membership_id" = $5::uuid,
+           "owner_invitation_id" = $6::uuid,
            "completed_at" = $7,
            "updated_at" = $7
        WHERE "idempotency_key" = $1

@@ -3,6 +3,7 @@ import test from "node:test";
 
 import type { PrismaService } from "../../../../../database/prisma.service.js";
 import type { MembershipDataSession } from "../../../application/ports/membership-data-session.js";
+import { TenantProvisioningConflictError } from "../../../domain/membership-errors.js";
 import { PrismaPlatformTenantProvisioningTransactionAdapter } from "./prisma-platform-tenant-provisioning-transaction.adapter.js";
 
 const tenantId = "550e8400-e29b-41d4-a716-446655440001";
@@ -23,7 +24,7 @@ type AdapterConstructor = new (
   sessionFactory: SessionFactory,
 ) => PrismaPlatformTenantProvisioningTransactionAdapter;
 
-function createHarness() {
+function createHarness(options: { readonly resetError?: Error } = {}) {
   const operations: string[] = [];
   let transactions = 0;
   const transaction: FakeTransaction = {
@@ -41,6 +42,7 @@ function createHarness() {
       }
       if (sql === "SET LOCAL ROLE NONE") {
         operations.push("role:global");
+        if (options.resetError) throw options.resetError;
         return 0;
       }
       if (sql.includes('INSERT INTO "outbox_events"')) {
@@ -182,5 +184,31 @@ test("restores the global role when tenant work fails but the outer workflow han
     `factory:${tenantId}`,
     "role:global",
     "outer:handled",
+  ]);
+});
+
+test("preserves a tenant domain conflict when PostgreSQL rejects role reset in an aborted transaction", async () => {
+  const transactionAborted = Object.assign(new Error("transaction aborted"), {
+    code: "P2010",
+    meta: { code: "25P02" },
+  });
+  const harness = createHarness({ resetError: transactionAborted });
+  const conflict = new TenantProvisioningConflictError();
+
+  await assert.rejects(
+    harness.adapter.run((context) =>
+      context.runTenant(tenantId, async () => {
+        throw conflict;
+      }),
+    ),
+    (error: unknown) => error === conflict,
+  );
+
+  assert.deepEqual(harness.operations, [
+    "transaction",
+    "role:tenant",
+    `tenant:${tenantId}`,
+    `factory:${tenantId}`,
+    "role:global",
   ]);
 });

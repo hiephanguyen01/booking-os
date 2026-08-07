@@ -1,5 +1,5 @@
 import { readSessionToken } from "@booking-os/auth";
-import { Inject, Injectable, type NestMiddleware } from "@nestjs/common";
+import { Inject, Injectable, type NestMiddleware, UnauthorizedException } from "@nestjs/common";
 
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import type {
@@ -85,6 +85,10 @@ export class SessionAuthMiddleware implements NestMiddleware {
 
       this.requestContext.run(authenticatedContext, next);
     } catch (error: unknown) {
+      if (error instanceof SessionUnavailableError) {
+        next(new UnauthorizedException("Authentication is required."));
+        return;
+      }
       next(error);
     }
   }

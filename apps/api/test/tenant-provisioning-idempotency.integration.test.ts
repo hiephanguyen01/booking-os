@@ -1,12 +1,22 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import test, { after } from "node:test";
 
 import { PrismaClient } from "@prisma/client";
 
+import { PrismaTenantProvisioningIdempotencyAdapter } from "../src/modules/memberships/infrastructure/persistence/prisma/prisma-tenant-provisioning-idempotency.adapter.js";
+
 const prisma = new PrismaClient();
+const createdKeys: string[] = [];
 
 after(async () => {
-  await prisma.$disconnect();
+  try {
+    await prisma.tenantProvisioningRequest.deleteMany({
+      where: { idempotencyKey: { in: createdKeys } },
+    });
+  } finally {
+    await prisma.$disconnect();
+  }
 });
 
 test("tenant provisioning idempotency has a durable replay schema", async () => {
@@ -69,4 +79,47 @@ test("tenant provisioning idempotency has a durable replay schema", async () => 
     ORDER BY key_column.ordinality
   `;
   assert.deepEqual(primaryKey, [{ column_name: "idempotency_key" }]);
+});
+
+test("the real idempotency adapter claims and completes UUID-backed results", async () => {
+  const idempotencyKey = `idempotency-adapter-${randomUUID()}`;
+  const actorUserId = randomUUID();
+  const tenantId = randomUUID();
+  const ownerMembershipId = randomUUID();
+  const ownerInvitationId = randomUUID();
+  createdKeys.push(idempotencyKey);
+
+  const result = await prisma.$transaction(async (transaction) => {
+    const adapter = new PrismaTenantProvisioningIdempotencyAdapter(transaction);
+    const claim = await adapter.claim({
+      key: idempotencyKey,
+      requestHash: "a".repeat(64),
+      actorUserId,
+      now: new Date("2026-08-08T01:00:00.000Z"),
+    });
+    await adapter.complete({
+      key: idempotencyKey,
+      requestHash: "a".repeat(64),
+      result: {
+        tenantId,
+        slug: "focused-idempotency",
+        status: "provisioning",
+        ownerMembershipId,
+        ownerInvitationId,
+        replayed: false,
+      },
+      completedAt: new Date("2026-08-08T01:01:00.000Z"),
+    });
+    return claim;
+  });
+
+  assert.deepEqual(result, { status: "claimed" });
+  const stored = await prisma.tenantProvisioningRequest.findUniqueOrThrow({
+    where: { idempotencyKey },
+  });
+  assert.equal(stored.actorUserId, actorUserId);
+  assert.equal(stored.status, "completed");
+  assert.equal(stored.tenantId, tenantId);
+  assert.equal(stored.ownerMembershipId, ownerMembershipId);
+  assert.equal(stored.ownerInvitationId, ownerInvitationId);
 });

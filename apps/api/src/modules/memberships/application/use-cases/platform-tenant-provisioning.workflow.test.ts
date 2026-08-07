@@ -344,6 +344,7 @@ test("provisions an existing owner inside one target-tenant scope before complet
 
 test("replaces a pending owner invitation and persists the same activation token that was delivered", async () => {
   const calls: string[] = [];
+  let tenantScopeDepth = 0;
   const replacementId = "50000000-0000-4000-8000-000000000099";
   const activation = {
     selector: "activation-selector",
@@ -356,9 +357,12 @@ test("replaces a pending owner invitation and persists the same activation token
         idempotency: {} as TenantProvisioningIdempotencyPort,
         identity: {
           async findOrCreatePendingIdentity() {
+            assert.equal(tenantScopeDepth, 0);
+            calls.push("identity:resolve");
             return { userId: OWNER_USER_ID, status: "pending_activation", created: false };
           },
           async issueTenantActivation(input) {
+            assert.equal(tenantScopeDepth, 0);
             calls.push("activation:store");
             assert.equal(input.selector, activation.selector);
             assert.equal(input.tokenHash, activation.tokenHash);
@@ -369,72 +373,81 @@ test("replaces a pending owner invitation and persists the same activation token
           _tenantId: string,
           tenantWork: (session: PlatformTenantProvisioningDataSession) => Promise<T>,
         ) {
-          return tenantWork({
-            tenants: {
-              async lockCurrent() {
-                return {
-                  id: TENANT_ID,
-                  slug: "acme",
-                  name: "Acme",
-                  status: "provisioning" as const,
-                };
+          tenantScopeDepth += 1;
+          calls.push("tenant:enter");
+          try {
+            return await tenantWork({
+              tenants: {
+                async lockCurrent() {
+                  calls.push("tenant:lock");
+                  return {
+                    id: TENANT_ID,
+                    slug: "acme",
+                    name: "Acme",
+                    status: "provisioning" as const,
+                  };
+                },
               },
-            },
-            invitations: {
-              async lockPendingOwnerInvitation() {
-                return {
-                  id: OWNER_INVITATION_ID,
-                  tenantId: TENANT_ID,
-                  normalizedEmail: INPUT.normalizedOwnerEmail,
-                  invitedUserId: OWNER_USER_ID,
-                  intendedRoleKey: "tenant_owner" as const,
-                  status: "pending" as const,
-                  hostname: INPUT.tenantHostname,
-                  selector: "old",
-                  tokenHash: "a".repeat(64),
-                  expiresAt: NOW,
-                  acceptedAt: null,
-                  revokedAt: null,
-                  invitedByUserId: INPUT.actorUserId,
-                  createdAt: NOW,
-                  updatedAt: NOW,
-                };
+              invitations: {
+                async lockPendingOwnerInvitation() {
+                  calls.push("invitation:lock");
+                  return {
+                    id: OWNER_INVITATION_ID,
+                    tenantId: TENANT_ID,
+                    normalizedEmail: INPUT.normalizedOwnerEmail,
+                    invitedUserId: OWNER_USER_ID,
+                    intendedRoleKey: "tenant_owner" as const,
+                    status: "pending" as const,
+                    hostname: INPUT.tenantHostname,
+                    selector: "old",
+                    tokenHash: "a".repeat(64),
+                    expiresAt: NOW,
+                    acceptedAt: null,
+                    revokedAt: null,
+                    invitedByUserId: INPUT.actorUserId,
+                    createdAt: NOW,
+                    updatedAt: NOW,
+                  };
+                },
+                async revoke() {
+                  calls.push("invitation:revoke");
+                },
+                async create() {
+                  calls.push("invitation:create");
+                  return {
+                    id: replacementId,
+                    tenantId: TENANT_ID,
+                    normalizedEmail: INPUT.normalizedOwnerEmail,
+                    invitedUserId: OWNER_USER_ID,
+                    intendedRoleKey: "tenant_owner" as const,
+                    status: "pending" as const,
+                    hostname: INPUT.tenantHostname,
+                    selector: "new",
+                    tokenHash: "b".repeat(64),
+                    expiresAt: NOW,
+                    acceptedAt: null,
+                    revokedAt: null,
+                    invitedByUserId: INPUT.actorUserId,
+                    createdAt: NOW,
+                    updatedAt: NOW,
+                  };
+                },
               },
-              async revoke() {
-                calls.push("invitation:revoke");
+              outbox: {
+                async append() {
+                  calls.push("outbox:append");
+                },
               },
-              async create() {
-                calls.push("invitation:create");
-                return {
-                  id: replacementId,
-                  tenantId: TENANT_ID,
-                  normalizedEmail: INPUT.normalizedOwnerEmail,
-                  invitedUserId: OWNER_USER_ID,
-                  intendedRoleKey: "tenant_owner" as const,
-                  status: "pending" as const,
-                  hostname: INPUT.tenantHostname,
-                  selector: "new",
-                  tokenHash: "b".repeat(64),
-                  expiresAt: NOW,
-                  acceptedAt: null,
-                  revokedAt: null,
-                  invitedByUserId: INPUT.actorUserId,
-                  createdAt: NOW,
-                  updatedAt: NOW,
-                };
+              audit: {
+                async append() {
+                  calls.push("audit:append");
+                },
               },
-            },
-            outbox: {
-              async append() {
-                calls.push("outbox:append");
-              },
-            },
-            audit: {
-              async append() {
-                calls.push("audit:append");
-              },
-            },
-          } as unknown as PlatformTenantProvisioningDataSession);
+            } as unknown as PlatformTenantProvisioningDataSession);
+          } finally {
+            calls.push("tenant:exit");
+            tenantScopeDepth -= 1;
+          }
         },
       });
     },
@@ -462,11 +475,20 @@ test("replaces a pending owner invitation and persists the same activation token
 
   assert.deepEqual(result, { accepted: true });
   assert.deepEqual(calls, [
+    "tenant:enter",
+    "tenant:lock",
+    "invitation:lock",
+    "tenant:exit",
+    "identity:resolve",
+    "tenant:enter",
+    "tenant:lock",
+    "invitation:lock",
     "invitation:revoke",
     "invitation:create",
     "outbox:append",
     "outbox:append",
     "audit:append",
+    "tenant:exit",
     "activation:store",
   ]);
 });

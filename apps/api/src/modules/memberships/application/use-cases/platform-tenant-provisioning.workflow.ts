@@ -230,37 +230,55 @@ export class PlatformTenantProvisioningWorkflow {
     input: ResendOwnerInvitationInput,
   ): Promise<ResendOwnerInvitationResult> {
     return this.transaction.run(async (context) => {
-      const result = await context.runTenant(input.tenantId, async (session) => {
+      // Both tenant scopes run inside this single outer transaction. The first
+      // FOR UPDATE lock remains held while global identity data is resolved.
+      const lockedInvitation = await context.runTenant(input.tenantId, async (session) => {
         const tenant = await session.tenants.lockCurrent();
         const invitation = await session.invitations.lockPendingOwnerInvitation();
         if (tenant?.status !== "provisioning" || !invitation || !invitation.invitedUserId) {
           throw new TenantNotAvailableError();
         }
+        return invitation;
+      });
 
-        const ownerIdentity = await context.identity.findOrCreatePendingIdentity({
-          normalizedEmail: invitation.normalizedEmail,
-          displayEmail: invitation.normalizedEmail,
-          now: input.now,
-        });
-        if (ownerIdentity.userId !== invitation.invitedUserId) {
+      const ownerIdentity = await context.identity.findOrCreatePendingIdentity({
+        normalizedEmail: lockedInvitation.normalizedEmail,
+        displayEmail: lockedInvitation.normalizedEmail,
+        now: input.now,
+      });
+      if (ownerIdentity.userId !== lockedInvitation.invitedUserId) {
+        throw new TenantNotAvailableError();
+      }
+
+      const invitationToken = this.invitationTokens.issue({
+        tenantId: input.tenantId,
+        userId: ownerIdentity.userId,
+        hostname: lockedInvitation.hostname,
+        normalizedEmail: lockedInvitation.normalizedEmail,
+        intendedRoleKey: "tenant_owner",
+      });
+      const activationToken =
+        ownerIdentity.status === "pending_activation"
+          ? this.activationTokens.issue({
+              tenantId: input.tenantId,
+              hostname: lockedInvitation.hostname,
+            })
+          : null;
+      const expiresAt = new Date(input.now.getTime() + INVITATION_TTL_MS);
+
+      const result = await context.runTenant(input.tenantId, async (session) => {
+        const tenant = await session.tenants.lockCurrent();
+        const invitation = await session.invitations.lockPendingOwnerInvitation();
+        if (
+          tenant?.status !== "provisioning" ||
+          !invitation ||
+          invitation.id !== lockedInvitation.id ||
+          invitation.invitedUserId !== ownerIdentity.userId ||
+          invitation.normalizedEmail !== lockedInvitation.normalizedEmail ||
+          invitation.hostname !== lockedInvitation.hostname
+        ) {
           throw new TenantNotAvailableError();
         }
-
-        const invitationToken = this.invitationTokens.issue({
-          tenantId: input.tenantId,
-          userId: ownerIdentity.userId,
-          hostname: invitation.hostname,
-          normalizedEmail: invitation.normalizedEmail,
-          intendedRoleKey: "tenant_owner",
-        });
-        const activationToken =
-          ownerIdentity.status === "pending_activation"
-            ? this.activationTokens.issue({
-                tenantId: input.tenantId,
-                hostname: invitation.hostname,
-              })
-            : null;
-        const expiresAt = new Date(input.now.getTime() + INVITATION_TTL_MS);
 
         await session.invitations.revoke(invitation.id, input.now);
         const replacement = await session.invitations.create({

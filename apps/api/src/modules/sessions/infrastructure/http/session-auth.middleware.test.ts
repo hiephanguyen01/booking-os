@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { BOOKING_SESSION_COOKIE, createSessionToken } from "@booking-os/auth";
+import { UnauthorizedException } from "@nestjs/common";
 
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import { SessionUnavailableError } from "../../domain/session-errors.js";
@@ -77,7 +78,7 @@ test("hydrates authentication only from the opaque cookie and trusted tenant con
   });
 });
 
-test("invalid cookies fail before downstream controllers", async () => {
+test("a well-formed but unavailable opaque session is exposed as HTTP 401", async () => {
   const token = createSessionToken();
   const expected = new SessionUnavailableError();
   const storage = new RequestContextStorage();
@@ -110,7 +111,9 @@ test("invalid cookies fail before downstream controllers", async () => {
   });
 
   assert.equal(nextCalls, 1);
-  assert.equal(forwarded, expected);
+  assert.ok(forwarded instanceof UnauthorizedException);
+  assert.equal(forwarded.getStatus(), 401);
+  assert.equal(forwarded.message, "Authentication is required.");
 });
 
 test("requests without a session cookie remain anonymous for the guard to decide", async () => {
