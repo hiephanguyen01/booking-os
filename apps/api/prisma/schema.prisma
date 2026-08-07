@@ -425,3 +425,26 @@ model InboxMessage {
   @@unique([source, externalId])
   @@map("inbox_messages")
 }
+
+enum TenantProvisioningRequestStatus {
+  inProgress @map("in_progress")
+  completed
+
+  @@map("tenant_provisioning_request_status")
+}
+
+model TenantProvisioningRequest {
+  idempotencyKey      String                          @id @map("idempotency_key")
+  requestHash         String                          @map("request_hash")
+  actorUserId         String                          @db.Uuid @map("actor_user_id")
+  status              TenantProvisioningRequestStatus @default(inProgress)
+  tenantId            String?                         @db.Uuid @map("tenant_id")
+  tenantSlug          String?                         @map("tenant_slug")
+  ownerMembershipId   String?                         @db.Uuid @map("owner_membership_id")
+  ownerInvitationId   String?                         @db.Uuid @map("owner_invitation_id")
+  completedAt         DateTime?                       @db.Timestamptz(6) @map("completed_at")
+  createdAt           DateTime                        @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt           DateTime                        @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
+
+  @@map("tenant_provisioning_requests")
+}
