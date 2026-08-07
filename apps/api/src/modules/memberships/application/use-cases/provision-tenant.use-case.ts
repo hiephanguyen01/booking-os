@@ -52,7 +52,11 @@ function requireTenantSlug(slug: string, reservedSlugs: readonly string[]): stri
   const normalizedSlug = slug.trim().toLowerCase();
   const reserved = new Set(reservedSlugs.map((entry) => entry.trim().toLowerCase()));
 
-  if (slug !== normalizedSlug || !TENANT_SLUG_PATTERN.test(normalizedSlug) || reserved.has(normalizedSlug)) {
+  if (
+    slug !== normalizedSlug ||
+    !TENANT_SLUG_PATTERN.test(normalizedSlug) ||
+    reserved.has(normalizedSlug)
+  ) {
     throw new PlatformTenantProvisioningError(
       "TENANT_SLUG_INVALID",
       "Tenant slug must be a canonical, non-reserved DNS label.",
