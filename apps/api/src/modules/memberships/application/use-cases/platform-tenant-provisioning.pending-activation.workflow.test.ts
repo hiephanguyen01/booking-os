@@ -46,10 +46,7 @@ const SEALED_ACTIVATION = Object.freeze({
 
 interface DesiredPendingActivationDependencies {
   readonly activationTokens: {
-    issue(input: {
-      readonly tenantId: string;
-      readonly hostname: string;
-    }): {
+    issue(input: { readonly tenantId: string; readonly hostname: string }): {
       readonly selector: string;
       readonly serialized: string;
       readonly tokenHash: string;
