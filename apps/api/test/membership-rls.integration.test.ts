@@ -256,8 +256,21 @@ test("tenant rows deny missing context and cross-tenant access while platform as
     (transaction) => transaction.$queryRaw<
       readonly { user_id: string; tenant_id: string | null }[]
     >`
-      SELECT "user_id", "tenant_id" FROM "role_assignments" ORDER BY "user_id"
+      SELECT "user_id", "tenant_id"
+      FROM "role_assignments"
+      WHERE "user_id" IN (
+        ${tenantAUserId}::uuid,
+        ${tenantBUserId}::uuid,
+        ${platformUserId}::uuid,
+        ${unrelatedPlatformUserId}::uuid
+      )
+      ORDER BY "user_id"
     `,
   );
-  assert.deepEqual(platformAssignments, [{ user_id: platformUserId, tenant_id: null }]);
+  assert.deepEqual(
+    platformAssignments,
+    [platformUserId, unrelatedPlatformUserId]
+      .sort()
+      .map((userId) => ({ user_id: userId, tenant_id: null })),
+  );
 });
