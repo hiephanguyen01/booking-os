@@ -1,8 +1,4 @@
-export const AUTHORIZATION_ROLE_KEYS = [
-  "platform_admin",
-  "tenant_owner",
-  "tenant_admin",
-] as const;
+export const AUTHORIZATION_ROLE_KEYS = ["platform_admin", "tenant_owner", "tenant_admin"] as const;
 
 export type AuthorizationRoleKey = (typeof AUTHORIZATION_ROLE_KEYS)[number];
 
