@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { PrismaInvitationRepositoryAdapter } from "./prisma-invitation-repository.adapter.js";
 import { PrismaMembershipRepositoryAdapter } from "./prisma-membership-repository.adapter.js";
+import { PrismaTenantOutboxAdapter } from "./prisma-tenant-outbox.adapter.js";
 import { PrismaTenantProvisioningRepositoryAdapter } from "./prisma-tenant-provisioning-repository.adapter.js";
 import { PrismaTenantRoleAssignmentRepositoryAdapter } from "./prisma-tenant-role-assignment-repository.adapter.js";
 import { PrismaTenantSecurityAuditAdapter } from "./prisma-tenant-security-audit.adapter.js";
@@ -142,4 +143,32 @@ test("role assignment, tenant activation, and audit append never accept a foreig
   assert.match(transaction.executions[0]?.sql ?? "", /role_assignments/);
   assert.match(transaction.executions[1]?.sql ?? "", /UPDATE "tenants"/);
   assert.match(transaction.executions[2]?.sql ?? "", /tenant_security_audit_events/);
+});
+
+test("tenant outbox append is bound to the constructed tenant", async () => {
+  const transaction = new RecordingTransaction();
+  const outbox = new PrismaTenantOutboxAdapter(transaction, tenantId);
+  const eventId = "550e8400-e29b-41d4-a716-446655440005";
+
+  await outbox.append({
+    id: eventId,
+    type: "membership.owner_invitation.requested.v1",
+    aggregateType: "membership_invitation",
+    aggregateId: invitationId,
+    payload: {
+      version: 1,
+      recipient: "owner@example.test",
+      hostname: "acme.example.test",
+    },
+    occurredAt: now,
+  });
+
+  assert.equal(transaction.executions.length, 1);
+  assert.match(transaction.executions[0]?.sql ?? "", /outbox_events/);
+  assert.ok(transaction.executions[0]?.values.includes(eventId));
+  assert.ok(transaction.executions[0]?.values.includes(tenantId));
+  assert.ok(
+    transaction.executions[0]?.values.includes("membership.owner_invitation.requested.v1"),
+  );
+  assert.ok(transaction.executions[0]?.values.includes(invitationId));
 });
