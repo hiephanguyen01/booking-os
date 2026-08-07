@@ -3,26 +3,37 @@ import { Module } from "@nestjs/common";
 import { SessionCsrfGuard } from "../../common/security/session-csrf.guard.js";
 import { EnvironmentService } from "../../config/environment.service.js";
 import { DatabaseModule } from "../../database/database.module.js";
+import type { TenantTransactionPort } from "../tenancy/application/ports/tenant-transaction.port.js";
+import { TenancyModule } from "../tenancy/tenancy.module.js";
+import { TENANT_TRANSACTION_PORT } from "../tenancy/tenancy.tokens.js";
 import type { MembershipInvitationEnvelopePort } from "./application/ports/membership-invitation-envelope.port.js";
 import type { MembershipInvitationTokenPort } from "./application/ports/membership-invitation-token.port.js";
 import type { PlatformAuthorizationPort } from "./application/ports/platform-authorization.port.js";
 import type { PlatformTenantProvisioningTransactionPort } from "./application/ports/platform-tenant-provisioning-transaction.port.js";
 import type { TenantActivationEnvelopePort } from "./application/ports/tenant-activation-envelope.port.js";
 import type { TenantActivationTokenPort } from "./application/ports/tenant-activation-token.port.js";
+import type { TenantAdminInvitationEnvelopePort } from "./application/ports/tenant-admin-invitation-envelope.port.js";
 import { BuildPlatformAuthorizationContextUseCase } from "./application/use-cases/build-platform-authorization-context.use-case.js";
+import { BuildTenantAuthorizationContextUseCase } from "./application/use-cases/build-tenant-authorization-context.use-case.js";
+import { GetCurrentInvitationUseCase } from "./application/use-cases/get-current-invitation.use-case.js";
 import { GetTenantProvisioningUseCase } from "./application/use-cases/get-tenant-provisioning.use-case.js";
+import { InviteTenantAdminUseCase } from "./application/use-cases/invite-tenant-admin.use-case.js";
 import { PlatformTenantProvisioningWorkflow } from "./application/use-cases/platform-tenant-provisioning.workflow.js";
 import { ProvisionTenantUseCase } from "./application/use-cases/provision-tenant.use-case.js";
+import { ResendInvitationUseCase } from "./application/use-cases/resend-invitation.use-case.js";
 import { ResendOwnerInvitationUseCase } from "./application/use-cases/resend-owner-invitation.use-case.js";
+import { TenantAdminInvitationWorkflow } from "./application/use-cases/tenant-admin-invitation.workflow.js";
 import {
   AesMembershipInvitationEnvelopeAdapter,
   AesTenantActivationEnvelopeAdapter,
 } from "./infrastructure/crypto/aes-membership-provisioning-envelope.adapter.js";
+import { AesTenantAdminInvitationEnvelopeAdapter } from "./infrastructure/crypto/aes-tenant-admin-invitation-envelope.adapter.js";
 import {
   HmacMembershipInvitationTokenAdapter,
   HmacTenantActivationTokenAdapter,
 } from "./infrastructure/crypto/hmac-membership-provisioning-token.adapter.js";
 import { PlatformTenantsController } from "./infrastructure/http/platform-tenants.controller.js";
+import { TenantInvitationsController } from "./infrastructure/http/tenant-invitations.controller.js";
 import { PrismaPlatformAuthorizationAdapter } from "./infrastructure/persistence/prisma/prisma-platform-authorization.adapter.js";
 import { PrismaPlatformTenantProvisioningQueryAdapter } from "./infrastructure/persistence/prisma/prisma-platform-tenant-provisioning-query.adapter.js";
 import { PrismaPlatformTenantProvisioningTransactionAdapter } from "./infrastructure/persistence/prisma/prisma-platform-tenant-provisioning-transaction.adapter.js";
@@ -33,11 +44,12 @@ import {
   PLATFORM_TENANT_PROVISIONING_TRANSACTION_PORT,
   TENANT_ACTIVATION_ENVELOPE_PORT,
   TENANT_ACTIVATION_TOKEN_PORT,
+  TENANT_ADMIN_INVITATION_ENVELOPE_PORT,
 } from "./memberships.tokens.js";
 
 @Module({
-  imports: [DatabaseModule],
-  controllers: [PlatformTenantsController],
+  imports: [DatabaseModule, TenancyModule],
+  controllers: [PlatformTenantsController, TenantInvitationsController],
   providers: [
     SessionCsrfGuard,
     {
@@ -60,6 +72,17 @@ import {
       useFactory: (environment: EnvironmentService): MembershipInvitationEnvelopePort => {
         const security = environment.identitySecurity;
         return new AesMembershipInvitationEnvelopeAdapter(
+          security.activeEnvelopeKeyId,
+          security.envelopeKeys,
+        );
+      },
+    },
+    {
+      provide: TENANT_ADMIN_INVITATION_ENVELOPE_PORT,
+      inject: [EnvironmentService],
+      useFactory: (environment: EnvironmentService): TenantAdminInvitationEnvelopePort => {
+        const security = environment.identitySecurity;
+        return new AesTenantAdminInvitationEnvelopeAdapter(
           security.activeEnvelopeKeyId,
           security.envelopeKeys,
         );
@@ -105,6 +128,29 @@ import {
           activationEnvelope,
         }),
     },
+    {
+      provide: TenantAdminInvitationWorkflow,
+      inject: [
+        PLATFORM_TENANT_PROVISIONING_TRANSACTION_PORT,
+        MEMBERSHIP_INVITATION_TOKEN_PORT,
+        TENANT_ADMIN_INVITATION_ENVELOPE_PORT,
+        TENANT_ACTIVATION_TOKEN_PORT,
+        TENANT_ACTIVATION_ENVELOPE_PORT,
+      ],
+      useFactory: (
+        transaction: PlatformTenantProvisioningTransactionPort,
+        invitationTokens: MembershipInvitationTokenPort,
+        invitationEnvelope: TenantAdminInvitationEnvelopePort,
+        activationTokens: TenantActivationTokenPort,
+        activationEnvelope: TenantActivationEnvelopePort,
+      ): TenantAdminInvitationWorkflow =>
+        new TenantAdminInvitationWorkflow(transaction, {
+          invitationTokens,
+          invitationEnvelope,
+          activationTokens,
+          activationEnvelope,
+        }),
+    },
     PrismaPlatformTenantProvisioningQueryAdapter,
     {
       provide: ProvisionTenantUseCase,
@@ -126,6 +172,30 @@ import {
         authorization: PlatformAuthorizationPort,
       ): BuildPlatformAuthorizationContextUseCase =>
         new BuildPlatformAuthorizationContextUseCase(authorization),
+    },
+    {
+      provide: BuildTenantAuthorizationContextUseCase,
+      inject: [TENANT_TRANSACTION_PORT],
+      useFactory: (transactions: TenantTransactionPort): BuildTenantAuthorizationContextUseCase =>
+        new BuildTenantAuthorizationContextUseCase(transactions),
+    },
+    {
+      provide: InviteTenantAdminUseCase,
+      inject: [TenantAdminInvitationWorkflow],
+      useFactory: (workflow: TenantAdminInvitationWorkflow): InviteTenantAdminUseCase =>
+        new InviteTenantAdminUseCase(workflow),
+    },
+    {
+      provide: ResendInvitationUseCase,
+      inject: [TenantAdminInvitationWorkflow],
+      useFactory: (workflow: TenantAdminInvitationWorkflow): ResendInvitationUseCase =>
+        new ResendInvitationUseCase(workflow),
+    },
+    {
+      provide: GetCurrentInvitationUseCase,
+      inject: [TenantAdminInvitationWorkflow],
+      useFactory: (workflow: TenantAdminInvitationWorkflow): GetCurrentInvitationUseCase =>
+        new GetCurrentInvitationUseCase(workflow),
     },
     {
       provide: GetTenantProvisioningUseCase,
@@ -155,6 +225,10 @@ import {
     GetTenantProvisioningUseCase,
     ResendOwnerInvitationUseCase,
     BuildPlatformAuthorizationContextUseCase,
+    BuildTenantAuthorizationContextUseCase,
+    InviteTenantAdminUseCase,
+    ResendInvitationUseCase,
+    GetCurrentInvitationUseCase,
   ],
 })
 export class MembershipsModule {}

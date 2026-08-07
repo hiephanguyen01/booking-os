@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 
 import { PrismaInvitationRepositoryAdapter } from "../modules/memberships/infrastructure/persistence/prisma/prisma-invitation-repository.adapter.js";
 import { PrismaMembershipRepositoryAdapter } from "../modules/memberships/infrastructure/persistence/prisma/prisma-membership-repository.adapter.js";
+import { PrismaTenantAuthorizationQueryAdapter } from "../modules/memberships/infrastructure/persistence/prisma/prisma-tenant-authorization-query.adapter.js";
 import { PrismaTenantProvisioningRepositoryAdapter } from "../modules/memberships/infrastructure/persistence/prisma/prisma-tenant-provisioning-repository.adapter.js";
 import { PrismaTenantRoleAssignmentRepositoryAdapter } from "../modules/memberships/infrastructure/persistence/prisma/prisma-tenant-role-assignment-repository.adapter.js";
 import { PrismaTenantSecurityAuditAdapter } from "../modules/memberships/infrastructure/persistence/prisma/prisma-tenant-security-audit.adapter.js";
@@ -14,6 +15,7 @@ export class PrismaTenantDataSessionFactory {
   create(transaction: Prisma.TransactionClient, tenantId: string): TenantDataSession {
     return Object.freeze({
       tenantProbes: new PrismaTenantProbeRepositoryAdapter(transaction),
+      authorization: new PrismaTenantAuthorizationQueryAdapter(transaction, tenantId),
       memberships: new PrismaMembershipRepositoryAdapter(transaction, tenantId),
       invitations: new PrismaInvitationRepositoryAdapter(transaction, tenantId),
       roles: new PrismaTenantRoleAssignmentRepositoryAdapter(transaction, tenantId),

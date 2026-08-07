@@ -54,9 +54,7 @@ function firstInvitation(rows: readonly InvitationRow[]): MembershipInvitation |
 
 function requireInvitation(rows: readonly InvitationRow[]): MembershipInvitation {
   const invitation = firstInvitation(rows);
-  if (!invitation) {
-    throw new InvitationInvalidOrExpiredError();
-  }
+  if (!invitation) throw new InvitationInvalidOrExpiredError();
   return invitation;
 }
 
@@ -99,6 +97,22 @@ export class PrismaInvitationRepositoryAdapter implements InvitationRepositoryPo
        LIMIT 1
        FOR UPDATE`,
       this.tenantId,
+    );
+    return firstInvitation(rows);
+  }
+
+  async lockPendingById(id: string): Promise<MembershipInvitation | null> {
+    const rows = await this.transaction.$queryRawUnsafe<readonly InvitationRow[]>(
+      `SELECT ${INVITATION_COLUMNS}
+       FROM "membership_invitations"
+       WHERE "tenant_id" = $1::uuid
+         AND "id" = $2::uuid
+         AND "status" = 'pending'::membership_invitation_status
+         AND "revoked_at" IS NULL
+       LIMIT 1
+       FOR UPDATE`,
+      this.tenantId,
+      id,
     );
     return firstInvitation(rows);
   }
@@ -201,8 +215,6 @@ export class PrismaInvitationRepositoryAdapter implements InvitationRepositoryPo
       id,
       now,
     );
-    if (affected !== 1) {
-      throw new InvitationInvalidOrExpiredError();
-    }
+    if (affected !== 1) throw new InvitationInvalidOrExpiredError();
   }
 }

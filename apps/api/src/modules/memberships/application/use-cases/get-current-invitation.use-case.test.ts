@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { InvitationInvalidOrExpiredError } from "../../domain/membership-errors.js";
+import type { CurrentInvitationWorkflowResult } from "../ports/tenant-admin-invitation-workflow.port.js";
 import { GetCurrentInvitationUseCase } from "./get-current-invitation.use-case.js";
 
 const TENANT_ID = "30000000-0000-4000-8000-000000000001";
@@ -9,7 +10,7 @@ const USER_ID = "10000000-0000-4000-8000-000000000009";
 const NOW = new Date("2026-08-08T01:30:00.000Z");
 const EXPIRES_AT = new Date("2026-08-09T01:30:00.000Z");
 
-function createHarness(current: unknown) {
+function createHarness(current: CurrentInvitationWorkflowResult | null) {
   const calls: unknown[] = [];
   const workflow = {
     async inviteTenantAdmin() {

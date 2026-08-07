@@ -28,6 +28,7 @@ test("builds tenant authority from the RLS-bound database session", async () => 
           async loadActiveTenantAuthorization(userId: string) {
             assert.equal(userId, USER_ID);
             return {
+              tenantSlug: "acme",
               membershipId: "40000000-0000-4000-8000-000000000001",
               membershipStatus: "active" as const,
               membershipAuthorizationVersion: 3,
@@ -42,11 +43,17 @@ test("builds tenant authority from the RLS-bound database session", async () => 
 
   const result = await useCase.execute(AUTHENTICATED);
 
-  assert.deepEqual(executionContext, { tenantId: TENANT_ID });
+  assert.deepEqual(executionContext, {
+    tenantId: TENANT_ID,
+    requestId: AUTHENTICATED.requestId,
+    traceId: AUTHENTICATED.traceId,
+    source: AUTHENTICATED.source,
+    actorId: USER_ID,
+  });
   assert.deepEqual(result, {
     userId: USER_ID,
     sessionId: AUTHENTICATED.sessionId,
-    scope: { type: "tenant", tenantId: TENANT_ID },
+    scope: { type: "tenant", tenantId: TENANT_ID, tenantSlug: "acme" },
     membershipId: "40000000-0000-4000-8000-000000000001",
     membershipStatus: "active",
     roleKeys: ["tenant_owner"],

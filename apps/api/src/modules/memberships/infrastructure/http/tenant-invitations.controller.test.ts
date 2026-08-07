@@ -24,7 +24,7 @@ const AUTHENTICATED: AuthenticatedRequestContext = {
 const AUTHORIZATION: AuthorizationContext = {
   userId: ACTOR_ID,
   sessionId: AUTHENTICATED.sessionId,
-  scope: { type: "tenant", tenantId: TENANT_ID },
+  scope: { type: "tenant", tenantId: TENANT_ID, tenantSlug: "acme" },
   membershipId: "40000000-0000-4000-8000-000000000001",
   membershipStatus: "active",
   roleKeys: ["tenant_owner"],
