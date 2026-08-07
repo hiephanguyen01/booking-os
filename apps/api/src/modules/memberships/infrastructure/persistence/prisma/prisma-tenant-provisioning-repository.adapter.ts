@@ -29,9 +29,7 @@ function requireTenant(rows: readonly TenantRow[]): ProvisioningTenant {
   return tenant;
 }
 
-export class PrismaTenantProvisioningRepositoryAdapter
-  implements TenantProvisioningRepositoryPort
-{
+export class PrismaTenantProvisioningRepositoryAdapter implements TenantProvisioningRepositoryPort {
   constructor(
     private readonly transaction: MembershipPrismaTransaction,
     private readonly tenantId: string,
