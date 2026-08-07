@@ -7,6 +7,7 @@ import { RequestContextStorage } from "../src/common/request-context/request-con
 import type { Environment } from "../src/config/environment.schema.js";
 import { EnvironmentService } from "../src/config/environment.service.js";
 import { PrismaService } from "../src/database/prisma.service.js";
+import { PrismaTenantDataSessionFactory } from "../src/database/prisma-tenant-data-session.factory.js";
 import { requireTenantExecutionContext } from "../src/modules/tenancy/application/tenant-execution-context.js";
 import { PrismaTenantTransactionAdapter } from "../src/modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-transaction.adapter.js";
 import { runTenantTestTransaction } from "./support/tenant-test-transaction.js";
@@ -65,7 +66,7 @@ async function listWithinRequest(context: RequestContext): Promise<readonly stri
 
 before(async () => {
   prisma = new PrismaService(new EnvironmentService(testEnvironment));
-  transactions = new PrismaTenantTransactionAdapter(prisma);
+  transactions = new PrismaTenantTransactionAdapter(prisma, new PrismaTenantDataSessionFactory());
   requestContext = new RequestContextStorage();
 
   await prisma.$connect();
