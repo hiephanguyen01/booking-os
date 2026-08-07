@@ -58,7 +58,7 @@ export {
   type Permission,
   type PermissionKey,
 } from "./permissions.js";
-export { ROLES, SYSTEM_ROLES, type Role, type SystemRole } from "./roles.js";
+export { ROLES, type Role, SYSTEM_ROLES, type SystemRole } from "./roles.js";
 export {
   type DecryptSensitiveEnvelopeOptions,
   decryptSensitiveEnvelope,
