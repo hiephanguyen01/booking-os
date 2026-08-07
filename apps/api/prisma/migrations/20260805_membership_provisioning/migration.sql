@@ -2,6 +2,31 @@ CREATE TYPE "tenant_status" AS ENUM ('provisioning', 'active', 'suspended');
 CREATE TYPE "tenant_membership_status" AS ENUM ('invited', 'active', 'suspended', 'revoked');
 CREATE TYPE "membership_invitation_status" AS ENUM ('pending', 'accepted', 'revoked', 'expired');
 
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'booking_platform_app') THEN
+    CREATE ROLE booking_platform_app
+      NOLOGIN
+      NOSUPERUSER
+      NOCREATEDB
+      NOCREATEROLE
+      NOINHERIT
+      NOBYPASSRLS;
+  END IF;
+END;
+$$;
+
+ALTER ROLE booking_platform_app
+  NOLOGIN
+  NOSUPERUSER
+  NOCREATEDB
+  NOCREATEROLE
+  NOINHERIT
+  NOBYPASSRLS;
+
+GRANT booking_platform_app TO CURRENT_USER;
+GRANT USAGE ON SCHEMA public TO booking_platform_app;
+
 ALTER TABLE "tenants"
   ADD COLUMN "status" "tenant_status" NOT NULL DEFAULT 'provisioning';
 
@@ -278,70 +303,14 @@ INSERT INTO "permissions" (
   "updated_at"
 )
 VALUES
-  (
-    '00000000-0000-4000-8000-000000000211',
-    'tenant.membership.read',
-    'tenant',
-    'Read tenant memberships.',
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-  ),
-  (
-    '00000000-0000-4000-8000-000000000212',
-    'tenant.membership.admin.invite',
-    'tenant',
-    'Invite tenant administrators.',
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-  ),
-  (
-    '00000000-0000-4000-8000-000000000213',
-    'tenant.membership.admin.suspend',
-    'tenant',
-    'Suspend tenant administrators.',
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-  ),
-  (
-    '00000000-0000-4000-8000-000000000214',
-    'tenant.membership.admin.revoke',
-    'tenant',
-    'Revoke tenant administrators.',
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-  ),
-  (
-    '00000000-0000-4000-8000-000000000215',
-    'tenant.membership.owner.promote',
-    'tenant',
-    'Promote an active tenant administrator to owner.',
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-  ),
-  (
-    '00000000-0000-4000-8000-000000000216',
-    'tenant.membership.owner.demote',
-    'tenant',
-    'Demote a tenant owner while preserving the final-owner invariant.',
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-  ),
-  (
-    '00000000-0000-4000-8000-000000000217',
-    'tenant.security.session.read',
-    'tenant',
-    'Read tenant security sessions.',
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-  ),
-  (
-    '00000000-0000-4000-8000-000000000218',
-    'tenant.security.session.revoke',
-    'tenant',
-    'Revoke tenant security sessions.',
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-  )
+  ('00000000-0000-4000-8000-000000000211', 'tenant.membership.read', 'tenant', 'Read tenant memberships.', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('00000000-0000-4000-8000-000000000212', 'tenant.membership.admin.invite', 'tenant', 'Invite tenant administrators.', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('00000000-0000-4000-8000-000000000213', 'tenant.membership.admin.suspend', 'tenant', 'Suspend tenant administrators.', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('00000000-0000-4000-8000-000000000214', 'tenant.membership.admin.revoke', 'tenant', 'Revoke tenant administrators.', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('00000000-0000-4000-8000-000000000215', 'tenant.membership.owner.promote', 'tenant', 'Promote an active tenant administrator to owner.', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('00000000-0000-4000-8000-000000000216', 'tenant.membership.owner.demote', 'tenant', 'Demote a tenant owner while preserving the final-owner invariant.', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('00000000-0000-4000-8000-000000000217', 'tenant.security.session.read', 'tenant', 'Read tenant security sessions.', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('00000000-0000-4000-8000-000000000218', 'tenant.security.session.revoke', 'tenant', 'Revoke tenant security sessions.', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT ("key") DO UPDATE SET
   "scope_level" = EXCLUDED."scope_level",
   "description" = EXCLUDED."description",
@@ -388,12 +357,8 @@ CREATE POLICY "tenant_memberships_tenant_isolation"
   ON "tenant_memberships"
   FOR ALL
   TO booking_app
-  USING (
-    "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
-  )
-  WITH CHECK (
-    "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
-  );
+  USING ("tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid)
+  WITH CHECK ("tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid);
 
 ALTER TABLE "membership_invitations" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "membership_invitations" FORCE ROW LEVEL SECURITY;
@@ -404,12 +369,8 @@ CREATE POLICY "membership_invitations_tenant_isolation"
   ON "membership_invitations"
   FOR ALL
   TO booking_app
-  USING (
-    "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
-  )
-  WITH CHECK (
-    "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
-  );
+  USING ("tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid)
+  WITH CHECK ("tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid);
 
 ALTER TABLE "role_assignments" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "role_assignments" FORCE ROW LEVEL SECURITY;
@@ -422,22 +383,14 @@ CREATE POLICY "role_assignments_tenant_isolation"
   ON "role_assignments"
   FOR ALL
   TO booking_app
-  USING (
-    "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
-  )
-  WITH CHECK (
-    "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
-  );
+  USING ("tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid)
+  WITH CHECK ("tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid);
 CREATE POLICY "role_assignments_platform_scope"
   ON "role_assignments"
   FOR ALL
   TO booking_platform_app
-  USING (
-    "scope_level" = 'platform' AND "tenant_id" IS NULL
-  )
-  WITH CHECK (
-    "scope_level" = 'platform' AND "tenant_id" IS NULL
-  );
+  USING ("scope_level" = 'platform' AND "tenant_id" IS NULL)
+  WITH CHECK ("scope_level" = 'platform' AND "tenant_id" IS NULL);
 
 REVOKE ALL PRIVILEGES ON TABLE "tenant_domains" FROM PUBLIC;
 REVOKE ALL PRIVILEGES ON TABLE "tenant_domains" FROM booking_platform_app;
