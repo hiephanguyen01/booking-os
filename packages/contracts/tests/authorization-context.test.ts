@@ -8,11 +8,7 @@ import {
 } from "../src/auth/index.js";
 
 test("authorization catalogs expose the approved stable identifiers", () => {
-  assert.deepEqual(AUTHORIZATION_ROLE_KEYS, [
-    "platform_admin",
-    "tenant_owner",
-    "tenant_admin",
-  ]);
+  assert.deepEqual(AUTHORIZATION_ROLE_KEYS, ["platform_admin", "tenant_owner", "tenant_admin"]);
   assert.deepEqual(AUTHORIZATION_PERMISSION_KEYS, [
     "platform.security.audit.read",
     "platform.tenants.provision",
