@@ -3,12 +3,12 @@ import { randomUUID } from "node:crypto";
 import type { MembershipInvitationEnvelopePort } from "../ports/membership-invitation-envelope.port.js";
 import type { MembershipInvitationTokenPort } from "../ports/membership-invitation-token.port.js";
 import type { PlatformTenantProvisioningTransactionPort } from "../ports/platform-tenant-provisioning-transaction.port.js";
-import type { TenantActivationEnvelopePort } from "../ports/tenant-activation-envelope.port.js";
-import type { TenantActivationTokenPort } from "../ports/tenant-activation-token.port.js";
 import type {
   ProvisionPlatformTenantInput,
   ProvisionPlatformTenantResult,
 } from "../ports/platform-tenant-provisioning-workflow.port.js";
+import type { TenantActivationEnvelopePort } from "../ports/tenant-activation-envelope.port.js";
+import type { TenantActivationTokenPort } from "../ports/tenant-activation-token.port.js";
 
 const INVITATION_TTL_MS = 24 * 60 * 60 * 1000;
 
