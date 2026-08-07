@@ -1,7 +1,32 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { AuthorizationContext } from "../src/auth/index.js";
+import {
+  AUTHORIZATION_PERMISSION_KEYS,
+  AUTHORIZATION_ROLE_KEYS,
+  type AuthorizationContext,
+} from "../src/auth/index.js";
+
+test("authorization catalogs expose the approved stable identifiers", () => {
+  assert.deepEqual(AUTHORIZATION_ROLE_KEYS, [
+    "platform_admin",
+    "tenant_owner",
+    "tenant_admin",
+  ]);
+  assert.deepEqual(AUTHORIZATION_PERMISSION_KEYS, [
+    "platform.security.audit.read",
+    "platform.tenants.provision",
+    "platform.users.provision",
+    "tenant.membership.read",
+    "tenant.membership.admin.invite",
+    "tenant.membership.admin.suspend",
+    "tenant.membership.admin.revoke",
+    "tenant.membership.owner.promote",
+    "tenant.membership.owner.demote",
+    "tenant.security.session.read",
+    "tenant.security.session.revoke",
+  ]);
+});
 
 test("platform authorization context exposes only current platform authority", () => {
   const context: AuthorizationContext = {
