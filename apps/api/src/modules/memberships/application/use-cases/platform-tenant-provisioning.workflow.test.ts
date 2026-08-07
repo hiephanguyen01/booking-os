@@ -246,6 +246,7 @@ test("provisions an existing owner inside one target-tenant scope before complet
         calls.push("invitation:token");
         assert.deepEqual(input, {
           tenantId: TENANT_ID,
+          userId: OWNER_USER_ID,
           hostname: INPUT.tenantHostname,
           normalizedEmail: INPUT.normalizedOwnerEmail,
           intendedRoleKey: "tenant_owner",
