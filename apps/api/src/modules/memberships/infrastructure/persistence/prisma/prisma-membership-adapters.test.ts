@@ -167,8 +167,6 @@ test("tenant outbox append is bound to the constructed tenant", async () => {
   assert.match(transaction.executions[0]?.sql ?? "", /outbox_events/);
   assert.ok(transaction.executions[0]?.values.includes(eventId));
   assert.ok(transaction.executions[0]?.values.includes(tenantId));
-  assert.ok(
-    transaction.executions[0]?.values.includes("membership.owner_invitation.requested.v1"),
-  );
+  assert.ok(transaction.executions[0]?.values.includes("membership.owner_invitation.requested.v1"));
   assert.ok(transaction.executions[0]?.values.includes(invitationId));
 });
