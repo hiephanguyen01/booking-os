@@ -1,0 +1,26 @@
+export type ProvisioningTenantStatus = "provisioning";
+
+export type ProvisionPlatformTenantInput = Readonly<{
+  actorUserId: string;
+  idempotencyKey: string;
+  slug: string;
+  tenantName: string;
+  ownerEmail: string;
+  normalizedOwnerEmail: string;
+  tenantHostname: string;
+  requestId: string;
+  now: Date;
+}>;
+
+export type ProvisionPlatformTenantResult = Readonly<{
+  tenantId: string;
+  slug: string;
+  status: ProvisioningTenantStatus;
+  ownerMembershipId: string;
+  ownerInvitationId: string;
+  replayed: boolean;
+}>;
+
+export interface PlatformTenantProvisioningWorkflowPort {
+  provision(input: ProvisionPlatformTenantInput): Promise<ProvisionPlatformTenantResult>;
+}
