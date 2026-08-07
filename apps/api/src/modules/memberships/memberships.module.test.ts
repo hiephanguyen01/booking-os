@@ -29,7 +29,8 @@ test("AppModule composes the MembershipsModule boundary", () => {
 });
 
 test("MembershipsModule registers the platform tenant provisioning use case", () => {
-  const providers = (Reflect.getMetadata("providers", MembershipsModule) ?? []) as readonly unknown[];
+  const providers = (Reflect.getMetadata("providers", MembershipsModule) ??
+    []) as readonly unknown[];
 
   assert.ok(providers.includes(ProvisionTenantUseCase));
 });
