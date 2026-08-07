@@ -1,12 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  canGrantRole,
-  type GrantAction,
-  SYSTEM_ROLES,
-  type SystemRole,
-} from "../src/index.js";
+import { canGrantRole, type GrantAction, SYSTEM_ROLES, type SystemRole } from "../src/index.js";
 
 interface GrantCase {
   readonly name: string;
