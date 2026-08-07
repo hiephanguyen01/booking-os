@@ -65,9 +65,7 @@ export class PrismaTenantProvisioningRepositoryAdapter implements TenantProvisio
     return firstTenant(rows);
   }
 
-  async createProvisioning(
-    input: CreateProvisioningTenantInput,
-  ): Promise<NewlyProvisionedTenant> {
+  async createProvisioning(input: CreateProvisioningTenantInput): Promise<NewlyProvisionedTenant> {
     const rows = await this.transaction.$queryRawUnsafe<readonly TenantRow[]>(
       `INSERT INTO "tenants" ("id", "slug", "name", "status", "created_at")
        VALUES ($1::uuid, $2, $3, 'provisioning'::tenant_status, $4::timestamptz)
