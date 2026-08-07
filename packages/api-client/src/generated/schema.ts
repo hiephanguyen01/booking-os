@@ -212,6 +212,54 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/platform/tenants": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post: operations["provisionPlatformTenant"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/platform/tenants/{tenantId}": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get: operations["getPlatformTenantProvisioning"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/platform/tenants/{tenantId}/owner-invitation/resend": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post: operations["resendPlatformTenantOwnerInvitation"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/ready": {
         readonly parameters: {
             readonly query?: never;
@@ -283,10 +331,25 @@ export interface components {
             /** @example true */
             readonly loggedOut: boolean;
         };
+        readonly OwnerInvitationResendResponseDto: {
+            /** @example true */
+            readonly accepted: boolean;
+        };
         readonly PreAuthCsrfResponseDto: {
             readonly csrfToken: string;
             /** Format: date-time */
             readonly expiresAt: string;
+        };
+        readonly ProvisionTenantRequestDto: {
+            /**
+             * Format: email
+             * @example owner@example.com
+             */
+            readonly ownerEmail: string;
+            /** @example acme */
+            readonly slug: string;
+            /** @example Acme Ltd */
+            readonly tenantName: string;
         };
         readonly PublicSessionDto: {
             /** Format: uuid */
@@ -340,6 +403,18 @@ export interface components {
             readonly scope: components["schemas"]["SessionScopeDto"];
             /** @enum {string} */
             readonly state: "active" | "invitation_pending" | "compromised" | "revoked";
+        };
+        readonly TenantProvisioningResponseDto: {
+            /** Format: uuid */
+            readonly ownerInvitationId: string;
+            /** Format: uuid */
+            readonly ownerMembershipId: string;
+            readonly replayed: boolean;
+            readonly slug: string;
+            /** @enum {string} */
+            readonly status: "provisioning";
+            /** Format: uuid */
+            readonly tenantId: string;
         };
     };
     responses: never;
@@ -637,6 +712,73 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["HealthResponseDto"];
+                };
+            };
+        };
+    };
+    readonly provisionPlatformTenant: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                readonly "Idempotency-Key": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["ProvisionTenantRequestDto"];
+            };
+        };
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["TenantProvisioningResponseDto"];
+                };
+            };
+        };
+    };
+    readonly getPlatformTenantProvisioning: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly tenantId: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["TenantProvisioningResponseDto"];
+                };
+            };
+        };
+    };
+    readonly resendPlatformTenantOwnerInvitation: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly tenantId: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["OwnerInvitationResendResponseDto"];
                 };
             };
         };

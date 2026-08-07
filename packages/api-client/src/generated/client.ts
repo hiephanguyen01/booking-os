@@ -42,6 +42,19 @@ export interface RevokeSessionParameters {
   readonly path: operations["revokeSession"]["parameters"]["path"];
 }
 
+export interface ProvisionPlatformTenantParameters {
+  readonly headers: operations["provisionPlatformTenant"]["parameters"]["header"];
+  readonly body: operations["provisionPlatformTenant"]["requestBody"]["content"]["application/json"];
+}
+
+export interface GetPlatformTenantProvisioningParameters {
+  readonly path: operations["getPlatformTenantProvisioning"]["parameters"]["path"];
+}
+
+export interface ResendPlatformTenantOwnerInvitationParameters {
+  readonly path: operations["resendPlatformTenantOwnerInvitation"]["parameters"]["path"];
+}
+
 export interface GeneratedClient {
   readonly completeAccountActivation: (parameters: CompleteAccountActivationParameters, options?: GeneratedRequestOptions) => Promise<operations["completeAccountActivation"]["responses"][200]["content"]["application/json"]>;
   readonly getPreAuthCsrf: (parameters: GetPreAuthCsrfParameters, options?: GeneratedRequestOptions) => Promise<operations["getPreAuthCsrf"]["responses"][200]["content"]["application/json"]>;
@@ -56,6 +69,9 @@ export interface GeneratedClient {
   readonly revokeOtherSessions: (options?: GeneratedRequestOptions) => Promise<operations["revokeOtherSessions"]["responses"][200]["content"]["application/json"]>;
   readonly revokeSession: (parameters: RevokeSessionParameters, options?: GeneratedRequestOptions) => Promise<operations["revokeSession"]["responses"][200]["content"]["application/json"]>;
   readonly getHealth: (options?: GeneratedRequestOptions) => Promise<operations["getHealth"]["responses"][200]["content"]["application/json"]>;
+  readonly provisionPlatformTenant: (parameters: ProvisionPlatformTenantParameters, options?: GeneratedRequestOptions) => Promise<operations["provisionPlatformTenant"]["responses"][200]["content"]["application/json"]>;
+  readonly getPlatformTenantProvisioning: (parameters: GetPlatformTenantProvisioningParameters, options?: GeneratedRequestOptions) => Promise<operations["getPlatformTenantProvisioning"]["responses"][200]["content"]["application/json"]>;
+  readonly resendPlatformTenantOwnerInvitation: (parameters: ResendPlatformTenantOwnerInvitationParameters, options?: GeneratedRequestOptions) => Promise<operations["resendPlatformTenantOwnerInvitation"]["responses"][200]["content"]["application/json"]>;
   readonly getReadiness: (options?: GeneratedRequestOptions) => Promise<operations["getReadiness"]["responses"][200]["content"]["application/json"]>;
 }
 
@@ -142,6 +158,26 @@ export function createGeneratedClient(transport: GeneratedTransport): GeneratedC
       return transport<operations["getHealth"]["responses"][200]["content"]["application/json"]>({
       method: "GET",
       path: "/api/health",
+      }, options);
+    },
+    async provisionPlatformTenant(parameters, options) {
+      return transport<operations["provisionPlatformTenant"]["responses"][200]["content"]["application/json"]>({
+      method: "POST",
+      path: "/api/platform/tenants",
+      headers: parameters.headers,
+      body: parameters.body,
+      }, options);
+    },
+    async getPlatformTenantProvisioning(parameters, options) {
+      return transport<operations["getPlatformTenantProvisioning"]["responses"][200]["content"]["application/json"]>({
+      method: "GET",
+      path: `/api/platform/tenants/${encodeURIComponent(String(parameters.path.tenantId))}`,
+      }, options);
+    },
+    async resendPlatformTenantOwnerInvitation(parameters, options) {
+      return transport<operations["resendPlatformTenantOwnerInvitation"]["responses"][200]["content"]["application/json"]>({
+      method: "POST",
+      path: `/api/platform/tenants/${encodeURIComponent(String(parameters.path.tenantId))}/owner-invitation/resend`,
       }, options);
     },
     async getReadiness(options) {
