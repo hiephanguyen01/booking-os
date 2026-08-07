@@ -3,10 +3,7 @@ import type { TenantProvisioningIdempotencyPort } from "./tenant-provisioning-id
 
 export interface PlatformTenantProvisioningTransactionContext {
   readonly idempotency: TenantProvisioningIdempotencyPort;
-  runTenant<T>(
-    tenantId: string,
-    work: (session: MembershipDataSession) => Promise<T>,
-  ): Promise<T>;
+  runTenant<T>(tenantId: string, work: (session: MembershipDataSession) => Promise<T>): Promise<T>;
 }
 
 export interface PlatformTenantProvisioningTransactionPort {
