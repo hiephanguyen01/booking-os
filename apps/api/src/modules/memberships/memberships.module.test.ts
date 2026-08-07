@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { AppModule } from "../../app.module.js";
+import { ProvisionTenantUseCase } from "./application/use-cases/provision-tenant.use-case.js";
 import { MembershipsModule } from "./memberships.module.js";
 import {
   AUTHORIZATION_QUERY_PORT,
@@ -25,4 +26,10 @@ test("AppModule composes the MembershipsModule boundary", () => {
   const imports = Reflect.getMetadata("imports", AppModule) as readonly unknown[];
 
   assert.ok(imports.includes(MembershipsModule));
+});
+
+test("MembershipsModule registers the platform tenant provisioning use case", () => {
+  const providers = (Reflect.getMetadata("providers", MembershipsModule) ?? []) as readonly unknown[];
+
+  assert.ok(providers.includes(ProvisionTenantUseCase));
 });
