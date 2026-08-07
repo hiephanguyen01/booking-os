@@ -6,6 +6,7 @@ import type {
   PlatformTenantProvisioningTransactionContext,
   PlatformTenantProvisioningTransactionPort,
 } from "../../../application/ports/platform-tenant-provisioning-transaction.port.js";
+import { PrismaIdentityProvisioningAdapter } from "./prisma-identity-provisioning.adapter.js";
 import { PrismaTenantOutboxAdapter } from "./prisma-tenant-outbox.adapter.js";
 import { PrismaTenantProvisioningIdempotencyAdapter } from "./prisma-tenant-provisioning-idempotency.adapter.js";
 
@@ -26,8 +27,10 @@ export class PrismaPlatformTenantProvisioningTransactionAdapter
   ): Promise<T> {
     return this.prisma.$transaction(async (transaction) => {
       const idempotency = new PrismaTenantProvisioningIdempotencyAdapter(transaction);
+      const identity = new PrismaIdentityProvisioningAdapter(transaction);
       const context: PlatformTenantProvisioningTransactionContext = Object.freeze({
         idempotency,
+        identity,
         runTenant: async <Result>(
           tenantId: string,
           tenantWork: (session: PlatformTenantProvisioningDataSession) => Promise<Result>,
