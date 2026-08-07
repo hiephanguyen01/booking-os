@@ -61,6 +61,22 @@ test("rejects a tenant-scoped actor before querying provisioning state", async (
   assert.equal(calls.length, 0);
 });
 
+test("rejects a platform actor without tenant provisioning permission", async () => {
+  const { calls, useCase } = createHarness();
+  const authorization: AuthorizationContext = {
+    ...PLATFORM_AUTHORIZATION,
+    permissionKeys: [],
+  };
+
+  await assert.rejects(
+    useCase.execute(command({ authorization })),
+    (error: unknown) =>
+      error instanceof PlatformTenantProvisioningError &&
+      error.code === "PLATFORM_PERMISSION_REQUIRED",
+  );
+  assert.equal(calls.length, 0);
+});
+
 test("requires the exact platform hostname before querying provisioning state", async () => {
   const { calls, useCase } = createHarness();
 
