@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 
 import { PrismaTenantDataSessionFactory } from "../../../../../database/prisma-tenant-data-session.factory.js";
 import { PrismaService } from "../../../../../database/prisma.service.js";
+import type { MembershipDataSession } from "../../../application/ports/membership-data-session.js";
 import type {
   PlatformTenantProvisioningTransactionContext,
   PlatformTenantProvisioningTransactionPort,
@@ -29,14 +30,14 @@ export class PrismaPlatformTenantProvisioningTransactionAdapter
         idempotency,
         runTenant: async <Result>(
           tenantId: string,
-          tenantWork: Parameters<PlatformTenantProvisioningTransactionContext["runTenant"]>[1],
+          tenantWork: (session: MembershipDataSession) => Promise<Result>,
         ): Promise<Result> => {
           await transaction.$executeRawUnsafe(`SET LOCAL ROLE ${APPLICATION_DATABASE_ROLE}`);
 
           try {
             await transaction.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
             const session = this.sessionFactory.create(transaction, tenantId);
-            return (await tenantWork(session)) as Result;
+            return await tenantWork(session);
           } finally {
             await transaction.$executeRawUnsafe("SET LOCAL ROLE NONE");
           }
