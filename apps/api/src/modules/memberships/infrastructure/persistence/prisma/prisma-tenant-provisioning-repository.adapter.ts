@@ -25,7 +25,12 @@ function isUniqueConstraintError(error: unknown): boolean {
     typeof error === "object" &&
     error !== null &&
     "code" in error &&
-    (error.code === "23505" || error.code === "P2002")
+    error.code === "P2010" &&
+    "meta" in error &&
+    typeof error.meta === "object" &&
+    error.meta !== null &&
+    "code" in error.meta &&
+    error.meta.code === "23505"
   );
 }
 

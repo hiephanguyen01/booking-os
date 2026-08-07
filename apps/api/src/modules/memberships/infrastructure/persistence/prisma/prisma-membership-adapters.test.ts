@@ -172,7 +172,13 @@ test("tenant outbox append is bound to the constructed tenant", async () => {
 });
 
 test("maps tenant slug and hostname unique violations to a stable provisioning conflict", async () => {
-  const uniqueViolation = Object.assign(new Error("duplicate key"), { code: "23505" });
+  const uniqueViolation = Object.assign(new Error("Raw query failed."), {
+    code: "P2010",
+    meta: {
+      code: "23505",
+      message: "Key (slug)=(acme) already exists.",
+    },
+  });
   const transaction = {
     async $queryRawUnsafe() {
       throw uniqueViolation;
@@ -193,4 +199,25 @@ test("maps tenant slug and hostname unique violations to a stable provisioning c
         error instanceof MembershipError && error.code === "TENANT_PROVISIONING_CONFLICT",
     );
   }
+});
+
+test("does not misclassify unrelated raw query failures as provisioning conflicts", async () => {
+  const rawQueryFailure = Object.assign(new Error("Raw query failed."), {
+    code: "P2010",
+    meta: {
+      code: "22P02",
+      message: "invalid input syntax for type uuid",
+    },
+  });
+  const transaction = {
+    async $queryRawUnsafe() {
+      throw rawQueryFailure;
+    },
+  };
+  const tenants = new PrismaTenantProvisioningRepositoryAdapter(transaction as never, tenantId);
+
+  await assert.rejects(
+    tenants.createProvisioning({ slug: "acme", name: "Acme", now }),
+    (error: unknown) => error === rawQueryFailure,
+  );
 });
