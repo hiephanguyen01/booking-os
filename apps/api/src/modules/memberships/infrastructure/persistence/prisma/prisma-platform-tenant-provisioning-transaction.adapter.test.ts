@@ -27,7 +27,7 @@ function createHarness() {
   const operations: string[] = [];
   let transactions = 0;
   const transaction: FakeTransaction = {
-    async $queryRawUnsafe<T>(sql) {
+    async $queryRawUnsafe<T>(sql: string) {
       if (sql.includes('INSERT INTO "tenant_provisioning_requests"')) {
         operations.push("idempotency:claim");
         return [{ inserted: true }] as T;
