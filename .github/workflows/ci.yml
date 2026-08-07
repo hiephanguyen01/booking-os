@@ -50,6 +50,9 @@ jobs:
       - name: Check formatting and static rules
         run: pnpm check:ci
 
+      - name: Verify frontend library boundaries
+        run: pnpm verify:frontend-libraries
+
       - name: Lint workspaces
         run: pnpm lint
 
