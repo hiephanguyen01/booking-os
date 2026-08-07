@@ -70,13 +70,10 @@ async function createGenerationFingerprint() {
 
 async function isPrismaClientReady() {
   try {
-    await runPnpm(
-      ["--filter", "@booking-os/api", "exec", "node", "--eval", readinessProbe],
-      {
-        stdio: "ignore",
-        failureLabel: "Shared Prisma client readiness probe",
-      },
-    );
+    await runPnpm(["--filter", "@booking-os/api", "exec", "node", "--eval", readinessProbe], {
+      stdio: "ignore",
+      failureLabel: "Shared Prisma client readiness probe",
+    });
     return true;
   } catch {
     return false;
