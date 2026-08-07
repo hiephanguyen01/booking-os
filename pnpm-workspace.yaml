@@ -3,6 +3,14 @@ packages:
   - "packages/*"
   - "tools/*"
 
+auditConfig:
+  # Temporary dev-tool waiver: openapi-typescript 7.13 resolves
+  # @redocly/openapi-core 1.x -> js-yaml 4.3.0, while the advisory's
+  # patched 4.x release is not published. Remove when a compatible
+  # upstream release resolves GHSA-5p4m-2wfm-xmqj.
+  ignoreGhsas:
+    - GHSA-5p4m-2wfm-xmqj
+
 catalog:
   "@hookform/resolvers": 5.5.7
   "@playwright/test": 1.62.0

@@ -106,6 +106,15 @@ const optionalBootstrapEmailSchema = z.preprocess(
     .optional(),
 );
 
+function isLoopbackHostname(hostname: string): boolean {
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname === "[::1]"
+  );
+}
+
 const sessionAllowedOriginsSchema = z.preprocess(
   (value) => (typeof value === "string" && value.trim().length === 0 ? undefined : value),
   z
@@ -123,13 +132,17 @@ const sessionAllowedOriginsSchema = z.preprocess(
         } catch {
           context.addIssue({
             code: "custom",
-            message: "SESSION_ALLOWED_ORIGINS must contain canonical HTTPS origins",
+            message:
+              "SESSION_ALLOWED_ORIGINS must contain canonical HTTPS origins or loopback HTTP origins",
           });
           return z.NEVER;
         }
 
+        const allowedProtocol =
+          parsed.protocol === "https:" ||
+          (parsed.protocol === "http:" && isLoopbackHostname(parsed.hostname));
         const canonical =
-          parsed.protocol === "https:" &&
+          allowedProtocol &&
           parsed.username === "" &&
           parsed.password === "" &&
           parsed.pathname === "/" &&
@@ -140,7 +153,8 @@ const sessionAllowedOriginsSchema = z.preprocess(
         if (!canonical || seen.has(origin)) {
           context.addIssue({
             code: "custom",
-            message: "SESSION_ALLOWED_ORIGINS must contain unique canonical HTTPS origins",
+            message:
+              "SESSION_ALLOWED_ORIGINS must contain unique canonical HTTPS origins or loopback HTTP origins",
           });
           return z.NEVER;
         }
@@ -240,6 +254,17 @@ const rawEnvironmentSchema = z
         code: "custom",
         path: ["SESSION_ALLOWED_ORIGINS"],
         message: "SESSION_ALLOWED_ORIGINS requires at least one origin in production",
+      });
+    }
+
+    if (
+      values.NODE_ENV === "production" &&
+      values.SESSION_ALLOWED_ORIGINS?.some((origin) => new URL(origin).protocol !== "https:")
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["SESSION_ALLOWED_ORIGINS"],
+        message: "SESSION_ALLOWED_ORIGINS must use HTTPS in production",
       });
     }
 

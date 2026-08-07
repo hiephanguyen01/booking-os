@@ -15,6 +15,15 @@ const REJECTED_ORIGIN: OriginPolicyDecision = {
   allowCredentials: false,
 };
 
+function isLoopbackHostname(hostname: string): boolean {
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname === "[::1]"
+  );
+}
+
 function assertValidAllowedOrigin(origin: string): void {
   let parsed: URL;
 
@@ -24,8 +33,11 @@ function assertValidAllowedOrigin(origin: string): void {
     throw new Error(`Invalid allowed origin: ${origin}`);
   }
 
-  const isCanonicalHttpsOrigin =
-    parsed.protocol === "https:" &&
+  const allowedProtocol =
+    parsed.protocol === "https:" ||
+    (parsed.protocol === "http:" && isLoopbackHostname(parsed.hostname));
+  const isCanonicalOrigin =
+    allowedProtocol &&
     parsed.username === "" &&
     parsed.password === "" &&
     parsed.pathname === "/" &&
@@ -33,7 +45,7 @@ function assertValidAllowedOrigin(origin: string): void {
     parsed.hash === "" &&
     parsed.origin === origin;
 
-  if (!isCanonicalHttpsOrigin) {
+  if (!isCanonicalOrigin) {
     throw new Error(`Invalid allowed origin: ${origin}`);
   }
 }
