@@ -6,8 +6,8 @@ import type {
   PlatformTenantProvisioningQueryPort,
 } from "../ports/platform-tenant-provisioning-workflow.port.js";
 import {
-  PlatformTenantProvisioningError,
   type PlatformTenantProvisioningConfig,
+  PlatformTenantProvisioningError,
 } from "./provision-tenant.use-case.js";
 
 export type GetTenantProvisioningCommand = Readonly<{
@@ -26,7 +26,9 @@ export class GetTenantProvisioningUseCase {
     private readonly config: Pick<PlatformTenantProvisioningConfig, "platformHostname">,
   ) {}
 
-  async execute(command: GetTenantProvisioningCommand): Promise<GetPlatformTenantProvisioningResult> {
+  async execute(
+    command: GetTenantProvisioningCommand,
+  ): Promise<GetPlatformTenantProvisioningResult> {
     if (command.authorization.scope.type !== "platform") {
       throw new PlatformTenantProvisioningError(
         "PLATFORM_SCOPE_REQUIRED",
