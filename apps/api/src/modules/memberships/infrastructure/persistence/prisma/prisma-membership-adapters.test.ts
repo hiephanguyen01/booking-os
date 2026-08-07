@@ -98,9 +98,7 @@ test("row locks and authorization changes stay inside one tenant", async () => {
   transaction.results.push([membershipRow()]);
   transaction.results.push([{ authorizationVersion: 4 }]);
   transaction.results.push([{ userId }]);
-  transaction.results.push([
-    { id: tenantId, slug: "acme", name: "Acme", status: "provisioning" },
-  ]);
+  transaction.results.push([{ id: tenantId, slug: "acme", name: "Acme", status: "provisioning" }]);
 
   const memberships = new PrismaMembershipRepositoryAdapter(transaction, tenantId);
   const roles = new PrismaTenantRoleAssignmentRepositoryAdapter(transaction, tenantId);
