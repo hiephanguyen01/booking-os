@@ -1,13 +1,8 @@
-import {
-  canGrantRole,
-  normalizeEmail,
-  PERMISSION_KEYS,
-  SYSTEM_ROLES,
-} from "@booking-os/auth";
+import { canGrantRole, normalizeEmail, PERMISSION_KEYS, SYSTEM_ROLES } from "@booking-os/auth";
 import type { AuthorizationContext } from "@booking-os/contracts";
 
-import type { TenantAdminInvitationWorkflowPort } from "../ports/tenant-admin-invitation-workflow.port.js";
 import { RoleGrantNotAllowedError } from "../../domain/membership-errors.js";
+import type { TenantAdminInvitationWorkflowPort } from "../ports/tenant-admin-invitation-workflow.port.js";
 
 export type InviteTenantAdminCommand = Readonly<{
   authorization: AuthorizationContext;

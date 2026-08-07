@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test, { after, before } from "node:test";
 
-import { BOOKING_SESSION_COOKIE, decryptSensitiveEnvelope, type SensitiveEnvelope } from "@booking-os/auth";
+import {
+  BOOKING_SESSION_COOKIE,
+  decryptSensitiveEnvelope,
+  type SensitiveEnvelope,
+} from "@booking-os/auth";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
@@ -278,8 +282,12 @@ test("tenant admin invitations reuse identities, issue activation when needed, e
   });
   assert.equal(existingInvitation.intendedRoleKey, "tenant_admin");
   assert.equal(existingInvitation.hostname, HOSTNAME);
-  assert.ok(existingInvitation.expiresAt.getTime() - existingInvitation.createdAt.getTime() >= 86_399_000);
-  assert.ok(existingInvitation.expiresAt.getTime() - existingInvitation.createdAt.getTime() <= 86_401_000);
+  assert.ok(
+    existingInvitation.expiresAt.getTime() - existingInvitation.createdAt.getTime() >= 86_399_000,
+  );
+  assert.ok(
+    existingInvitation.expiresAt.getTime() - existingInvitation.createdAt.getTime() <= 86_401_000,
+  );
   assert.equal(await prisma.accountActivationToken.count({ where: { userId: EXISTING_ID } }), 0);
 
   const existingEvent = await prisma.outboxEvent.findFirstOrThrow({
@@ -291,7 +299,9 @@ test("tenant admin invitations reuse identities, issue activation when needed, e
   await authenticatedPost("/api/membership/invitations", { email: PENDING_EMAIL }).expect(202, {
     accepted: true,
   });
-  const pendingUser = await prisma.user.findUniqueOrThrow({ where: { normalizedEmail: PENDING_EMAIL } });
+  const pendingUser = await prisma.user.findUniqueOrThrow({
+    where: { normalizedEmail: PENDING_EMAIL },
+  });
   assert.equal(pendingUser.status, "pendingActivation");
   const pendingInvitation = await prisma.membershipInvitation.findFirstOrThrow({
     where: { tenantId: TENANT_ID, invitedUserId: pendingUser.id, status: "pending" },
@@ -302,9 +312,10 @@ test("tenant admin invitations reuse identities, issue activation when needed, e
   assert.equal(activation.hostname, HOSTNAME);
   assert.notEqual(activation.selector, pendingInvitation.selector);
 
-  await authenticatedPost(
-    `/api/membership/invitations/${pendingInvitation.id}/resend`,
-  ).expect(202, { accepted: true });
+  await authenticatedPost(`/api/membership/invitations/${pendingInvitation.id}/resend`).expect(
+    202,
+    { accepted: true },
+  );
   const invitationsAfterResend = await prisma.membershipInvitation.findMany({
     where: { tenantId: TENANT_ID, invitedUserId: pendingUser.id },
   });
@@ -333,7 +344,9 @@ test("duplicate concurrent invitations produce one pending membership/invitation
     ],
   );
 
-  const user = await prisma.user.findUniqueOrThrow({ where: { normalizedEmail: DUPLICATE_EMAIL } });
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { normalizedEmail: DUPLICATE_EMAIL },
+  });
   assert.equal(
     await prisma.tenantMembership.count({ where: { tenantId: TENANT_ID, userId: user.id } }),
     1,
@@ -348,6 +361,9 @@ test("duplicate concurrent invitations produce one pending membership/invitation
     where: { tenantId: TENANT_ID, type: "membership.admin_invitation.requested.v1" },
   });
   for (const event of events) {
-    assert.doesNotMatch(JSON.stringify(event.payload), /rawToken|serializedToken|tokenHash|secret/iu);
+    assert.doesNotMatch(
+      JSON.stringify(event.payload),
+      /rawToken|serializedToken|tokenHash|secret/iu,
+    );
   }
 });
