@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import type { MembershipInvitationEnvelopePort } from "../ports/membership-invitation-envelope.port.js";
 import type { MembershipInvitationTokenPort } from "../ports/membership-invitation-token.port.js";
 import type { PlatformTenantProvisioningTransactionPort } from "../ports/platform-tenant-provisioning-transaction.port.js";
+import type { TenantActivationEnvelopePort } from "../ports/tenant-activation-envelope.port.js";
+import type { TenantActivationTokenPort } from "../ports/tenant-activation-token.port.js";
 import type {
   ProvisionPlatformTenantInput,
   ProvisionPlatformTenantResult,
@@ -15,6 +17,8 @@ export interface PlatformTenantProvisioningWorkflowDependencies {
   readonly createOutboxEventId?: () => string;
   readonly invitationTokens?: MembershipInvitationTokenPort;
   readonly invitationEnvelope?: MembershipInvitationEnvelopePort;
+  readonly activationTokens?: TenantActivationTokenPort;
+  readonly activationEnvelope?: TenantActivationEnvelopePort;
 }
 
 const unavailableInvitationTokens: MembershipInvitationTokenPort = Object.freeze({
@@ -29,11 +33,25 @@ const unavailableInvitationEnvelope: MembershipInvitationEnvelopePort = Object.f
   },
 });
 
+const unavailableActivationTokens: TenantActivationTokenPort = Object.freeze({
+  issue() {
+    throw new Error("Tenant activation token issuer is not configured.");
+  },
+});
+
+const unavailableActivationEnvelope: TenantActivationEnvelopePort = Object.freeze({
+  seal() {
+    throw new Error("Tenant activation envelope sealer is not configured.");
+  },
+});
+
 export class PlatformTenantProvisioningWorkflow {
   private readonly createTenantId: () => string;
   private readonly createOutboxEventId: () => string;
   private readonly invitationTokens: MembershipInvitationTokenPort;
   private readonly invitationEnvelope: MembershipInvitationEnvelopePort;
+  private readonly activationTokens: TenantActivationTokenPort;
+  private readonly activationEnvelope: TenantActivationEnvelopePort;
 
   constructor(
     private readonly transaction: PlatformTenantProvisioningTransactionPort,
@@ -43,6 +61,8 @@ export class PlatformTenantProvisioningWorkflow {
     this.createOutboxEventId = dependencies.createOutboxEventId ?? randomUUID;
     this.invitationTokens = dependencies.invitationTokens ?? unavailableInvitationTokens;
     this.invitationEnvelope = dependencies.invitationEnvelope ?? unavailableInvitationEnvelope;
+    this.activationTokens = dependencies.activationTokens ?? unavailableActivationTokens;
+    this.activationEnvelope = dependencies.activationEnvelope ?? unavailableActivationEnvelope;
   }
 
   async provision(input: ProvisionPlatformTenantInput): Promise<ProvisionPlatformTenantResult> {
@@ -71,6 +91,13 @@ export class PlatformTenantProvisioningWorkflow {
         normalizedEmail: input.normalizedOwnerEmail,
         intendedRoleKey: "tenant_owner",
       });
+      const activationToken =
+        ownerIdentity.status === "pending_activation"
+          ? this.activationTokens.issue({
+              tenantId,
+              hostname: input.tenantHostname,
+            })
+          : null;
       const invitationExpiresAt = new Date(input.now.getTime() + INVITATION_TTL_MS);
 
       const provisioned = await context.runTenant(tenantId, async (session) => {
@@ -95,9 +122,9 @@ export class PlatformTenantProvisioningWorkflow {
           invitedByUserId: input.actorUserId,
           now: input.now,
         });
-        const outboxEventId = this.createOutboxEventId();
-        const envelope = this.invitationEnvelope.seal({
-          eventId: outboxEventId,
+        const invitationEventId = this.createOutboxEventId();
+        const invitationEnvelope = this.invitationEnvelope.seal({
+          eventId: invitationEventId,
           tenantId,
           invitationId: invitation.id,
           userId: ownerIdentity.userId,
@@ -107,7 +134,7 @@ export class PlatformTenantProvisioningWorkflow {
           serializedToken: invitationToken.serialized,
         });
         await session.outbox.append({
-          id: outboxEventId,
+          id: invitationEventId,
           type: "membership.owner_invitation.requested.v1",
           aggregateType: "membership_invitation",
           aggregateId: invitation.id,
@@ -116,10 +143,38 @@ export class PlatformTenantProvisioningWorkflow {
             recipient: input.normalizedOwnerEmail,
             hostname: input.tenantHostname,
             purpose: "membership_invitation",
-            envelope,
+            envelope: invitationEnvelope,
           },
           occurredAt: input.now,
         });
+
+        if (activationToken) {
+          const activationEventId = this.createOutboxEventId();
+          const activationEnvelope = this.activationEnvelope.seal({
+            eventId: activationEventId,
+            tenantId,
+            invitationId: invitation.id,
+            userId: ownerIdentity.userId,
+            hostname: input.tenantHostname,
+            recipient: input.normalizedOwnerEmail,
+            serializedToken: activationToken.serialized,
+          });
+          await session.outbox.append({
+            id: activationEventId,
+            type: "identity.activation.requested.v1",
+            aggregateType: "user",
+            aggregateId: ownerIdentity.userId,
+            payload: {
+              version: 1,
+              recipient: input.normalizedOwnerEmail,
+              template: "account_activation",
+              hostname: input.tenantHostname,
+              envelope: activationEnvelope,
+            },
+            occurredAt: input.now,
+          });
+        }
+
         await session.audit.append({
           eventType: "membership.invited",
           actorUserId: input.actorUserId,
@@ -135,6 +190,19 @@ export class PlatformTenantProvisioningWorkflow {
 
         return { tenant, membership, invitation };
       });
+
+      if (activationToken) {
+        await context.identity.issueTenantActivation({
+          userId: ownerIdentity.userId,
+          tenantId,
+          invitationId: provisioned.invitation.id,
+          hostname: input.tenantHostname,
+          selector: activationToken.selector,
+          tokenHash: activationToken.tokenHash,
+          expiresAt: invitationExpiresAt,
+          now: input.now,
+        });
+      }
 
       const result: ProvisionPlatformTenantResult = Object.freeze({
         tenantId: provisioned.tenant.id,
