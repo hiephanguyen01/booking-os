@@ -17,7 +17,7 @@ const PLATFORM_AUTHORIZATION: AuthorizationContext = Object.freeze({
   userId: "10000000-0000-4000-8000-000000000001",
   sessionId: "20000000-0000-4000-8000-000000000001",
   scope: Object.freeze({ type: "platform" }),
-  roleKeys: Object.freeze(["platform_admin"]),
+  roleKeys: Object.freeze(["platform_admin"] as const),
   permissionKeys: Object.freeze([PERMISSION_KEYS.platformTenantsProvision]),
   userAuthorizationVersion: 1,
 });
