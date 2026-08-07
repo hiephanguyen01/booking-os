@@ -28,8 +28,20 @@ export type GetPlatformTenantProvisioningInput = Readonly<{
 
 export type GetPlatformTenantProvisioningResult = Omit<ProvisionPlatformTenantResult, "replayed">;
 
+export type ResendOwnerInvitationInput = Readonly<{
+  actorUserId: string;
+  tenantId: string;
+  requestId: string;
+  now: Date;
+}>;
+
+export type ResendOwnerInvitationResult = Readonly<{
+  accepted: true;
+}>;
+
 export interface PlatformTenantProvisioningWorkflowPort {
   provision(input: ProvisionPlatformTenantInput): Promise<ProvisionPlatformTenantResult>;
+  resendOwnerInvitation(input: ResendOwnerInvitationInput): Promise<ResendOwnerInvitationResult>;
 }
 
 export interface PlatformTenantProvisioningQueryPort {
