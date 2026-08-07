@@ -39,11 +39,41 @@ enum RoleScopeLevel {
   @@map("role_scope_level")
 }
 
+enum TenantStatus {
+  provisioning
+  active
+  suspended
+
+  @@map("tenant_status")
+}
+
+enum TenantMembershipStatus {
+  invited
+  active
+  suspended
+  revoked
+
+  @@map("tenant_membership_status")
+}
+
+enum MembershipInvitationStatus {
+  pending
+  accepted
+  revoked
+  expired
+
+  @@map("membership_invitation_status")
+}
+
 model Tenant {
   id                      String                   @id @db.Uuid
   slug                    String                   @unique
   name                    String
+  status                  TenantStatus             @default(provisioning)
   createdAt               DateTime                 @default(now()) @db.Timestamptz(6) @map("created_at")
+  domains                 TenantDomain[]
+  memberships             TenantMembership[]
+  membershipInvitations   MembershipInvitation[]
   probes                  TenantProbe[]
   outboxEvents            OutboxEvent[]
   accountActivationTokens AccountActivationToken[]
@@ -52,27 +82,31 @@ model Tenant {
   authSessions            AuthSession[]
   authSessionTokens       AuthSessionToken[]
 
+  @@index([status])
   @@map("tenants")
 }
 
 model User {
-  id                   String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  normalizedEmail      String                   @unique @map("normalized_email")
-  displayEmail         String                   @map("display_email")
-  status               UserStatus               @default(pendingActivation)
-  authorizationVersion Int                      @default(1) @map("authorization_version")
-  activatedAt          DateTime?                @db.Timestamptz(6) @map("activated_at")
-  suspendedAt          DateTime?                @db.Timestamptz(6) @map("suspended_at")
-  disabledAt           DateTime?                @db.Timestamptz(6) @map("disabled_at")
-  createdAt            DateTime                 @default(now()) @db.Timestamptz(6) @map("created_at")
-  updatedAt            DateTime                 @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
-  passwordCredential   PasswordCredential?
-  activationTokens     AccountActivationToken[]
-  passwordResetTokens  PasswordResetToken[]
-  roleAssignments      RoleAssignment[]
-  authSessions         AuthSession[]
-  auditEventsAsActor   SecurityAuditEvent[]     @relation("SecurityAuditActor")
-  auditEventsAsSubject SecurityAuditEvent[]     @relation("SecurityAuditSubject")
+  id                            String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  normalizedEmail               String                   @unique @map("normalized_email")
+  displayEmail                  String                   @map("display_email")
+  status                        UserStatus               @default(pendingActivation)
+  authorizationVersion          Int                      @default(1) @map("authorization_version")
+  activatedAt                   DateTime?                @db.Timestamptz(6) @map("activated_at")
+  suspendedAt                   DateTime?                @db.Timestamptz(6) @map("suspended_at")
+  disabledAt                    DateTime?                @db.Timestamptz(6) @map("disabled_at")
+  createdAt                     DateTime                 @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt                     DateTime                 @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
+  passwordCredential            PasswordCredential?
+  activationTokens              AccountActivationToken[]
+  passwordResetTokens           PasswordResetToken[]
+  memberships                   TenantMembership[]
+  membershipInvitationsReceived MembershipInvitation[]   @relation("MembershipInvitationInvitee")
+  membershipInvitationsSent     MembershipInvitation[]   @relation("MembershipInvitationInviter")
+  roleAssignments               RoleAssignment[]
+  authSessions                  AuthSession[]
+  auditEventsAsActor            SecurityAuditEvent[]     @relation("SecurityAuditActor")
+  auditEventsAsSubject          SecurityAuditEvent[]     @relation("SecurityAuditSubject")
 
   @@index([status])
   @@map("users")
@@ -92,20 +126,21 @@ model PasswordCredential {
 }
 
 model AccountActivationToken {
-  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId       String            @db.Uuid @map("user_id")
-  scopeType    IdentityScopeType @map("scope_type")
-  tenantId     String?           @db.Uuid @map("tenant_id")
-  invitationId String?           @db.Uuid @map("invitation_id")
-  hostname     String
-  selector     String            @unique
-  tokenHash    String            @db.Char(64) @map("token_hash")
-  expiresAt    DateTime          @db.Timestamptz(6) @map("expires_at")
-  consumedAt   DateTime?         @db.Timestamptz(6) @map("consumed_at")
-  revokedAt    DateTime?         @db.Timestamptz(6) @map("revoked_at")
-  createdAt    DateTime          @default(now()) @db.Timestamptz(6) @map("created_at")
-  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenant       Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id                   String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId               String                @db.Uuid @map("user_id")
+  scopeType            IdentityScopeType     @map("scope_type")
+  tenantId             String?               @db.Uuid @map("tenant_id")
+  invitationId         String?               @db.Uuid @map("invitation_id")
+  hostname             String
+  selector             String                @unique
+  tokenHash            String                @db.Char(64) @map("token_hash")
+  expiresAt            DateTime              @db.Timestamptz(6) @map("expires_at")
+  consumedAt           DateTime?             @db.Timestamptz(6) @map("consumed_at")
+  revokedAt            DateTime?             @db.Timestamptz(6) @map("revoked_at")
+  createdAt            DateTime              @default(now()) @db.Timestamptz(6) @map("created_at")
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant               Tenant?               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  membershipInvitation MembershipInvitation? @relation(fields: [invitationId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([tenantId])
@@ -132,6 +167,68 @@ model PasswordResetToken {
   @@index([tenantId])
   @@index([expiresAt])
   @@map("password_reset_tokens")
+}
+
+model TenantDomain {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @db.Uuid @map("tenant_id")
+  hostname  String   @unique
+  isPrimary Boolean  @default(false) @map("is_primary")
+  createdAt DateTime @default(now()) @db.Timestamptz(6) @map("created_at")
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("tenant_domains")
+}
+
+model TenantMembership {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId             String                 @db.Uuid @map("tenant_id")
+  userId               String                 @db.Uuid @map("user_id")
+  status               TenantMembershipStatus @default(invited)
+  authorizationVersion Int                    @default(1) @map("authorization_version")
+  acceptedAt           DateTime?              @db.Timestamptz(6) @map("accepted_at")
+  suspendedAt          DateTime?              @db.Timestamptz(6) @map("suspended_at")
+  revokedAt            DateTime?              @db.Timestamptz(6) @map("revoked_at")
+  createdAt            DateTime               @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt            DateTime               @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
+  tenant               Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([tenantId, status])
+  @@map("tenant_memberships")
+}
+
+model MembershipInvitation {
+  id                 String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String                     @db.Uuid @map("tenant_id")
+  normalizedEmail    String                     @map("normalized_email")
+  invitedUserId      String?                    @db.Uuid @map("invited_user_id")
+  intendedRoleKey    String                     @map("intended_role_key")
+  status             MembershipInvitationStatus @default(pending)
+  hostname           String
+  selector           String                     @unique
+  tokenHash          String                     @db.Char(64) @map("token_hash")
+  expiresAt          DateTime                   @db.Timestamptz(6) @map("expires_at")
+  acceptedAt         DateTime?                  @db.Timestamptz(6) @map("accepted_at")
+  revokedAt          DateTime?                  @db.Timestamptz(6) @map("revoked_at")
+  invitedByUserId    String                     @db.Uuid @map("invited_by_user_id")
+  createdAt          DateTime                   @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt          DateTime                   @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
+  tenant             Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invitedUser        User?                      @relation("MembershipInvitationInvitee", fields: [invitedUserId], references: [id], onDelete: SetNull)
+  invitedByUser      User                       @relation("MembershipInvitationInviter", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+  intendedRole       Role                       @relation(fields: [intendedRoleKey], references: [key], onDelete: Restrict, onUpdate: Cascade)
+  activationTokens   AccountActivationToken[]
+
+  @@index([tenantId])
+  @@index([invitedUserId])
+  @@index([invitedByUserId])
+  @@index([expiresAt])
+  @@map("membership_invitations")
 }
 
 model AuthSession {
@@ -188,14 +285,15 @@ model AuthSessionToken {
 }
 
 model Role {
-  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  key             String           @unique
-  scopeLevel      RoleScopeLevel   @map("scope_level")
-  isSystem        Boolean          @default(true) @map("is_system")
-  createdAt       DateTime         @default(now()) @db.Timestamptz(6) @map("created_at")
-  updatedAt       DateTime         @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
-  rolePermissions RolePermission[]
-  assignments     RoleAssignment[]
+  id                    String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key                   String                 @unique
+  scopeLevel            RoleScopeLevel         @map("scope_level")
+  isSystem              Boolean                @default(true) @map("is_system")
+  createdAt             DateTime               @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt             DateTime               @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
+  rolePermissions       RolePermission[]
+  assignments           RoleAssignment[]
+  membershipInvitations MembershipInvitation[]
 
   @@map("roles")
 }
