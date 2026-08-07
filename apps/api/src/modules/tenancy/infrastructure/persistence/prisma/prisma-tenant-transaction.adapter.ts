@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import type { TenantExecutionContext } from "@booking-os/contracts";
 import { Inject, Injectable } from "@nestjs/common";
 
+import { PrismaTenantDataSessionFactory } from "../../../../../database/prisma-tenant-data-session.factory.js";
 import { PrismaService } from "../../../../../database/prisma.service.js";
 import type {
   TenantDataSession,
@@ -13,7 +14,6 @@ import {
   TenantContextConflictError,
 } from "../../../application/tenant-context.errors.js";
 import { isTenantId } from "../../../domain/tenant-id.js";
-import { PrismaTenantProbeRepositoryAdapter } from "./prisma-tenant-probe-repository.adapter.js";
 
 const APPLICATION_DATABASE_ROLE = "booking_app";
 
@@ -25,11 +25,12 @@ interface ActiveTenantSession {
 @Injectable()
 export class PrismaTenantTransactionAdapter implements TenantTransactionPort {
   private readonly activeSessions = new AsyncLocalStorage<ActiveTenantSession>();
-  private readonly prisma: PrismaService;
 
-  constructor(@Inject(PrismaService) prisma: PrismaService) {
-    this.prisma = prisma;
-  }
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(PrismaTenantDataSessionFactory)
+    private readonly sessionFactory: PrismaTenantDataSessionFactory,
+  ) {}
 
   async run<T>(
     context: TenantExecutionContext,
@@ -52,9 +53,7 @@ export class PrismaTenantTransactionAdapter implements TenantTransactionPort {
       await transaction.$executeRawUnsafe(`SET LOCAL ROLE ${APPLICATION_DATABASE_ROLE}`);
       await transaction.$executeRaw`SELECT set_config('app.tenant_id', ${context.tenantId}, true)`;
 
-      const session: TenantDataSession = Object.freeze({
-        tenantProbes: new PrismaTenantProbeRepositoryAdapter(transaction),
-      });
+      const session = this.sessionFactory.create(transaction, context.tenantId);
       const activeSession: ActiveTenantSession = Object.freeze({ context, session });
 
       return this.activeSessions.run(activeSession, () => work(session));
