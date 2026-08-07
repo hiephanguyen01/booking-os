@@ -178,7 +178,8 @@ const hostnameSchema = (variableName: string) =>
     .string()
     .trim()
     .refine(
-      (value) => value.includes(".") && value.split(".").every((label) => hostLabelPattern.test(label)),
+      (value) =>
+        value.includes(".") && value.split(".").every((label) => hostLabelPattern.test(label)),
       `${variableName} must be a valid multi-label hostname`,
     )
     .transform((value) => value.toLowerCase());
