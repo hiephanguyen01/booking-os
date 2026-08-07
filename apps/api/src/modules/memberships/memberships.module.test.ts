@@ -12,13 +12,12 @@ import {
 } from "./memberships.tokens.js";
 
 test("membership integration tokens are distinct symbols", () => {
-  const tokens = [
-    AUTHORIZATION_QUERY_PORT,
-    IDENTITY_PROVISIONING_PORT,
-    SESSION_ELEVATION_PORT,
-  ];
+  const tokens = [AUTHORIZATION_QUERY_PORT, IDENTITY_PROVISIONING_PORT, SESSION_ELEVATION_PORT];
 
-  assert.equal(tokens.every((token) => typeof token === "symbol"), true);
+  assert.equal(
+    tokens.every((token) => typeof token === "symbol"),
+    true,
+  );
   assert.equal(new Set(tokens).size, tokens.length);
 });
 
