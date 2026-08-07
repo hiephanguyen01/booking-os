@@ -149,3 +149,20 @@ test("normalizes input and delegates one idempotent provisioning workflow", asyn
     },
   ]);
 });
+
+test("derives a stable request hash from the canonical provisioning payload", async () => {
+  const { calls, useCase } = createHarness();
+
+  await useCase.execute(command());
+  await useCase.execute(command({ ownerEmail: " owner@example.com " }));
+  await useCase.execute(command({ tenantName: "Acme Holdings" }));
+
+  const requestHashes = calls.map(
+    (call) =>
+      (call as ProvisionPlatformTenantInput & { readonly requestHash?: string }).requestHash,
+  );
+
+  assert.match(requestHashes[0] ?? "", /^[a-f0-9]{64}$/);
+  assert.equal(requestHashes[1], requestHashes[0]);
+  assert.notEqual(requestHashes[2], requestHashes[0]);
+});
