@@ -1,4 +1,4 @@
-import { mkdir, rm, stat } from "node:fs/promises";
+import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const DEFAULT_RETRY_DELAY_MS = 50;
@@ -10,6 +10,18 @@ const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, mil
 function assertPositiveInteger(value, label) {
   if (!Number.isSafeInteger(value) || value <= 0) {
     throw new RangeError(`${label} must be a positive safe integer.`);
+  }
+}
+
+function assertNonEmptyString(value, label) {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new TypeError(`${label} must be a non-empty string.`);
+  }
+}
+
+function assertFunction(value, label) {
+  if (typeof value !== "function") {
+    throw new TypeError(`${label} must be a function.`);
   }
 }
 
@@ -57,6 +69,17 @@ async function acquireDirectoryLock(lockPath, options) {
   }
 }
 
+async function markerMatches(markerPath, fingerprint) {
+  try {
+    return (await readFile(markerPath, "utf8")).trim() === fingerprint;
+  } catch (error) {
+    if (isFileSystemError(error, "ENOENT")) {
+      return false;
+    }
+    throw error;
+  }
+}
+
 export async function withDirectoryLock(lockPath, work, options = {}) {
   if (typeof lockPath !== "string" || lockPath.trim().length === 0) {
     throw new TypeError("Directory lock path must be a non-empty string.");
@@ -80,4 +103,37 @@ export async function withDirectoryLock(lockPath, work, options = {}) {
   } finally {
     await rm(lockPath, { recursive: true, force: true });
   }
+}
+
+export async function ensureGeneratedArtifact({
+  lockPath,
+  markerPath,
+  fingerprint,
+  isArtifactReady,
+  generateArtifact,
+  lockOptions,
+}) {
+  assertNonEmptyString(markerPath, "Generated artifact marker path");
+  assertNonEmptyString(fingerprint, "Generated artifact fingerprint");
+  assertFunction(isArtifactReady, "Generated artifact readiness check");
+  assertFunction(generateArtifact, "Generated artifact generator");
+
+  return withDirectoryLock(
+    lockPath,
+    async () => {
+      if ((await markerMatches(markerPath, fingerprint)) && (await isArtifactReady())) {
+        return { generated: false };
+      }
+
+      await generateArtifact();
+      if (!(await isArtifactReady())) {
+        throw new Error("Shared generated artifact is not ready after generation.");
+      }
+
+      await mkdir(path.dirname(markerPath), { recursive: true });
+      await writeFile(markerPath, `${fingerprint}\n`, "utf8");
+      return { generated: true };
+    },
+    lockOptions,
+  );
 }
