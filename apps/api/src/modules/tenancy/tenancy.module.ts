@@ -47,6 +47,7 @@ import { TENANT_DIRECTORY_PORT, TENANT_TRANSACTION_PORT } from "./tenancy.tokens
       useExisting: TenantRequiredGuard,
     },
   ],
+  exports: [TENANT_TRANSACTION_PORT],
 })
 export class TenancyModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
