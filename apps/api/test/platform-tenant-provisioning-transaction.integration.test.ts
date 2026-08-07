@@ -2,11 +2,30 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test, { after } from "node:test";
 
+import type { Environment } from "../src/config/environment.schema.js";
+import { EnvironmentService } from "../src/config/environment.service.js";
 import { PrismaService } from "../src/database/prisma.service.js";
 import { PrismaTenantDataSessionFactory } from "../src/database/prisma-tenant-data-session.factory.js";
 import { PrismaTenantTransactionAdapter } from "../src/modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-transaction.adapter.js";
 
-const prisma = new PrismaService();
+const testEnvironment: Environment = {
+  nodeEnvironment: "test",
+  host: "127.0.0.1",
+  trustProxy: false,
+  tenantBaseDomain: "example.com",
+  port: 3101,
+  apiPrefix: "api",
+  appVersion: "0.1.0-e2e",
+  logLevel: "error",
+  databaseUrl:
+    process.env.DATABASE_URL ?? "postgresql://booking:booking@localhost:5432/booking_os_test",
+  redisUrl: process.env.REDIS_URL ?? "redis://localhost:6379/1",
+  readinessTimeoutMs: 750,
+  sessionSecret: "test-only-session-secret-at-least-32-characters",
+  paymentProvider: "mock",
+};
+
+const prisma = new PrismaService(new EnvironmentService(testEnvironment));
 
 after(async () => {
   await prisma.$disconnect();
