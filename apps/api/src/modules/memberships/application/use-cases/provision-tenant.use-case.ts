@@ -68,13 +68,15 @@ function requireTenantSlug(slug: string, reservedSlugs: readonly string[]): stri
   return normalizedSlug;
 }
 
-function provisioningRequestHash(input: Readonly<{
-  actorUserId: string;
-  slug: string;
-  tenantName: string;
-  normalizedOwnerEmail: string;
-  tenantHostname: string;
-}>): string {
+function provisioningRequestHash(
+  input: Readonly<{
+    actorUserId: string;
+    slug: string;
+    tenantName: string;
+    normalizedOwnerEmail: string;
+    tenantHostname: string;
+  }>,
+): string {
   return createHash("sha256")
     .update(
       JSON.stringify({
