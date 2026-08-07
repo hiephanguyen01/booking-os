@@ -9,8 +9,6 @@ export interface TenantRoleAssignment {
   readonly revokedAt: Date | null;
 }
 
-export function isActiveTenantRoleAssignment(
-  assignment: TenantRoleAssignment,
-): boolean {
+export function isActiveTenantRoleAssignment(assignment: TenantRoleAssignment): boolean {
   return assignment.revokedAt === null;
 }
