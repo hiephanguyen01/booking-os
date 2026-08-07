@@ -12,9 +12,16 @@ const EXPIRES_AT = new Date("2026-08-09T01:30:00.000Z");
 function createHarness(current: unknown) {
   const calls: unknown[] = [];
   const workflow = {
-    async inviteTenantAdmin() { throw new Error("not used"); },
-    async resendInvitation() { throw new Error("not used"); },
-    async getCurrentInvitation(input: unknown) { calls.push(input); return current; },
+    async inviteTenantAdmin() {
+      throw new Error("not used");
+    },
+    async resendInvitation() {
+      throw new Error("not used");
+    },
+    async getCurrentInvitation(input: unknown) {
+      calls.push(input);
+      return current;
+    },
   };
   return { calls, useCase: new GetCurrentInvitationUseCase(workflow, () => NOW) };
 }
@@ -29,9 +36,15 @@ test("returns safe current invitation metadata", async () => {
     expiresAt: EXPIRES_AT,
   });
 
-  const result = await useCase.execute({ tenantId: TENANT_ID, userId: USER_ID, hostname: "Acme.Booking.Test." });
+  const result = await useCase.execute({
+    tenantId: TENANT_ID,
+    userId: USER_ID,
+    hostname: "Acme.Booking.Test.",
+  });
 
-  assert.deepEqual(calls, [{ tenantId: TENANT_ID, userId: USER_ID, hostname: "acme.booking.test", now: NOW }]);
+  assert.deepEqual(calls, [
+    { tenantId: TENANT_ID, userId: USER_ID, hostname: "acme.booking.test", now: NOW },
+  ]);
   assert.deepEqual(result, {
     invitationId: "50000000-0000-4000-8000-000000000001",
     tenantId: TENANT_ID,

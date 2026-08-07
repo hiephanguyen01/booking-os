@@ -11,7 +11,10 @@ const TENANT_ID = "30000000-0000-4000-8000-000000000001";
 const ACTOR_ID = "10000000-0000-4000-8000-000000000001";
 const NOW = new Date("2026-08-08T01:00:00.000Z");
 
-function authorization(role: "tenant_owner" | "tenant_admin", withPermission = true): AuthorizationContext {
+function authorization(
+  role: "tenant_owner" | "tenant_admin",
+  withPermission = true,
+): AuthorizationContext {
   return Object.freeze({
     userId: ACTOR_ID,
     sessionId: "20000000-0000-4000-8000-000000000001",
