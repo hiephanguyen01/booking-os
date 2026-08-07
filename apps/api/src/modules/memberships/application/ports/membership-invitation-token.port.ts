@@ -2,6 +2,7 @@ import type { SystemRole } from "@booking-os/auth";
 
 export interface IssueMembershipInvitationTokenInput {
   readonly tenantId: string;
+  readonly userId: string;
   readonly hostname: string;
   readonly normalizedEmail: string;
   readonly intendedRoleKey: SystemRole;
