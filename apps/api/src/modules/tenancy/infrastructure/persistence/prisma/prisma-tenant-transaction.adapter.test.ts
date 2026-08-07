@@ -4,6 +4,7 @@ import test from "node:test";
 import type { TenantExecutionContext } from "@booking-os/contracts";
 
 import type { PrismaService } from "../../../../../database/prisma.service.js";
+import type { TenantDataSession } from "../../../application/ports/tenant-transaction.port.js";
 import {
   InvalidTenantContextError,
   TenantContextConflictError,
@@ -28,6 +29,15 @@ interface FakeTransaction {
   $executeRawUnsafe(sql: string): Promise<number>;
   $executeRaw(strings: TemplateStringsArray, ...values: unknown[]): Promise<number>;
 }
+
+interface SessionFactory {
+  create(transaction: FakeTransaction, tenantId: string): TenantDataSession;
+}
+
+type AdapterConstructor = new (
+  prisma: PrismaService,
+  sessionFactory: SessionFactory,
+) => PrismaTenantTransactionAdapter;
 
 function createHarness() {
   const operations: string[] = [];
@@ -55,9 +65,28 @@ function createHarness() {
       return work(transaction);
     },
   } as unknown as PrismaService;
+  const sessionFactory: SessionFactory = {
+    create(current, tenantId) {
+      assert.equal(current, transaction);
+      operations.push(`factory:${tenantId}`);
+      return Object.freeze({
+        tenantProbes: {
+          async list() {
+            return current.tenantProbe.findMany({});
+          },
+        },
+        memberships: Object.freeze({}),
+        invitations: Object.freeze({}),
+        roles: Object.freeze({}),
+        tenants: Object.freeze({}),
+        audit: Object.freeze({}),
+      }) as unknown as TenantDataSession;
+    },
+  };
+  const Constructor = PrismaTenantTransactionAdapter as unknown as AdapterConstructor;
 
   return {
-    adapter: new PrismaTenantTransactionAdapter(prisma),
+    adapter: new Constructor(prisma, sessionFactory),
     operations,
     transactionCount: () => transactions,
   };
@@ -73,7 +102,7 @@ test("rejects malformed tenant before opening a transaction", async () => {
   assert.equal(harness.transactionCount(), 0);
 });
 
-test("sets role and tenant before exposing focused capabilities", async () => {
+test("sets role and tenant before exposing the complete tenant data session", async () => {
   const harness = createHarness();
 
   const keys = await harness.adapter.run(tenantA, async (session) => {
@@ -86,10 +115,18 @@ test("sets role and tenant before exposing focused capabilities", async () => {
     "transaction",
     "unsafe:SET LOCAL ROLE booking_app",
     `config:${tenantA.tenantId}`,
+    `factory:${tenantA.tenantId}`,
     "work",
     "list",
   ]);
-  assert.deepEqual(keys, ["tenantProbes"]);
+  assert.deepEqual(keys, [
+    "tenantProbes",
+    "memberships",
+    "invitations",
+    "roles",
+    "tenants",
+    "audit",
+  ]);
 });
 
 test("reuses same-tenant nested session and rejects tenant switching", async () => {
