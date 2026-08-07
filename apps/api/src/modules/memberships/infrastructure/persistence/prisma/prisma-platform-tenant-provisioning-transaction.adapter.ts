@@ -1,11 +1,12 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../../../database/prisma.service.js";
 import { PrismaTenantDataSessionFactory } from "../../../../../database/prisma-tenant-data-session.factory.js";
-import type { MembershipDataSession } from "../../../application/ports/membership-data-session.js";
 import type {
+  PlatformTenantProvisioningDataSession,
   PlatformTenantProvisioningTransactionContext,
   PlatformTenantProvisioningTransactionPort,
 } from "../../../application/ports/platform-tenant-provisioning-transaction.port.js";
+import { PrismaTenantOutboxAdapter } from "./prisma-tenant-outbox.adapter.js";
 import { PrismaTenantProvisioningIdempotencyAdapter } from "./prisma-tenant-provisioning-idempotency.adapter.js";
 
 const APPLICATION_DATABASE_ROLE = "booking_app";
@@ -29,13 +30,17 @@ export class PrismaPlatformTenantProvisioningTransactionAdapter
         idempotency,
         runTenant: async <Result>(
           tenantId: string,
-          tenantWork: (session: MembershipDataSession) => Promise<Result>,
+          tenantWork: (session: PlatformTenantProvisioningDataSession) => Promise<Result>,
         ): Promise<Result> => {
           await transaction.$executeRawUnsafe(`SET LOCAL ROLE ${APPLICATION_DATABASE_ROLE}`);
 
           try {
             await transaction.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
-            const session = this.sessionFactory.create(transaction, tenantId);
+            const dataSession = this.sessionFactory.create(transaction, tenantId);
+            const session: PlatformTenantProvisioningDataSession = Object.freeze({
+              ...dataSession,
+              outbox: new PrismaTenantOutboxAdapter(transaction, tenantId),
+            });
             return await tenantWork(session);
           } finally {
             await transaction.$executeRawUnsafe("SET LOCAL ROLE NONE");
