@@ -8,7 +8,7 @@ const tenantProbes: TenantProbeRepositoryPort = {
     return [];
   },
 };
-const session: TenantDataSession = { tenantProbes };
+const session = { tenantProbes } as unknown as TenantDataSession;
 const transaction: TenantTransactionPort = {
   async run(_context, work) {
     return work(session);
