@@ -53,6 +53,7 @@ export class PlatformTenantProvisioningWorkflow {
       });
       const invitationToken = this.invitationTokens.issue({
         tenantId,
+        userId: ownerIdentity.userId,
         hostname: input.tenantHostname,
         normalizedEmail: input.normalizedOwnerEmail,
         intendedRoleKey: "tenant_owner",
