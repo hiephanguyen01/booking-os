@@ -3,6 +3,7 @@ export type ProvisioningTenantStatus = "provisioning";
 export type ProvisionPlatformTenantInput = Readonly<{
   actorUserId: string;
   idempotencyKey: string;
+  requestHash: string;
   slug: string;
   tenantName: string;
   ownerEmail: string;
