@@ -1,7 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
-
-import { PrismaTenantDataSessionFactory } from "../../../../../database/prisma-tenant-data-session.factory.js";
 import { PrismaService } from "../../../../../database/prisma.service.js";
+import { PrismaTenantDataSessionFactory } from "../../../../../database/prisma-tenant-data-session.factory.js";
 import type { MembershipDataSession } from "../../../application/ports/membership-data-session.js";
 import type {
   PlatformTenantProvisioningTransactionContext,
