@@ -341,3 +341,89 @@ test("provisions an existing owner inside one target-tenant scope before complet
     "idempotency:complete",
   ]);
 });
+
+test("replaces a pending owner invitation and persists the same activation token that was delivered", async () => {
+  const calls: string[] = [];
+  const replacementId = "50000000-0000-4000-8000-000000000099";
+  const activation = {
+    selector: "activation-selector",
+    serialized: "activation-secret",
+    tokenHash: "d".repeat(64),
+  };
+  const transaction: PlatformTenantProvisioningTransactionPort = {
+    async run(work) {
+      return work({
+        idempotency: {} as TenantProvisioningIdempotencyPort,
+        identity: {
+          async findOrCreatePendingIdentity() {
+            return { userId: OWNER_USER_ID, status: "pending_activation", created: false };
+          },
+          async issueTenantActivation(input) {
+            calls.push("activation:store");
+            assert.equal(input.selector, activation.selector);
+            assert.equal(input.tokenHash, activation.tokenHash);
+            assert.equal(input.invitationId, replacementId);
+          },
+        },
+        async runTenant<T>(
+          _tenantId: string,
+          tenantWork: (session: PlatformTenantProvisioningDataSession) => Promise<T>,
+        ) {
+          return tenantWork({
+            tenants: {
+              async lockCurrent() {
+                return { id: TENANT_ID, slug: "acme", name: "Acme", status: "provisioning" as const };
+              },
+            },
+            invitations: {
+              async lockPendingOwnerInvitation() {
+                return {
+                  id: OWNER_INVITATION_ID, tenantId: TENANT_ID, normalizedEmail: INPUT.normalizedOwnerEmail,
+                  invitedUserId: OWNER_USER_ID, intendedRoleKey: "tenant_owner" as const, status: "pending" as const,
+                  hostname: INPUT.tenantHostname, selector: "old", tokenHash: "a".repeat(64), expiresAt: NOW,
+                  acceptedAt: null, revokedAt: null, invitedByUserId: INPUT.actorUserId, createdAt: NOW, updatedAt: NOW,
+                };
+              },
+              async revoke() { calls.push("invitation:revoke"); },
+              async create() {
+                calls.push("invitation:create");
+                return {
+                  id: replacementId, tenantId: TENANT_ID, normalizedEmail: INPUT.normalizedOwnerEmail,
+                  invitedUserId: OWNER_USER_ID, intendedRoleKey: "tenant_owner" as const, status: "pending" as const,
+                  hostname: INPUT.tenantHostname, selector: "new", tokenHash: "b".repeat(64), expiresAt: NOW,
+                  acceptedAt: null, revokedAt: null, invitedByUserId: INPUT.actorUserId, createdAt: NOW, updatedAt: NOW,
+                };
+              },
+            },
+            outbox: { async append() { calls.push("outbox:append"); } },
+            audit: { async append() { calls.push("audit:append"); } },
+          } as unknown as PlatformTenantProvisioningDataSession);
+        },
+      });
+    },
+  };
+  const workflow = new PlatformTenantProvisioningWorkflow(transaction, {
+    createOutboxEventId: () => OUTBOX_EVENT_ID,
+    invitationTokens: { issue: () => ({ selector: "new", serialized: RAW_INVITATION_TOKEN, tokenHash: "b".repeat(64) }) },
+    invitationEnvelope: { seal: () => SEALED_INVITATION },
+    activationTokens: { issue: () => activation },
+    activationEnvelope: { seal: () => SEALED_INVITATION },
+  });
+
+  const result = await workflow.resendOwnerInvitation({
+    actorUserId: INPUT.actorUserId,
+    tenantId: TENANT_ID,
+    requestId: INPUT.requestId,
+    now: NOW,
+  });
+
+  assert.deepEqual(result, { accepted: true });
+  assert.deepEqual(calls, [
+    "invitation:revoke",
+    "invitation:create",
+    "outbox:append",
+    "outbox:append",
+    "audit:append",
+    "activation:store",
+  ]);
+});

@@ -6,7 +6,10 @@ import type { PlatformTenantProvisioningTransactionPort } from "../ports/platfor
 import type {
   ProvisionPlatformTenantInput,
   ProvisionPlatformTenantResult,
+  ResendOwnerInvitationInput,
+  ResendOwnerInvitationResult,
 } from "../ports/platform-tenant-provisioning-workflow.port.js";
+import { TenantNotAvailableError } from "../../domain/membership-errors.js";
 import type { TenantActivationEnvelopePort } from "../ports/tenant-activation-envelope.port.js";
 import type { TenantActivationTokenPort } from "../ports/tenant-activation-token.port.js";
 
@@ -221,6 +224,131 @@ export class PlatformTenantProvisioningWorkflow {
       });
 
       return result;
+    });
+  }
+
+  async resendOwnerInvitation(
+    input: ResendOwnerInvitationInput,
+  ): Promise<ResendOwnerInvitationResult> {
+    return this.transaction.run(async (context) => {
+      const result = await context.runTenant(input.tenantId, async (session) => {
+        const tenant = await session.tenants.lockCurrent();
+        const invitation = await session.invitations.lockPendingOwnerInvitation();
+        if (!tenant || tenant.status !== "provisioning" || !invitation || !invitation.invitedUserId) {
+          throw new TenantNotAvailableError();
+        }
+
+        const ownerIdentity = await context.identity.findOrCreatePendingIdentity({
+          normalizedEmail: invitation.normalizedEmail,
+          displayEmail: invitation.normalizedEmail,
+          now: input.now,
+        });
+        if (ownerIdentity.userId !== invitation.invitedUserId) {
+          throw new TenantNotAvailableError();
+        }
+
+        const invitationToken = this.invitationTokens.issue({
+          tenantId: input.tenantId,
+          userId: ownerIdentity.userId,
+          hostname: invitation.hostname,
+          normalizedEmail: invitation.normalizedEmail,
+          intendedRoleKey: "tenant_owner",
+        });
+        const activationToken =
+          ownerIdentity.status === "pending_activation"
+            ? this.activationTokens.issue({ tenantId: input.tenantId, hostname: invitation.hostname })
+            : null;
+        const expiresAt = new Date(input.now.getTime() + INVITATION_TTL_MS);
+
+        await session.invitations.revoke(invitation.id, input.now);
+        const replacement = await session.invitations.create({
+          normalizedEmail: invitation.normalizedEmail,
+          invitedUserId: ownerIdentity.userId,
+          intendedRoleKey: "tenant_owner",
+          hostname: invitation.hostname,
+          selector: invitationToken.selector,
+          tokenHash: invitationToken.tokenHash,
+          expiresAt,
+          invitedByUserId: input.actorUserId,
+          now: input.now,
+        });
+        const invitationEventId = this.createOutboxEventId();
+        await session.outbox.append({
+          id: invitationEventId,
+          type: "membership.owner_invitation.requested.v1",
+          aggregateType: "membership_invitation",
+          aggregateId: replacement.id,
+          payload: {
+            version: 1,
+            recipient: invitation.normalizedEmail,
+            hostname: invitation.hostname,
+            purpose: "membership_invitation",
+            envelope: this.invitationEnvelope.seal({
+              eventId: invitationEventId,
+              tenantId: input.tenantId,
+              invitationId: replacement.id,
+              userId: ownerIdentity.userId,
+              hostname: invitation.hostname,
+              normalizedEmail: invitation.normalizedEmail,
+              intendedRoleKey: "tenant_owner",
+              serializedToken: invitationToken.serialized,
+            }),
+          },
+          occurredAt: input.now,
+        });
+
+        if (activationToken) {
+          const activationEventId = this.createOutboxEventId();
+          await session.outbox.append({
+            id: activationEventId,
+            type: "identity.activation.requested.v1",
+            aggregateType: "user",
+            aggregateId: ownerIdentity.userId,
+            payload: {
+              version: 1,
+              recipient: invitation.normalizedEmail,
+              template: "account_activation",
+              hostname: invitation.hostname,
+              envelope: this.activationEnvelope.seal({
+                eventId: activationEventId,
+                tenantId: input.tenantId,
+                invitationId: replacement.id,
+                userId: ownerIdentity.userId,
+                hostname: invitation.hostname,
+                recipient: invitation.normalizedEmail,
+                serializedToken: activationToken.serialized,
+              }),
+            },
+            occurredAt: input.now,
+          });
+        }
+
+        await session.audit.append({
+          eventType: "membership.invitation.resent",
+          actorUserId: input.actorUserId,
+          subjectUserId: ownerIdentity.userId,
+          requestId: input.requestId,
+          metadata: { previousInvitationId: invitation.id, invitationId: replacement.id },
+          occurredAt: input.now,
+        });
+
+        return { ownerIdentity, invitation: replacement, expiresAt, activationToken };
+      });
+
+      if (result.activationToken) {
+        await context.identity.issueTenantActivation({
+          userId: result.ownerIdentity.userId,
+          tenantId: input.tenantId,
+          invitationId: result.invitation.id,
+          hostname: result.invitation.hostname,
+          selector: result.activationToken.selector,
+          tokenHash: result.activationToken.tokenHash,
+          expiresAt: result.expiresAt,
+          now: input.now,
+        });
+      }
+
+      return Object.freeze({ accepted: true });
     });
   }
 }

@@ -87,6 +87,37 @@ export class PrismaInvitationRepositoryAdapter implements InvitationRepositoryPo
     return firstInvitation(rows);
   }
 
+  async lockPendingOwnerInvitation(): Promise<MembershipInvitation | null> {
+    const rows = await this.transaction.$queryRawUnsafe<readonly InvitationRow[]>(
+      `SELECT ${INVITATION_COLUMNS}
+       FROM "membership_invitations"
+       WHERE "tenant_id" = $1::uuid
+         AND "intended_role_key" = 'tenant_owner'
+         AND "status" = 'pending'::membership_invitation_status
+         AND "revoked_at" IS NULL
+       ORDER BY "created_at" DESC
+       LIMIT 1
+       FOR UPDATE`,
+      this.tenantId,
+    );
+    return firstInvitation(rows);
+  }
+
+  async findPendingOwnerInvitation(): Promise<MembershipInvitation | null> {
+    const rows = await this.transaction.$queryRawUnsafe<readonly InvitationRow[]>(
+      `SELECT ${INVITATION_COLUMNS}
+       FROM "membership_invitations"
+       WHERE "tenant_id" = $1::uuid
+         AND "intended_role_key" = 'tenant_owner'
+         AND "status" = 'pending'::membership_invitation_status
+         AND "revoked_at" IS NULL
+       ORDER BY "created_at" DESC
+       LIMIT 1`,
+      this.tenantId,
+    );
+    return firstInvitation(rows);
+  }
+
   async findCurrentForUser(userId: string): Promise<MembershipInvitation | null> {
     const rows = await this.transaction.$queryRawUnsafe<readonly InvitationRow[]>(
       `SELECT ${INVITATION_COLUMNS}

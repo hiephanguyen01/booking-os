@@ -19,6 +19,8 @@ export interface InvitationRepositoryPort {
     normalizedEmail: string,
     intendedRoleKey: SystemRole,
   ): Promise<MembershipInvitation | null>;
+  lockPendingOwnerInvitation(): Promise<MembershipInvitation | null>;
+  findPendingOwnerInvitation(): Promise<MembershipInvitation | null>;
   findCurrentForUser(userId: string): Promise<MembershipInvitation | null>;
   lockBySelector(selector: string): Promise<MembershipInvitation | null>;
   create(input: CreateMembershipInvitationInput): Promise<MembershipInvitation>;

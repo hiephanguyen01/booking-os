@@ -206,6 +206,7 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
     LoginUseCase,
     GetCurrentSessionUseCase,
     SessionAuthMiddleware,
+    SessionCsrfGuard,
   ],
 })
 export class SessionsModule implements NestModule {
