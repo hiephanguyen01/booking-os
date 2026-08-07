@@ -2,27 +2,19 @@ import { type MiddlewareConsumer, Module, type NestModule } from "@nestjs/common
 
 import { EnvironmentService } from "../../config/environment.service.js";
 import { DatabaseModule } from "../../database/database.module.js";
-import { SessionsModule } from "../sessions/sessions.module.js";
 import { SessionAuthMiddleware } from "../sessions/infrastructure/http/session-auth.middleware.js";
+import { SessionsModule } from "../sessions/sessions.module.js";
 import type { MembershipInvitationEnvelopePort } from "./application/ports/membership-invitation-envelope.port.js";
 import type { MembershipInvitationTokenPort } from "./application/ports/membership-invitation-token.port.js";
 import type { PlatformAuthorizationPort } from "./application/ports/platform-authorization.port.js";
 import type { PlatformTenantProvisioningTransactionPort } from "./application/ports/platform-tenant-provisioning-transaction.port.js";
 import type { TenantActivationEnvelopePort } from "./application/ports/tenant-activation-envelope.port.js";
 import type { TenantActivationTokenPort } from "./application/ports/tenant-activation-token.port.js";
-import { PlatformTenantProvisioningWorkflow } from "./application/use-cases/platform-tenant-provisioning.workflow.js";
 import { BuildPlatformAuthorizationContextUseCase } from "./application/use-cases/build-platform-authorization-context.use-case.js";
 import { GetTenantProvisioningUseCase } from "./application/use-cases/get-tenant-provisioning.use-case.js";
+import { PlatformTenantProvisioningWorkflow } from "./application/use-cases/platform-tenant-provisioning.workflow.js";
 import { ProvisionTenantUseCase } from "./application/use-cases/provision-tenant.use-case.js";
 import { ResendOwnerInvitationUseCase } from "./application/use-cases/resend-owner-invitation.use-case.js";
-import {
-  MEMBERSHIP_INVITATION_ENVELOPE_PORT,
-  MEMBERSHIP_INVITATION_TOKEN_PORT,
-  PLATFORM_TENANT_PROVISIONING_TRANSACTION_PORT,
-  PLATFORM_AUTHORIZATION_PORT,
-  TENANT_ACTIVATION_ENVELOPE_PORT,
-  TENANT_ACTIVATION_TOKEN_PORT,
-} from "./memberships.tokens.js";
 import {
   AesMembershipInvitationEnvelopeAdapter,
   AesTenantActivationEnvelopeAdapter,
@@ -31,10 +23,18 @@ import {
   HmacMembershipInvitationTokenAdapter,
   HmacTenantActivationTokenAdapter,
 } from "./infrastructure/crypto/hmac-membership-provisioning-token.adapter.js";
-import { PrismaPlatformTenantProvisioningTransactionAdapter } from "./infrastructure/persistence/prisma/prisma-platform-tenant-provisioning-transaction.adapter.js";
+import { PlatformTenantsController } from "./infrastructure/http/platform-tenants.controller.js";
 import { PrismaPlatformAuthorizationAdapter } from "./infrastructure/persistence/prisma/prisma-platform-authorization.adapter.js";
 import { PrismaPlatformTenantProvisioningQueryAdapter } from "./infrastructure/persistence/prisma/prisma-platform-tenant-provisioning-query.adapter.js";
-import { PlatformTenantsController } from "./infrastructure/http/platform-tenants.controller.js";
+import { PrismaPlatformTenantProvisioningTransactionAdapter } from "./infrastructure/persistence/prisma/prisma-platform-tenant-provisioning-transaction.adapter.js";
+import {
+  MEMBERSHIP_INVITATION_ENVELOPE_PORT,
+  MEMBERSHIP_INVITATION_TOKEN_PORT,
+  PLATFORM_AUTHORIZATION_PORT,
+  PLATFORM_TENANT_PROVISIONING_TRANSACTION_PORT,
+  TENANT_ACTIVATION_ENVELOPE_PORT,
+  TENANT_ACTIVATION_TOKEN_PORT,
+} from "./memberships.tokens.js";
 
 @Module({
   imports: [DatabaseModule, SessionsModule],

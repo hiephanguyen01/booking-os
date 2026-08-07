@@ -1,5 +1,5 @@
-import { Inject, Injectable } from "@nestjs/common";
 import type { AuthorizationPermissionKey, AuthorizationRoleKey } from "@booking-os/contracts";
+import { Inject, Injectable } from "@nestjs/common";
 
 import { PrismaService } from "../../../../../database/prisma.service.js";
 import type {

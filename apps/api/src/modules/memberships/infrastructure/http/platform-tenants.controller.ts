@@ -25,6 +25,8 @@ import { SupportedApi } from "../../../../api-visibility/api-visibility.decorato
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import type { RequestHeaders } from "../../../../common/request-context/request-context.types.js";
 import { EnvironmentService } from "../../../../config/environment.service.js";
+import { SessionCsrfGuard } from "../../../sessions/infrastructure/http/session-csrf.guard.js";
+import { SessionRequired } from "../../../sessions/infrastructure/http/session-required.decorator.js";
 import {
   BuildPlatformAuthorizationContextUseCase,
   PlatformAuthorizationDeniedError,
@@ -35,8 +37,6 @@ import {
   ProvisionTenantUseCase,
 } from "../../application/use-cases/provision-tenant.use-case.js";
 import { ResendOwnerInvitationUseCase } from "../../application/use-cases/resend-owner-invitation.use-case.js";
-import { SessionCsrfGuard } from "../../../sessions/infrastructure/http/session-csrf.guard.js";
-import { SessionRequired } from "../../../sessions/infrastructure/http/session-required.decorator.js";
 import {
   OwnerInvitationResendResponseDto,
   ProvisionTenantRequestDto,
@@ -77,9 +77,11 @@ export class PlatformTenantsController {
     @Inject(BuildPlatformAuthorizationContextUseCase)
     private readonly authorization: BuildPlatformAuthorizationContextUseCase,
     @Inject(ProvisionTenantUseCase) private readonly provision: ProvisionTenantUseCase,
-    @Inject(GetTenantProvisioningUseCase) private readonly getProvisioning: GetTenantProvisioningUseCase,
+    @Inject(GetTenantProvisioningUseCase)
+    private readonly getProvisioning: GetTenantProvisioningUseCase,
     @Inject(ResendOwnerInvitationUseCase) private readonly resend: ResendOwnerInvitationUseCase,
-    @Inject(EnvironmentService) private readonly environment: Pick<EnvironmentService, "trustProxy">,
+    @Inject(EnvironmentService)
+    private readonly environment: Pick<EnvironmentService, "trustProxy">,
   ) {}
 
   @SessionRequired()

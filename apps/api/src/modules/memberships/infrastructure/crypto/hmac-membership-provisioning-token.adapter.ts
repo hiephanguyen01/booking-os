@@ -50,7 +50,9 @@ export class HmacMembershipInvitationTokenAdapter implements MembershipInvitatio
     this.pepper = Buffer.from(pepper);
   }
 
-  issue(input: Parameters<MembershipInvitationTokenPort["issue"]>[0]): IssuedMembershipInvitationToken {
+  issue(
+    input: Parameters<MembershipInvitationTokenPort["issue"]>[0],
+  ): IssuedMembershipInvitationToken {
     return issue(this.pepper, membershipInvitationPurpose(input));
   }
 }

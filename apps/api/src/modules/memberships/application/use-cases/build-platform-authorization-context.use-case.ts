@@ -18,7 +18,9 @@ export class BuildPlatformAuthorizationContextUseCase {
       throw new PlatformAuthorizationDeniedError();
     }
 
-    const snapshot = await this.authorization.loadActivePlatformAuthorization(authenticated.actorId);
+    const snapshot = await this.authorization.loadActivePlatformAuthorization(
+      authenticated.actorId,
+    );
     if (
       !snapshot ||
       snapshot.userAuthorizationVersion !== authenticated.authorizationVersion ||

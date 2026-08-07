@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-
+import { TenantNotAvailableError } from "../../domain/membership-errors.js";
 import type { MembershipInvitationEnvelopePort } from "../ports/membership-invitation-envelope.port.js";
 import type { MembershipInvitationTokenPort } from "../ports/membership-invitation-token.port.js";
 import type { PlatformTenantProvisioningTransactionPort } from "../ports/platform-tenant-provisioning-transaction.port.js";
@@ -9,7 +9,6 @@ import type {
   ResendOwnerInvitationInput,
   ResendOwnerInvitationResult,
 } from "../ports/platform-tenant-provisioning-workflow.port.js";
-import { TenantNotAvailableError } from "../../domain/membership-errors.js";
 import type { TenantActivationEnvelopePort } from "../ports/tenant-activation-envelope.port.js";
 import type { TenantActivationTokenPort } from "../ports/tenant-activation-token.port.js";
 
@@ -234,7 +233,7 @@ export class PlatformTenantProvisioningWorkflow {
       const result = await context.runTenant(input.tenantId, async (session) => {
         const tenant = await session.tenants.lockCurrent();
         const invitation = await session.invitations.lockPendingOwnerInvitation();
-        if (!tenant || tenant.status !== "provisioning" || !invitation || !invitation.invitedUserId) {
+        if (tenant?.status !== "provisioning" || !invitation || !invitation.invitedUserId) {
           throw new TenantNotAvailableError();
         }
 
@@ -256,7 +255,10 @@ export class PlatformTenantProvisioningWorkflow {
         });
         const activationToken =
           ownerIdentity.status === "pending_activation"
-            ? this.activationTokens.issue({ tenantId: input.tenantId, hostname: invitation.hostname })
+            ? this.activationTokens.issue({
+                tenantId: input.tenantId,
+                hostname: invitation.hostname,
+              })
             : null;
         const expiresAt = new Date(input.now.getTime() + INVITATION_TTL_MS);
 

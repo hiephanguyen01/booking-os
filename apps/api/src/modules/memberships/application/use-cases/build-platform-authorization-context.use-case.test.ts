@@ -22,7 +22,11 @@ const AUTHENTICATED: AuthenticatedRequestContext = Object.freeze({
 function authorization(
   snapshot: Awaited<ReturnType<PlatformAuthorizationPort["loadActivePlatformAuthorization"]>>,
 ): PlatformAuthorizationPort {
-  return { async loadActivePlatformAuthorization() { return snapshot; } };
+  return {
+    async loadActivePlatformAuthorization() {
+      return snapshot;
+    },
+  };
 }
 
 test("builds platform authority only from the authenticated session actor and database snapshot", async () => {
@@ -55,14 +59,15 @@ test("fails closed for pending or tenant sessions, missing authority, and stale 
 
   for (const snapshot of snapshots) {
     const useCase = new BuildPlatformAuthorizationContextUseCase(authorization(snapshot));
-    await assert.rejects(
-      useCase.execute(AUTHENTICATED),
-      PlatformAuthorizationDeniedError,
-    );
+    await assert.rejects(useCase.execute(AUTHENTICATED), PlatformAuthorizationDeniedError);
   }
 
   const useCase = new BuildPlatformAuthorizationContextUseCase(
-    authorization({ userAuthorizationVersion: 3, roleKeys: ["platform_admin"], permissionKeys: [] }),
+    authorization({
+      userAuthorizationVersion: 3,
+      roleKeys: ["platform_admin"],
+      permissionKeys: [],
+    }),
   );
   await assert.rejects(
     useCase.execute({ ...AUTHENTICATED, sessionState: "invitation_pending" }),

@@ -372,31 +372,68 @@ test("replaces a pending owner invitation and persists the same activation token
           return tenantWork({
             tenants: {
               async lockCurrent() {
-                return { id: TENANT_ID, slug: "acme", name: "Acme", status: "provisioning" as const };
+                return {
+                  id: TENANT_ID,
+                  slug: "acme",
+                  name: "Acme",
+                  status: "provisioning" as const,
+                };
               },
             },
             invitations: {
               async lockPendingOwnerInvitation() {
                 return {
-                  id: OWNER_INVITATION_ID, tenantId: TENANT_ID, normalizedEmail: INPUT.normalizedOwnerEmail,
-                  invitedUserId: OWNER_USER_ID, intendedRoleKey: "tenant_owner" as const, status: "pending" as const,
-                  hostname: INPUT.tenantHostname, selector: "old", tokenHash: "a".repeat(64), expiresAt: NOW,
-                  acceptedAt: null, revokedAt: null, invitedByUserId: INPUT.actorUserId, createdAt: NOW, updatedAt: NOW,
+                  id: OWNER_INVITATION_ID,
+                  tenantId: TENANT_ID,
+                  normalizedEmail: INPUT.normalizedOwnerEmail,
+                  invitedUserId: OWNER_USER_ID,
+                  intendedRoleKey: "tenant_owner" as const,
+                  status: "pending" as const,
+                  hostname: INPUT.tenantHostname,
+                  selector: "old",
+                  tokenHash: "a".repeat(64),
+                  expiresAt: NOW,
+                  acceptedAt: null,
+                  revokedAt: null,
+                  invitedByUserId: INPUT.actorUserId,
+                  createdAt: NOW,
+                  updatedAt: NOW,
                 };
               },
-              async revoke() { calls.push("invitation:revoke"); },
+              async revoke() {
+                calls.push("invitation:revoke");
+              },
               async create() {
                 calls.push("invitation:create");
                 return {
-                  id: replacementId, tenantId: TENANT_ID, normalizedEmail: INPUT.normalizedOwnerEmail,
-                  invitedUserId: OWNER_USER_ID, intendedRoleKey: "tenant_owner" as const, status: "pending" as const,
-                  hostname: INPUT.tenantHostname, selector: "new", tokenHash: "b".repeat(64), expiresAt: NOW,
-                  acceptedAt: null, revokedAt: null, invitedByUserId: INPUT.actorUserId, createdAt: NOW, updatedAt: NOW,
+                  id: replacementId,
+                  tenantId: TENANT_ID,
+                  normalizedEmail: INPUT.normalizedOwnerEmail,
+                  invitedUserId: OWNER_USER_ID,
+                  intendedRoleKey: "tenant_owner" as const,
+                  status: "pending" as const,
+                  hostname: INPUT.tenantHostname,
+                  selector: "new",
+                  tokenHash: "b".repeat(64),
+                  expiresAt: NOW,
+                  acceptedAt: null,
+                  revokedAt: null,
+                  invitedByUserId: INPUT.actorUserId,
+                  createdAt: NOW,
+                  updatedAt: NOW,
                 };
               },
             },
-            outbox: { async append() { calls.push("outbox:append"); } },
-            audit: { async append() { calls.push("audit:append"); } },
+            outbox: {
+              async append() {
+                calls.push("outbox:append");
+              },
+            },
+            audit: {
+              async append() {
+                calls.push("audit:append");
+              },
+            },
           } as unknown as PlatformTenantProvisioningDataSession);
         },
       });
@@ -404,7 +441,13 @@ test("replaces a pending owner invitation and persists the same activation token
   };
   const workflow = new PlatformTenantProvisioningWorkflow(transaction, {
     createOutboxEventId: () => OUTBOX_EVENT_ID,
-    invitationTokens: { issue: () => ({ selector: "new", serialized: RAW_INVITATION_TOKEN, tokenHash: "b".repeat(64) }) },
+    invitationTokens: {
+      issue: () => ({
+        selector: "new",
+        serialized: RAW_INVITATION_TOKEN,
+        tokenHash: "b".repeat(64),
+      }),
+    },
     invitationEnvelope: { seal: () => SEALED_INVITATION },
     activationTokens: { issue: () => activation },
     activationEnvelope: { seal: () => SEALED_INVITATION },
