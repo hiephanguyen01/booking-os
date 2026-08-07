@@ -1,5 +1,5 @@
-import { randomUUID } from "node:crypto";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import test, { after } from "node:test";
 
 import { PrismaService } from "../src/database/prisma.service.js";
@@ -53,7 +53,10 @@ test("target tenant transaction can create provisioning tenant control rows", as
     });
     assert.equal(tenant?.status, "provisioning");
     assert.deepEqual(
-      tenant?.domains.map((domain) => ({ hostname: domain.hostname, isPrimary: domain.isPrimary })),
+      tenant?.domains.map((domain) => ({
+        hostname: domain.hostname,
+        isPrimary: domain.isPrimary,
+      })),
       [{ hostname, isPrimary: true }],
     );
   } finally {
