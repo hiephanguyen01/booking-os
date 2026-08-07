@@ -1,5 +1,6 @@
 import type {
   CreateProvisioningTenantInput,
+  NewlyProvisionedTenant,
   ProvisioningTenant,
   ProvisioningTenantStatus,
   TenantProvisioningRepositoryPort,
@@ -29,6 +30,14 @@ function requireTenant(rows: readonly TenantRow[]): ProvisioningTenant {
   return tenant;
 }
 
+function requireNewlyProvisionedTenant(rows: readonly TenantRow[]): NewlyProvisionedTenant {
+  const tenant = requireTenant(rows);
+  if (tenant.status !== "provisioning") {
+    throw new TenantNotAvailableError();
+  }
+  return Object.freeze({ ...tenant, status: "provisioning" });
+}
+
 export class PrismaTenantProvisioningRepositoryAdapter implements TenantProvisioningRepositoryPort {
   constructor(
     private readonly transaction: MembershipPrismaTransaction,
@@ -56,7 +65,9 @@ export class PrismaTenantProvisioningRepositoryAdapter implements TenantProvisio
     return firstTenant(rows);
   }
 
-  async createProvisioning(input: CreateProvisioningTenantInput): Promise<ProvisioningTenant> {
+  async createProvisioning(
+    input: CreateProvisioningTenantInput,
+  ): Promise<NewlyProvisionedTenant> {
     const rows = await this.transaction.$queryRawUnsafe<readonly TenantRow[]>(
       `INSERT INTO "tenants" ("id", "slug", "name", "status", "created_at")
        VALUES ($1::uuid, $2, $3, 'provisioning'::tenant_status, $4::timestamptz)
@@ -66,7 +77,7 @@ export class PrismaTenantProvisioningRepositoryAdapter implements TenantProvisio
       input.name,
       input.now,
     );
-    return requireTenant(rows);
+    return requireNewlyProvisionedTenant(rows);
   }
 
   async addPrimaryDomain(hostname: string, now: Date): Promise<void> {
