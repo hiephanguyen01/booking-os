@@ -70,9 +70,7 @@ test("tenant security audit rows use FORCE RLS and deny cross-tenant access", as
   const tenantA = await createTenantAndUser();
   const tenantB = await createTenantAndUser();
 
-  const table = await prisma.$queryRaw<
-    readonly { rls_enabled: boolean; rls_forced: boolean }[]
-  >`
+  const table = await prisma.$queryRaw<readonly { rls_enabled: boolean; rls_forced: boolean }[]>`
     SELECT relrowsecurity AS rls_enabled, relforcerowsecurity AS rls_forced
     FROM pg_class
     WHERE oid = 'public.tenant_security_audit_events'::regclass
