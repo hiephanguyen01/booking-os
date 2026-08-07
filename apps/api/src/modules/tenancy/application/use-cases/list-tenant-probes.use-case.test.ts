@@ -3,10 +3,7 @@ import test from "node:test";
 
 import type { TenantExecutionContext } from "@booking-os/contracts";
 
-import type {
-  TenantDataSession,
-  TenantTransactionPort,
-} from "../ports/tenant-transaction.port.js";
+import type { TenantDataSession, TenantTransactionPort } from "../ports/tenant-transaction.port.js";
 import { ListTenantProbesUseCase } from "./list-tenant-probes.use-case.js";
 
 test("forwards exact context and returns repository records", async () => {
