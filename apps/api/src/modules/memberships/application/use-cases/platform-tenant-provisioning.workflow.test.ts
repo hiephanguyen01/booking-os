@@ -10,15 +10,43 @@ import type {
   ProvisionPlatformTenantResult,
 } from "../ports/platform-tenant-provisioning-workflow.port.js";
 import type { TenantProvisioningIdempotencyPort } from "../ports/tenant-provisioning-idempotency.port.js";
-import { PlatformTenantProvisioningWorkflow } from "./platform-tenant-provisioning.workflow.js";
+import {
+  PlatformTenantProvisioningWorkflow,
+  type PlatformTenantProvisioningWorkflowDependencies,
+} from "./platform-tenant-provisioning.workflow.js";
 
 const NOW = new Date("2026-08-07T13:45:00.000Z");
 const TENANT_ID = "30000000-0000-4000-8000-000000000001";
 const OWNER_USER_ID = "60000000-0000-4000-8000-000000000001";
 const OWNER_MEMBERSHIP_ID = "40000000-0000-4000-8000-000000000001";
 const OWNER_INVITATION_ID = "50000000-0000-4000-8000-000000000001";
+const OUTBOX_EVENT_ID = "70000000-0000-4000-8000-000000000001";
 const INVITATION_SELECTOR = "owner-invitation-selector";
 const INVITATION_TOKEN_HASH = "b".repeat(64);
+const RAW_INVITATION_TOKEN = "raw-owner-invitation-token";
+const SEALED_INVITATION = Object.freeze({
+  version: 1 as const,
+  keyId: "membership-invitation-key",
+  iv: "sealed-iv",
+  ciphertext: "sealed-ciphertext",
+  tag: "sealed-tag",
+});
+
+interface DesiredOutboxDependencies {
+  readonly createOutboxEventId: () => string;
+  readonly invitationEnvelope: {
+    seal(input: {
+      readonly eventId: string;
+      readonly tenantId: string;
+      readonly invitationId: string;
+      readonly userId: string;
+      readonly hostname: string;
+      readonly normalizedEmail: string;
+      readonly intendedRoleKey: "tenant_owner";
+      readonly serializedToken: string;
+    }): typeof SEALED_INVITATION;
+  };
+}
 
 const INPUT: ProvisionPlatformTenantInput = Object.freeze({
   actorUserId: "10000000-0000-4000-8000-000000000001",
@@ -187,8 +215,23 @@ test("provisions an existing owner inside one target-tenant scope before complet
       },
     },
     outbox: {
-      async append() {
+      async append(input: Record<string, unknown>) {
         calls.push("outbox:append");
+        assert.deepEqual(input, {
+          id: OUTBOX_EVENT_ID,
+          type: "membership.owner_invitation.requested.v1",
+          aggregateType: "membership_invitation",
+          aggregateId: OWNER_INVITATION_ID,
+          payload: {
+            version: 1,
+            recipient: INPUT.normalizedOwnerEmail,
+            hostname: INPUT.tenantHostname,
+            purpose: "membership_invitation",
+            envelope: SEALED_INVITATION,
+          },
+          occurredAt: NOW,
+        });
+        assert.equal(JSON.stringify(input).includes(RAW_INVITATION_TOKEN), false);
       },
     },
   } as unknown as PlatformTenantProvisioningDataSession;
@@ -239,8 +282,9 @@ test("provisions an existing owner inside one target-tenant scope before complet
     },
   };
 
-  const workflow = new PlatformTenantProvisioningWorkflow(transaction, {
+  const dependencies = {
     createTenantId: () => TENANT_ID,
+    createOutboxEventId: () => OUTBOX_EVENT_ID,
     invitationTokens: {
       issue(input) {
         calls.push("invitation:token");
@@ -253,12 +297,29 @@ test("provisions an existing owner inside one target-tenant scope before complet
         });
         return {
           selector: INVITATION_SELECTOR,
-          serialized: "raw-owner-invitation-token",
+          serialized: RAW_INVITATION_TOKEN,
           tokenHash: INVITATION_TOKEN_HASH,
         };
       },
     },
-  });
+    invitationEnvelope: {
+      seal(input) {
+        calls.push("invitation:seal");
+        assert.deepEqual(input, {
+          eventId: OUTBOX_EVENT_ID,
+          tenantId: TENANT_ID,
+          invitationId: OWNER_INVITATION_ID,
+          userId: OWNER_USER_ID,
+          hostname: INPUT.tenantHostname,
+          normalizedEmail: INPUT.normalizedOwnerEmail,
+          intendedRoleKey: "tenant_owner",
+          serializedToken: RAW_INVITATION_TOKEN,
+        });
+        return SEALED_INVITATION;
+      },
+    },
+  } satisfies PlatformTenantProvisioningWorkflowDependencies & DesiredOutboxDependencies;
+  const workflow = new PlatformTenantProvisioningWorkflow(transaction, dependencies);
 
   const result = await workflow.provision(INPUT);
 
@@ -274,6 +335,8 @@ test("provisions an existing owner inside one target-tenant scope before complet
     "tenant:domain",
     "membership:create",
     "invitation:create",
+    "invitation:seal",
+    "outbox:append",
     "audit:append",
     "idempotency:complete",
   ]);
