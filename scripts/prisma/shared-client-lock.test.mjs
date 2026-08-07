@@ -4,8 +4,9 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { withDirectoryLock } from "./shared-client-lock.mjs";
+import * as sharedClientGeneration from "./shared-client-lock.mjs";
 
+const { ensureGeneratedArtifact, withDirectoryLock } = sharedClientGeneration;
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 test("serializes concurrent work using one shared directory lock", async () => {
@@ -53,6 +54,39 @@ test("releases the shared lock when work fails", async () => {
 
     const value = await withDirectoryLock(lockPath, async () => "recovered");
     assert.equal(value, "recovered");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("generates one shared artifact for concurrent callers with the same fingerprint", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "booking-os-prisma-generation-"));
+  const lockPath = path.join(directory, "generate.lock");
+  const markerPath = path.join(directory, "generate.ready");
+  let generationCount = 0;
+  let artifactReady = false;
+
+  try {
+    const results = await Promise.all(
+      Array.from({ length: 3 }, () =>
+        ensureGeneratedArtifact({
+          lockPath,
+          markerPath,
+          fingerprint: "schema-and-toolchain-v1",
+          isArtifactReady: async () => artifactReady,
+          generateArtifact: async () => {
+            generationCount += 1;
+            await delay(20);
+            artifactReady = true;
+          },
+          lockOptions: { retryDelayMs: 5, timeoutMs: 2_000 },
+        }),
+      ),
+    );
+
+    assert.equal(generationCount, 1);
+    assert.equal(results.filter(({ generated }) => generated).length, 1);
+    assert.equal(results.filter(({ generated }) => !generated).length, 2);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
