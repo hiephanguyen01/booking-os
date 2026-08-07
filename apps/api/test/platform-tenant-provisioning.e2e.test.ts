@@ -24,24 +24,27 @@ const FIXTURE_EMAIL_PREFIX = "pr24-platform-e2e-";
 const FIXTURE_SLUG_PREFIX = "pr24e2e-";
 const IDEMPOTENCY_KEY_PREFIX = "pr24-platform-e2e-";
 const RUN_TAG = randomUUID().slice(0, 8);
+const RUN_EMAIL_PREFIX = `${FIXTURE_EMAIL_PREFIX}${RUN_TAG}`;
+const RUN_SLUG_PREFIX = `${FIXTURE_SLUG_PREFIX}${RUN_TAG}`;
+const RUN_IDEMPOTENCY_KEY_PREFIX = `${IDEMPOTENCY_KEY_PREFIX}${RUN_TAG}`;
 const ENVELOPE_KEY_ID = "identity-v1";
 const ENVELOPE_KEY = Buffer.alloc(32, 2);
 
 const ADMIN_USER_ID = randomUUID();
 const DENIED_USER_ID = randomUUID();
 const EXISTING_OWNER_USER_ID = randomUUID();
-const ADMIN_EMAIL = `${FIXTURE_EMAIL_PREFIX}admin-${RUN_TAG}@example.test`;
-const DENIED_EMAIL = `${FIXTURE_EMAIL_PREFIX}denied-${RUN_TAG}@example.test`;
-const EXISTING_OWNER_EMAIL = `${FIXTURE_EMAIL_PREFIX}existing-${RUN_TAG}@example.test`;
-const PENDING_OWNER_EMAIL = `${FIXTURE_EMAIL_PREFIX}pending-${RUN_TAG}@example.test`;
+const ADMIN_EMAIL = `${RUN_EMAIL_PREFIX}-admin@example.test`;
+const DENIED_EMAIL = `${RUN_EMAIL_PREFIX}-denied@example.test`;
+const EXISTING_OWNER_EMAIL = `${RUN_EMAIL_PREFIX}-existing@example.test`;
+const PENDING_OWNER_EMAIL = `${RUN_EMAIL_PREFIX}-pending@example.test`;
 
 const existingOwnerBody = Object.freeze({
-  slug: `${FIXTURE_SLUG_PREFIX}${RUN_TAG}-existing`,
+  slug: `${RUN_SLUG_PREFIX}-existing`,
   tenantName: "PR24 Existing Owner Tenant",
   ownerEmail: EXISTING_OWNER_EMAIL,
 });
 const pendingOwnerBody = Object.freeze({
-  slug: `${FIXTURE_SLUG_PREFIX}${RUN_TAG}-pending`,
+  slug: `${RUN_SLUG_PREFIX}-pending`,
   tenantName: "PR24 Pending Owner Tenant",
   ownerEmail: PENDING_OWNER_EMAIL,
 });
@@ -142,18 +145,18 @@ function decryptOutboxToken(payload: unknown, associatedData: readonly string[])
 }
 
 function key(suffix: string): string {
-  return `${IDEMPOTENCY_KEY_PREFIX}${RUN_TAG}-${suffix}`;
+  return `${RUN_IDEMPOTENCY_KEY_PREFIX}-${suffix}`;
 }
 
 async function cleanupFixtures(): Promise<void> {
   if (!prisma) return;
 
   await prisma.tenantProvisioningRequest.deleteMany({
-    where: { idempotencyKey: { startsWith: IDEMPOTENCY_KEY_PREFIX } },
+    where: { idempotencyKey: { startsWith: RUN_IDEMPOTENCY_KEY_PREFIX } },
   });
 
   const tenants = await prisma.tenant.findMany({
-    where: { slug: { startsWith: FIXTURE_SLUG_PREFIX } },
+    where: { slug: { startsWith: RUN_SLUG_PREFIX } },
     select: { id: true },
   });
   const tenantIds = tenants.map(({ id }) => id);
@@ -163,7 +166,7 @@ async function cleanupFixtures(): Promise<void> {
   }
 
   const users = await prisma.user.findMany({
-    where: { normalizedEmail: { startsWith: FIXTURE_EMAIL_PREFIX } },
+    where: { normalizedEmail: { startsWith: RUN_EMAIL_PREFIX } },
     select: { id: true },
   });
   const userIds = users.map(({ id }) => id);
@@ -653,7 +656,7 @@ test("POST provisions a pending owner with activation artifacts and resend repla
 
 test("POST rejects a matching in-progress idempotency claim", async () => {
   const body = Object.freeze({
-    slug: `${FIXTURE_SLUG_PREFIX}${RUN_TAG}-in-progress`,
+    slug: `${RUN_SLUG_PREFIX}-in-progress`,
     tenantName: "PR24 In Progress Tenant",
     ownerEmail: EXISTING_OWNER_EMAIL,
   });
@@ -673,7 +676,7 @@ test("POST rejects a matching in-progress idempotency claim", async () => {
 });
 
 test("POST maps both tenant slug and primary domain collisions to 409", async () => {
-  const slugConflict = `${FIXTURE_SLUG_PREFIX}${RUN_TAG}-slug-conflict`;
+  const slugConflict = `${RUN_SLUG_PREFIX}-slug-conflict`;
   await prisma.tenant.create({
     data: {
       id: randomUUID(),
@@ -696,11 +699,11 @@ test("POST maps both tenant slug and primary domain collisions to 409", async ()
     .set("idempotency-key", key("slug-conflict"))
     .expect(409);
 
-  const requestedDomainSlug = `${FIXTURE_SLUG_PREFIX}${RUN_TAG}-domain-conflict`;
+  const requestedDomainSlug = `${RUN_SLUG_PREFIX}-domain-conflict`;
   await prisma.tenant.create({
     data: {
       id: randomUUID(),
-      slug: `${FIXTURE_SLUG_PREFIX}${RUN_TAG}-domain-holder`,
+      slug: `${RUN_SLUG_PREFIX}-domain-holder`,
       name: "Existing Domain Holder",
       status: "provisioning",
       domains: {
