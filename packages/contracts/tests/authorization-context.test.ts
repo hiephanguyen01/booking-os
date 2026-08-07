@@ -30,10 +30,7 @@ test("tenant authorization context carries active membership authority", () => {
     membershipId: "00000000-0000-4000-8000-000000000014",
     membershipStatus: "active",
     roleKeys: ["tenant_owner"],
-    permissionKeys: [
-      "tenant.membership.read",
-      "tenant.membership.owner.promote",
-    ],
+    permissionKeys: ["tenant.membership.read", "tenant.membership.owner.promote"],
     userAuthorizationVersion: 2,
     membershipAuthorizationVersion: 3,
   };
