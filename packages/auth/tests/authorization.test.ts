@@ -1,12 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  getPermissions,
-  hasPermission,
-  PERMISSION_KEYS,
-  SYSTEM_ROLES,
-} from "../src/index.js";
+import { getPermissions, hasPermission, PERMISSION_KEYS, SYSTEM_ROLES } from "../src/index.js";
 
 test("system role catalog contains only the approved immutable roles", () => {
   assert.deepEqual(SYSTEM_ROLES, {
@@ -57,17 +52,11 @@ test("tenant owner receives the complete tenant permission catalog", () => {
 
 test("tenant administrator cannot promote or demote owners", () => {
   assert.equal(
-    hasPermission(
-      SYSTEM_ROLES.tenantAdmin,
-      PERMISSION_KEYS.tenantMembershipOwnerPromote,
-    ),
+    hasPermission(SYSTEM_ROLES.tenantAdmin, PERMISSION_KEYS.tenantMembershipOwnerPromote),
     false,
   );
   assert.equal(
-    hasPermission(
-      SYSTEM_ROLES.tenantAdmin,
-      PERMISSION_KEYS.tenantMembershipOwnerDemote,
-    ),
+    hasPermission(SYSTEM_ROLES.tenantAdmin, PERMISSION_KEYS.tenantMembershipOwnerDemote),
     false,
   );
   assert.deepEqual(getPermissions(SYSTEM_ROLES.tenantAdmin), [
@@ -81,10 +70,7 @@ test("tenant administrator cannot promote or demote owners", () => {
 });
 
 test("missing role has no permission", () => {
-  assert.equal(
-    hasPermission(undefined, PERMISSION_KEYS.tenantMembershipRead),
-    false,
-  );
+  assert.equal(hasPermission(undefined, PERMISSION_KEYS.tenantMembershipRead), false);
 });
 
 test("permission arrays are fresh values", () => {
