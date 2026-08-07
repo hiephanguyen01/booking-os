@@ -45,7 +45,7 @@ test("MembershipsModule wires platform tenant provisioning through an explicit f
   assert.equal(providers.includes(ProvisionTenantUseCase), false);
 
   const provider = providers.find(
-    (candidate) =>
+    (candidate): candidate is FactoryProviderMetadata =>
       isFactoryProviderMetadata(candidate) && candidate.provide === ProvisionTenantUseCase,
   );
 
