@@ -137,9 +137,7 @@ test("membership and tenant role tables use FORCE RLS with exact policies", asyn
     { table_name: "tenant_memberships", rls_enabled: true, rls_forced: true },
   ]);
 
-  const policies = await prisma.$queryRaw<
-    readonly { table_name: string; policy_name: string }[]
-  >`
+  const policies = await prisma.$queryRaw<readonly { table_name: string; policy_name: string }[]>`
     SELECT tablename AS table_name, policyname AS policy_name
     FROM pg_policies
     WHERE schemaname = 'public'
@@ -209,7 +207,9 @@ test("tenant rows deny missing context and cross-tenant access while platform as
   const tenantAssignments = await runAsRole(
     "booking_app",
     tenantAId,
-    (transaction) => transaction.$queryRaw<readonly { user_id: string; tenant_id: string | null }[]>`
+    (transaction) => transaction.$queryRaw<
+      readonly { user_id: string; tenant_id: string | null }[]
+    >`
       SELECT "user_id", "tenant_id" FROM "role_assignments" ORDER BY "user_id"
     `,
   );
@@ -239,7 +239,9 @@ test("tenant rows deny missing context and cross-tenant access while platform as
   const platformAssignments = await runAsRole(
     "booking_platform_app",
     undefined,
-    (transaction) => transaction.$queryRaw<readonly { user_id: string; tenant_id: string | null }[]>`
+    (transaction) => transaction.$queryRaw<
+      readonly { user_id: string; tenant_id: string | null }[]
+    >`
       SELECT "user_id", "tenant_id" FROM "role_assignments" ORDER BY "user_id"
     `,
   );

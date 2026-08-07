@@ -243,11 +243,8 @@ test("concurrent owner demotions allow one winner and preserve one active owner"
     await secondClient.$disconnect();
   }
 
-  const ownerCount = await runAsTenant(
-    prisma,
-    tenantId,
-    async (transaction) => {
-      const rows = await transaction.$queryRaw<readonly { count: bigint }[]>`
+  const ownerCount = await runAsTenant(prisma, tenantId, async (transaction) => {
+    const rows = await transaction.$queryRaw<readonly { count: bigint }[]>`
         SELECT COUNT(*) AS count
         FROM "role_assignments" assignment
         INNER JOIN "roles" role ON role."id" = assignment."role_id"
@@ -258,9 +255,8 @@ test("concurrent owner demotions allow one winner and preserve one active owner"
           AND assignment."revoked_at" IS NULL
           AND membership."status" = 'active'::tenant_membership_status
           AND role."key" = 'tenant_owner'
-      `;
-      return Number(rows[0]?.count ?? 0n);
-    },
-  );
+    `;
+    return Number(rows[0]?.count ?? 0n);
+  });
   assert.equal(ownerCount, 1);
 });

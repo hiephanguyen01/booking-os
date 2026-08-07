@@ -37,9 +37,7 @@ async function createUser(): Promise<string> {
   return userId;
 }
 
-async function createTenant(
-  status: "provisioning" | "active" | "suspended" = "provisioning",
-): Promise<string> {
+async function createTenant(status: "provisioning" | "active" | "suspended" = "provisioning") {
   const tenantId = randomUUID();
   const slug = `membership-${tenantId.slice(0, 8)}`;
   await prisma.$executeRaw`
@@ -331,9 +329,7 @@ test("tenant role assignments require an active membership and a matching tenant
 });
 
 test("tenant authorization catalog is deterministic", async () => {
-  const rows = await prisma.$queryRaw<
-    readonly { role_key: string; permission_key: string }[]
-  >`
+  const rows = await prisma.$queryRaw<readonly { role_key: string; permission_key: string }[]>`
     SELECT role."key" AS role_key, permission."key" AS permission_key
     FROM "roles" role
     INNER JOIN "role_permissions" role_permission
