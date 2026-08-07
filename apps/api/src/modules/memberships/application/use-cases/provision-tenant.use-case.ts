@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { PERMISSION_KEYS } from "@booking-os/auth";
 import type { AuthorizationContext } from "@booking-os/contracts";
 
@@ -66,6 +68,26 @@ function requireTenantSlug(slug: string, reservedSlugs: readonly string[]): stri
   return normalizedSlug;
 }
 
+function provisioningRequestHash(input: Readonly<{
+  actorUserId: string;
+  slug: string;
+  tenantName: string;
+  normalizedOwnerEmail: string;
+  tenantHostname: string;
+}>): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        actorUserId: input.actorUserId,
+        slug: input.slug,
+        tenantName: input.tenantName,
+        ownerEmail: input.normalizedOwnerEmail,
+        tenantHostname: input.tenantHostname,
+      }),
+    )
+    .digest("hex");
+}
+
 export class ProvisionTenantUseCase {
   constructor(
     private readonly workflow: PlatformTenantProvisioningWorkflowPort,
@@ -98,15 +120,24 @@ export class ProvisionTenantUseCase {
     const slug = requireTenantSlug(command.slug, this.config.reservedTenantSlugs);
     const normalizedOwnerEmail = command.ownerEmail.trim().toLowerCase();
     const tenantBaseDomain = normalizeTenantBaseDomain(this.config.tenantBaseDomain);
+    const tenantHostname = `${slug}.${tenantBaseDomain}`;
+    const requestHash = provisioningRequestHash({
+      actorUserId: command.authorization.userId,
+      slug,
+      tenantName: command.tenantName,
+      normalizedOwnerEmail,
+      tenantHostname,
+    });
 
     return this.workflow.provision({
       actorUserId: command.authorization.userId,
       idempotencyKey: command.idempotencyKey,
+      requestHash,
       slug,
       tenantName: command.tenantName,
       ownerEmail: command.ownerEmail,
       normalizedOwnerEmail,
-      tenantHostname: `${slug}.${tenantBaseDomain}`,
+      tenantHostname,
       requestId: command.requestId,
       now: this.clock(),
     });
