@@ -7,6 +7,10 @@ export interface ProvisioningTenant {
   readonly status: ProvisioningTenantStatus;
 }
 
+export interface NewlyProvisionedTenant extends ProvisioningTenant {
+  readonly status: "provisioning";
+}
+
 export interface CreateProvisioningTenantInput {
   readonly slug: string;
   readonly name: string;
@@ -16,7 +20,7 @@ export interface CreateProvisioningTenantInput {
 export interface TenantProvisioningRepositoryPort {
   findCurrent(): Promise<ProvisioningTenant | null>;
   lockCurrent(): Promise<ProvisioningTenant | null>;
-  createProvisioning(input: CreateProvisioningTenantInput): Promise<ProvisioningTenant>;
+  createProvisioning(input: CreateProvisioningTenantInput): Promise<NewlyProvisionedTenant>;
   addPrimaryDomain(hostname: string, now: Date): Promise<void>;
   activate(now: Date): Promise<void>;
   suspend(now: Date): Promise<void>;
