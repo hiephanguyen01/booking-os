@@ -100,6 +100,9 @@ test("generates the contract without binding a port or reaching infrastructure",
       "/api/auth/sessions/{sessionId}",
       "/api/auth/sessions/revoke-others",
       "/api/health",
+      "/api/platform/tenants",
+      "/api/platform/tenants/{tenantId}",
+      "/api/platform/tenants/{tenantId}/owner-invitation/resend",
       "/api/ready",
     ]);
     assert.deepEqual(
@@ -113,14 +116,17 @@ test("generates the contract without binding a port or reaching infrastructure",
         "completePasswordReset",
         "getCurrentSession",
         "getHealth",
+        "getPlatformTenantProvisioning",
         "getPreAuthCsrf",
         "getReadiness",
         "getSessionCsrf",
         "listSessions",
         "loginSession",
         "logoutSession",
+        "provisionPlatformTenant",
         "refreshSession",
         "requestPasswordReset",
+        "resendPlatformTenantOwnerInvitation",
         "revokeOtherSessions",
         "revokeSession",
       ],
@@ -160,6 +166,13 @@ test("generates the contract without binding a port or reaching infrastructure",
     assert.equal(
       revoke?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref,
       "#/components/schemas/RevokeDeviceResponseDto",
+    );
+
+    const resendOwnerInvitation =
+      document.paths["/api/platform/tenants/{tenantId}/owner-invitation/resend"]?.post;
+    assert.equal(
+      resendOwnerInvitation?.responses?.["202"]?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/OwnerInvitationResendResponseDto",
     );
   } finally {
     await reservedPort.close();

@@ -38,6 +38,7 @@ test("parseEnvironment validates and normalizes environment variables", () => {
     host: "127.0.0.1",
     trustProxy: true,
     tenantBaseDomain: "example.com",
+    platformHostname: "platform.example.com",
     port: 3101,
     apiPrefix: "api",
     appVersion: "0.1.0-test",
@@ -71,6 +72,7 @@ test("parseEnvironment applies safe defaults", () => {
   assert.equal(environment.host, "0.0.0.0");
   assert.equal(environment.trustProxy, false);
   assert.equal(environment.tenantBaseDomain, "example.com");
+  assert.equal(environment.platformHostname, "platform.example.com");
   assert.equal(environment.port, 3001);
   assert.equal(environment.apiPrefix, "api");
   assert.equal(environment.appVersion, "0.1.0");

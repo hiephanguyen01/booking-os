@@ -173,15 +173,19 @@ const apiPrefixSchema = z
   .min(1, "API_PREFIX cannot be empty")
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "API_PREFIX must use lowercase kebab-case without slashes");
 
-const tenantBaseDomainSchema = z
-  .string()
-  .trim()
-  .refine(
-    (value) =>
-      value.includes(".") && value.split(".").every((label) => hostLabelPattern.test(label)),
-    "TENANT_BASE_DOMAIN must be a valid multi-label hostname",
-  )
-  .transform((value) => value.toLowerCase());
+const hostnameSchema = (variableName: string) =>
+  z
+    .string()
+    .trim()
+    .refine(
+      (value) =>
+        value.includes(".") && value.split(".").every((label) => hostLabelPattern.test(label)),
+      `${variableName} must be a valid multi-label hostname`,
+    )
+    .transform((value) => value.toLowerCase());
+
+const tenantBaseDomainSchema = hostnameSchema("TENANT_BASE_DOMAIN");
+const platformHostnameSchema = hostnameSchema("PLATFORM_HOSTNAME");
 
 const rawEnvironmentSchema = z
   .object({
@@ -192,6 +196,8 @@ const rawEnvironmentSchema = z
     TRUST_PROXY: z.enum(["true", "false"]).default("false"),
 
     TENANT_BASE_DOMAIN: tenantBaseDomainSchema.optional(),
+
+    PLATFORM_HOSTNAME: platformHostnameSchema.optional(),
 
     PORT: z.coerce.number().int().min(1).max(65_535).default(3001),
 
@@ -293,37 +299,47 @@ const rawEnvironmentSchema = z
     }
   });
 
-export const environmentSchema = rawEnvironmentSchema.transform((values) => ({
-  nodeEnvironment: values.NODE_ENV,
-  host: values.HOST,
-  trustProxy: values.TRUST_PROXY === "true",
-  tenantBaseDomain: values.TENANT_BASE_DOMAIN ?? "example.com",
-  port: values.PORT,
-  apiPrefix: values.API_PREFIX,
-  appVersion: values.APP_VERSION,
-  logLevel: values.LOG_LEVEL,
-  databaseUrl: values.DATABASE_URL,
-  redisUrl: values.REDIS_URL,
-  readinessTimeoutMs: values.READINESS_TIMEOUT_MS,
-  sessionSecret: values.SESSION_SECRET,
-  sessionAllowedOrigins: Object.freeze([...(values.SESSION_ALLOWED_ORIGINS ?? [])]),
-  paymentProvider: values.PAYMENT_PROVIDER,
-  identitySecurity: Object.freeze({
-    tokenPepper: values.IDENTITY_TOKEN_PEPPER,
-    envelopeKeys: values.IDENTITY_ENVELOPE_KEYS,
-    activeEnvelopeKeyId: values.IDENTITY_ACTIVE_ENVELOPE_KEY_ID,
-    bootstrapEnabled: values.IDENTITY_BOOTSTRAP_ENABLED === "true",
-    ...(values.IDENTITY_BOOTSTRAP_ADMIN_EMAIL
-      ? { bootstrapAdminEmail: values.IDENTITY_BOOTSTRAP_ADMIN_EMAIL }
-      : {}),
-  }),
-}));
+export const environmentSchema = rawEnvironmentSchema.transform((values) => {
+  const tenantBaseDomain = values.TENANT_BASE_DOMAIN ?? "example.com";
+
+  return {
+    nodeEnvironment: values.NODE_ENV,
+    host: values.HOST,
+    trustProxy: values.TRUST_PROXY === "true",
+    tenantBaseDomain,
+    platformHostname: values.PLATFORM_HOSTNAME ?? `platform.${tenantBaseDomain}`,
+    port: values.PORT,
+    apiPrefix: values.API_PREFIX,
+    appVersion: values.APP_VERSION,
+    logLevel: values.LOG_LEVEL,
+    databaseUrl: values.DATABASE_URL,
+    redisUrl: values.REDIS_URL,
+    readinessTimeoutMs: values.READINESS_TIMEOUT_MS,
+    sessionSecret: values.SESSION_SECRET,
+    sessionAllowedOrigins: Object.freeze([...(values.SESSION_ALLOWED_ORIGINS ?? [])]),
+    paymentProvider: values.PAYMENT_PROVIDER,
+    identitySecurity: Object.freeze({
+      tokenPepper: values.IDENTITY_TOKEN_PEPPER,
+      envelopeKeys: values.IDENTITY_ENVELOPE_KEYS,
+      activeEnvelopeKeyId: values.IDENTITY_ACTIVE_ENVELOPE_KEY_ID,
+      bootstrapEnabled: values.IDENTITY_BOOTSTRAP_ENABLED === "true",
+      ...(values.IDENTITY_BOOTSTRAP_ADMIN_EMAIL
+        ? { bootstrapAdminEmail: values.IDENTITY_BOOTSTRAP_ADMIN_EMAIL }
+        : {}),
+    }),
+  };
+});
 
 export type ValidatedEnvironment = z.output<typeof environmentSchema>;
 
 export type IdentitySecurityConfig = ValidatedEnvironment["identitySecurity"];
 
-export type Environment = Omit<ValidatedEnvironment, "identitySecurity" | "sessionAllowedOrigins"> &
-  Partial<Pick<ValidatedEnvironment, "identitySecurity" | "sessionAllowedOrigins">>;
+export type Environment = Omit<
+  ValidatedEnvironment,
+  "identitySecurity" | "platformHostname" | "sessionAllowedOrigins"
+> &
+  Partial<
+    Pick<ValidatedEnvironment, "identitySecurity" | "platformHostname" | "sessionAllowedOrigins">
+  >;
 
 export type RawEnvironment = z.input<typeof environmentSchema>;

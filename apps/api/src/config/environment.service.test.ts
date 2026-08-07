@@ -41,3 +41,19 @@ test("identity security access exposes a validated configuration", () => {
 
   assert.equal(service.identitySecurity, environment.identitySecurity);
 });
+
+test("platform hostname access exposes the exact configured hostname", () => {
+  const environment = parseEnvironment({
+    DATABASE_URL: legacyEnvironment.databaseUrl,
+    REDIS_URL: legacyEnvironment.redisUrl,
+    SESSION_SECRET: legacyEnvironment.sessionSecret,
+    PLATFORM_HOSTNAME: "platform.example.com",
+    IDENTITY_TOKEN_PEPPER: "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
+    IDENTITY_ENVELOPE_KEYS: '{"identity-v1":"AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI="}',
+    IDENTITY_ACTIVE_ENVELOPE_KEY_ID: "identity-v1",
+    IDENTITY_BOOTSTRAP_ENABLED: "false",
+  });
+  const service = new EnvironmentService(environment);
+
+  assert.equal(service.platformHostname, "platform.example.com");
+});

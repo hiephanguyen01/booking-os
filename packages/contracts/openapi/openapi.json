@@ -173,6 +173,18 @@
         ],
         "type": "object"
       },
+      "OwnerInvitationResendResponseDto": {
+        "properties": {
+          "accepted": {
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accepted"
+        ],
+        "type": "object"
+      },
       "PreAuthCsrfResponseDto": {
         "properties": {
           "csrfToken": {
@@ -186,6 +198,33 @@
         "required": [
           "csrfToken",
           "expiresAt"
+        ],
+        "type": "object"
+      },
+      "ProvisionTenantRequestDto": {
+        "properties": {
+          "ownerEmail": {
+            "example": "owner@example.com",
+            "format": "email",
+            "type": "string"
+          },
+          "slug": {
+            "example": "acme",
+            "maxLength": 63,
+            "minLength": 1,
+            "type": "string"
+          },
+          "tenantName": {
+            "example": "Acme Ltd",
+            "maxLength": 160,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "tenantName",
+          "ownerEmail"
         ],
         "type": "object"
       },
@@ -366,6 +405,43 @@
           "lastSeenAt",
           "idleExpiresAt",
           "absoluteExpiresAt"
+        ],
+        "type": "object"
+      },
+      "TenantProvisioningResponseDto": {
+        "properties": {
+          "ownerInvitationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "ownerMembershipId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "provisioning"
+            ],
+            "type": "string"
+          },
+          "tenantId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenantId",
+          "slug",
+          "status",
+          "ownerMembershipId",
+          "ownerInvitationId",
+          "replayed"
         ],
         "type": "object"
       }
@@ -738,6 +814,111 @@
         "summary": "",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/api/platform/tenants": {
+      "post": {
+        "operationId": "provisionPlatformTenant",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProvisionTenantRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantProvisioningResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "platform-tenants"
+        ]
+      }
+    },
+    "/api/platform/tenants/{tenantId}": {
+      "get": {
+        "operationId": "getPlatformTenantProvisioning",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantProvisioningResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "platform-tenants"
+        ]
+      }
+    },
+    "/api/platform/tenants/{tenantId}/owner-invitation/resend": {
+      "post": {
+        "operationId": "resendPlatformTenantOwnerInvitation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerInvitationResendResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "platform-tenants"
         ]
       }
     },

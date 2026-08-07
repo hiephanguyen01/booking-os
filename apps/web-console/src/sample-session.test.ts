@@ -1,19 +1,25 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { hasPermission, PERMISSIONS, ROLES } from "@booking-os/auth";
+import { hasPermission, PERMISSION_KEYS, SYSTEM_ROLES } from "@booking-os/auth";
 
-import { samplePartnerSession } from "./sample-session.js";
+import { sampleTenantAdminSession } from "./sample-session.js";
 
-test("sample console session uses the partner role", () => {
-  assert.equal(samplePartnerSession.user.id, "partner-demo");
-  assert.equal(samplePartnerSession.user.role, ROLES.partner);
+test("sample console session uses the tenant administrator role", () => {
+  assert.equal(sampleTenantAdminSession.user.id, "tenant-admin-demo");
+  assert.equal(sampleTenantAdminSession.user.role, SYSTEM_ROLES.tenantAdmin);
 });
 
-test("sample partner can manage listings", () => {
-  assert.equal(hasPermission(samplePartnerSession.user.role, PERMISSIONS.listingManage), true);
+test("sample tenant administrator can invite tenant administrators", () => {
+  assert.equal(
+    hasPermission(sampleTenantAdminSession.user.role, PERMISSION_KEYS.tenantMembershipAdminInvite),
+    true,
+  );
 });
 
-test("sample partner cannot manage the platform", () => {
-  assert.equal(hasPermission(samplePartnerSession.user.role, PERMISSIONS.platformManage), false);
+test("sample tenant administrator cannot promote owners", () => {
+  assert.equal(
+    hasPermission(sampleTenantAdminSession.user.role, PERMISSION_KEYS.tenantMembershipOwnerPromote),
+    false,
+  );
 });

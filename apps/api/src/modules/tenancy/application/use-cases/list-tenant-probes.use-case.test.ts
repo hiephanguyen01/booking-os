@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type { TenantExecutionContext } from "@booking-os/contracts";
 
-import type { TenantTransactionPort } from "../ports/tenant-transaction.port.js";
+import type { TenantDataSession, TenantTransactionPort } from "../ports/tenant-transaction.port.js";
 import { ListTenantProbesUseCase } from "./list-tenant-probes.use-case.js";
 
 test("forwards exact context and returns repository records", async () => {
@@ -21,16 +21,17 @@ test("forwards exact context and returns repository records", async () => {
     },
   ];
   let observed: TenantExecutionContext | undefined;
+  const session = {
+    tenantProbes: {
+      async list() {
+        return expected;
+      },
+    },
+  } as unknown as TenantDataSession;
   const transactions: TenantTransactionPort = {
     async run(current, work) {
       observed = current;
-      return work({
-        tenantProbes: {
-          async list() {
-            return expected;
-          },
-        },
-      });
+      return work(session);
     },
   };
   const useCase = new ListTenantProbesUseCase(transactions);

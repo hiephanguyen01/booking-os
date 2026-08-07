@@ -1,7 +1,9 @@
 import type { TenantExecutionContext } from "@booking-os/contracts";
+
+import type { MembershipDataSession } from "../../../memberships/application/ports/membership-data-session.js";
 import type { TenantProbeRepositoryPort } from "./tenant-probe-repository.port.js";
 
-export interface TenantDataSession {
+export interface TenantDataSession extends MembershipDataSession {
   readonly tenantProbes: TenantProbeRepositoryPort;
 }
 

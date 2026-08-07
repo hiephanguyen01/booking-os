@@ -1,10 +1,10 @@
-import { ROLES, type Role } from "@booking-os/auth";
+import { SYSTEM_ROLES, type SystemRole } from "@booking-os/auth";
 
 export interface SampleConsoleUser {
   readonly id: string;
   readonly email: string;
   readonly displayName: string;
-  readonly role: Role;
+  readonly role: SystemRole;
 }
 
 export interface SampleConsoleSession {
@@ -12,12 +12,12 @@ export interface SampleConsoleSession {
   readonly expiresAt: string;
 }
 
-export const samplePartnerSession: SampleConsoleSession = {
+export const sampleTenantAdminSession: SampleConsoleSession = {
   user: {
-    id: "partner-demo",
-    email: "partner@example.com",
-    displayName: "Partner Demo",
-    role: ROLES.partner,
+    id: "tenant-admin-demo",
+    email: "tenant-admin@booking-os.local",
+    displayName: "Tenant Admin Demo",
+    role: SYSTEM_ROLES.tenantAdmin,
   },
   expiresAt: "2099-01-01T00:00:00.000Z",
 };

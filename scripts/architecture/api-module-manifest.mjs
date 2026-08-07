@@ -4,6 +4,10 @@ export const modules = [
     root: "apps/api/src/modules/identity",
   },
   {
+    name: "memberships",
+    root: "apps/api/src/modules/memberships",
+  },
+  {
     name: "sessions",
     root: "apps/api/src/modules/sessions",
   },

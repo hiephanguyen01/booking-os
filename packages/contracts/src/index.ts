@@ -1,4 +1,5 @@
 export type { ApiErrorBody, ApiErrorDetails, ApiErrorEnvelope } from "./api-error.js";
+export * from "./auth/index.js";
 export {
   HEALTH_STATUSES,
   type HealthDependencyStatus,
