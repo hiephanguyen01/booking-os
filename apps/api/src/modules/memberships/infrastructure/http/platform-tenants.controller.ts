@@ -113,6 +113,7 @@ export class PlatformTenantsController {
 
   @SessionRequired()
   @Post()
+  @HttpCode(200)
   @ApiOperation({ operationId: "provisionPlatformTenant" })
   @ApiHeader({ name: "Idempotency-Key", required: true })
   @ApiBody({ type: ProvisionTenantRequestDto })

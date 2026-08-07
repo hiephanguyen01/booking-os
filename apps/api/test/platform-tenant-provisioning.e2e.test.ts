@@ -426,7 +426,7 @@ test("POST provisions an existing owner and GET returns its database-backed stat
   const idempotencyKey = key("existing-owner");
   const response = await authenticatedPost("/api/platform/tenants", adminSession, existingOwnerBody)
     .set("idempotency-key", idempotencyKey)
-    .expect(201);
+    .expect(200);
   const result = response.body as ProvisioningResponse;
 
   assert.equal(result.slug, existingOwnerBody.slug);
@@ -503,7 +503,7 @@ test("POST provisions an existing owner and GET returns its database-backed stat
 
   const replay = await authenticatedPost("/api/platform/tenants", adminSession, existingOwnerBody)
     .set("idempotency-key", idempotencyKey)
-    .expect(201);
+    .expect(200);
   assert.deepEqual(replay.body, { ...result, replayed: true });
   assert.equal(await prisma.tenant.count({ where: { slug: existingOwnerBody.slug } }), 1);
 
@@ -520,7 +520,7 @@ test("POST provisions a pending owner with activation artifacts and resend repla
 
   const response = await authenticatedPost("/api/platform/tenants", adminSession, pendingOwnerBody)
     .set("idempotency-key", key("pending-owner"))
-    .expect(201);
+    .expect(200);
   const result = response.body as ProvisioningResponse;
   const pendingOwner = await prisma.user.findUniqueOrThrow({
     where: { normalizedEmail: PENDING_OWNER_EMAIL },
