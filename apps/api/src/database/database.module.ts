@@ -1,7 +1,6 @@
 import { Global, Module } from "@nestjs/common";
-
-import { PrismaTenantDataSessionFactory } from "./prisma-tenant-data-session.factory.js";
 import { PrismaService } from "./prisma.service.js";
+import { PrismaTenantDataSessionFactory } from "./prisma-tenant-data-session.factory.js";
 
 @Global()
 @Module({
