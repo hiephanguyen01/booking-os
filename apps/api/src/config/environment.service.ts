@@ -43,6 +43,10 @@ export class EnvironmentService {
     return this.values.tenantBaseDomain;
   }
 
+  get platformHostname(): string {
+    return this.values.platformHostname ?? `platform.${this.values.tenantBaseDomain}`;
+  }
+
   get port(): number {
     return this.values.port;
   }
