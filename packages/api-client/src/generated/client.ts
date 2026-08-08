@@ -42,6 +42,14 @@ export interface RevokeSessionParameters {
   readonly path: operations["revokeSession"]["parameters"]["path"];
 }
 
+export interface CreateTenantAdminInvitationParameters {
+  readonly body: operations["createTenantAdminInvitation"]["requestBody"]["content"]["application/json"];
+}
+
+export interface ResendTenantAdminInvitationParameters {
+  readonly path: operations["resendTenantAdminInvitation"]["parameters"]["path"];
+}
+
 export interface ProvisionPlatformTenantParameters {
   readonly headers: operations["provisionPlatformTenant"]["parameters"]["header"];
   readonly body: operations["provisionPlatformTenant"]["requestBody"]["content"]["application/json"];
@@ -69,6 +77,9 @@ export interface GeneratedClient {
   readonly revokeOtherSessions: (options?: GeneratedRequestOptions) => Promise<operations["revokeOtherSessions"]["responses"][200]["content"]["application/json"]>;
   readonly revokeSession: (parameters: RevokeSessionParameters, options?: GeneratedRequestOptions) => Promise<operations["revokeSession"]["responses"][200]["content"]["application/json"]>;
   readonly getHealth: (options?: GeneratedRequestOptions) => Promise<operations["getHealth"]["responses"][200]["content"]["application/json"]>;
+  readonly createTenantAdminInvitation: (parameters: CreateTenantAdminInvitationParameters, options?: GeneratedRequestOptions) => Promise<operations["createTenantAdminInvitation"]["responses"][202]["content"]["application/json"]>;
+  readonly getCurrentMembershipInvitation: (options?: GeneratedRequestOptions) => Promise<operations["getCurrentMembershipInvitation"]["responses"][200]["content"]["application/json"]>;
+  readonly resendTenantAdminInvitation: (parameters: ResendTenantAdminInvitationParameters, options?: GeneratedRequestOptions) => Promise<operations["resendTenantAdminInvitation"]["responses"][202]["content"]["application/json"]>;
   readonly provisionPlatformTenant: (parameters: ProvisionPlatformTenantParameters, options?: GeneratedRequestOptions) => Promise<operations["provisionPlatformTenant"]["responses"][200]["content"]["application/json"]>;
   readonly getPlatformTenantProvisioning: (parameters: GetPlatformTenantProvisioningParameters, options?: GeneratedRequestOptions) => Promise<operations["getPlatformTenantProvisioning"]["responses"][200]["content"]["application/json"]>;
   readonly resendPlatformTenantOwnerInvitation: (parameters: ResendPlatformTenantOwnerInvitationParameters, options?: GeneratedRequestOptions) => Promise<operations["resendPlatformTenantOwnerInvitation"]["responses"][202]["content"]["application/json"]>;
@@ -158,6 +169,25 @@ export function createGeneratedClient(transport: GeneratedTransport): GeneratedC
       return transport<operations["getHealth"]["responses"][200]["content"]["application/json"]>({
       method: "GET",
       path: "/api/health",
+      }, options);
+    },
+    async createTenantAdminInvitation(parameters, options) {
+      return transport<operations["createTenantAdminInvitation"]["responses"][202]["content"]["application/json"]>({
+      method: "POST",
+      path: "/api/membership/invitations",
+      body: parameters.body,
+      }, options);
+    },
+    async getCurrentMembershipInvitation(options) {
+      return transport<operations["getCurrentMembershipInvitation"]["responses"][200]["content"]["application/json"]>({
+      method: "GET",
+      path: "/api/membership/invitations/current",
+      }, options);
+    },
+    async resendTenantAdminInvitation(parameters, options) {
+      return transport<operations["resendTenantAdminInvitation"]["responses"][202]["content"]["application/json"]>({
+      method: "POST",
+      path: `/api/membership/invitations/${encodeURIComponent(String(parameters.path.invitationId))}/resend`,
       }, options);
     },
     async provisionPlatformTenant(parameters, options) {

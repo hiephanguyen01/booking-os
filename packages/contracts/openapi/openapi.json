@@ -65,6 +65,18 @@
         ],
         "type": "object"
       },
+      "CreateTenantAdminInvitationRequestDto": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
       "CurrentAuthenticationResponseDto": {
         "properties": {
           "actor": {
@@ -77,6 +89,40 @@
         "required": [
           "actor",
           "session"
+        ],
+        "type": "object"
+      },
+      "CurrentTenantInvitationResponseDto": {
+        "properties": {
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "hostname": {
+            "type": "string"
+          },
+          "intendedRoleKey": {
+            "enum": [
+              "tenant_owner",
+              "tenant_admin"
+            ],
+            "type": "string"
+          },
+          "invitationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "tenantId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "invitationId",
+          "tenantId",
+          "intendedRoleKey",
+          "hostname",
+          "expiresAt"
         ],
         "type": "object"
       },
@@ -405,6 +451,20 @@
           "lastSeenAt",
           "idleExpiresAt",
           "absoluteExpiresAt"
+        ],
+        "type": "object"
+      },
+      "TenantInvitationAcceptedResponseDto": {
+        "properties": {
+          "accepted": {
+            "enum": [
+              true
+            ],
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accepted"
         ],
         "type": "object"
       },
@@ -814,6 +874,92 @@
         "summary": "",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/api/membership/invitations": {
+      "post": {
+        "operationId": "createTenantAdminInvitation",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTenantAdminInvitationRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantInvitationAcceptedResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "membership-invitations"
+        ]
+      }
+    },
+    "/api/membership/invitations/{invitationId}/resend": {
+      "post": {
+        "operationId": "resendTenantAdminInvitation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invitationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantInvitationAcceptedResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "membership-invitations"
+        ]
+      }
+    },
+    "/api/membership/invitations/current": {
+      "get": {
+        "operationId": "getCurrentMembershipInvitation",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentTenantInvitationResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "membership-invitations"
         ]
       }
     },

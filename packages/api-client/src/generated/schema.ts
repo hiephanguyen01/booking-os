@@ -212,6 +212,54 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/membership/invitations": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post: operations["createTenantAdminInvitation"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/membership/invitations/{invitationId}/resend": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post: operations["resendTenantAdminInvitation"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/membership/invitations/current": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get: operations["getCurrentMembershipInvitation"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/platform/tenants": {
         readonly parameters: {
             readonly query?: never;
@@ -300,9 +348,24 @@ export interface components {
             readonly tenantId?: string;
             readonly token: string;
         };
+        readonly CreateTenantAdminInvitationRequestDto: {
+            /** Format: email */
+            readonly email: string;
+        };
         readonly CurrentAuthenticationResponseDto: {
             readonly actor: components["schemas"]["ActorDto"];
             readonly session: components["schemas"]["PublicSessionDto"];
+        };
+        readonly CurrentTenantInvitationResponseDto: {
+            /** Format: date-time */
+            readonly expiresAt: string;
+            readonly hostname: string;
+            /** @enum {string} */
+            readonly intendedRoleKey: "tenant_owner" | "tenant_admin";
+            /** Format: uuid */
+            readonly invitationId: string;
+            /** Format: uuid */
+            readonly tenantId: string;
         };
         readonly HealthDependencyStatusDto: {
             readonly latencyMs?: number;
@@ -403,6 +466,10 @@ export interface components {
             readonly scope: components["schemas"]["SessionScopeDto"];
             /** @enum {string} */
             readonly state: "active" | "invitation_pending" | "compromised" | "revoked";
+        };
+        readonly TenantInvitationAcceptedResponseDto: {
+            /** @enum {boolean} */
+            readonly accepted: true;
         };
         readonly TenantProvisioningResponseDto: {
             /** Format: uuid */
@@ -712,6 +779,69 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["HealthResponseDto"];
+                };
+            };
+        };
+    };
+    readonly createTenantAdminInvitation: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["CreateTenantAdminInvitationRequestDto"];
+            };
+        };
+        readonly responses: {
+            readonly 202: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["TenantInvitationAcceptedResponseDto"];
+                };
+            };
+        };
+    };
+    readonly resendTenantAdminInvitation: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly invitationId: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            readonly 202: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["TenantInvitationAcceptedResponseDto"];
+                };
+            };
+        };
+    };
+    readonly getCurrentMembershipInvitation: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CurrentTenantInvitationResponseDto"];
                 };
             };
         };
