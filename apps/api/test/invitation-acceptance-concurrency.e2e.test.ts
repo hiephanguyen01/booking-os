@@ -209,7 +209,9 @@ test("two concurrent accepts produce exactly one activation and one rotated live
   ]);
 
   const fulfilled = results.filter(
-    (result): result is PromiseFulfilledResult<Awaited<ReturnType<AcceptInvitationUseCase["execute"]>>> =>
+    (
+      result,
+    ): result is PromiseFulfilledResult<Awaited<ReturnType<AcceptInvitationUseCase["execute"]>>> =>
       result.status === "fulfilled",
   );
   const rejected = results.filter(
@@ -240,7 +242,10 @@ test("two concurrent accepts produce exactly one activation and one rotated live
   assert.equal(membership.authorizationVersion, 1);
   assert.equal(session.state, "active");
   assert.equal(session.authorizationVersion, 1);
-  assert.equal(assignments.filter((assignment) => assignment.role.key === "tenant_admin").length, 1);
+  assert.equal(
+    assignments.filter((assignment) => assignment.role.key === "tenant_admin").length,
+    1,
+  );
   assert.equal(sessionTokens.filter((token) => token.revokedAt === null).length, 1);
   assert.equal(sessionTokens.filter((token) => token.revokedAt !== null).length, 1);
   assert.equal(sessionTokens.length, 2);
