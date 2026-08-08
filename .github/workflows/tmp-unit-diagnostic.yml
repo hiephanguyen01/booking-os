@@ -1,0 +1,50 @@
+name: Temporary unit diagnostic
+
+on:
+  push:
+    branches:
+      - feat/sprint-1b-03-task-5-tenant-admin-invitations
+
+permissions:
+  contents: read
+
+jobs:
+  unit-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NODE_ENV: test
+      API_PREFIX: api
+      DATABASE_URL: postgresql://booking:booking@127.0.0.1:1/booking_os_unit
+      REDIS_URL: redis://127.0.0.1:1/15
+      SESSION_SECRET: unit-diagnostic-secret-at-least-32-characters
+      PAYMENT_PROVIDER: mock
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Capture API unit tests
+        id: tests
+        shell: bash
+        run: |
+          set +e
+          pnpm --filter @booking-os/api run test 2>&1 | tee unit-test.log
+          status=${PIPESTATUS[0]}
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload unit log
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-log
+          path: unit-test.log
+          if-no-files-found: error
+      - name: Preserve test result
+        if: steps.tests.outputs.status != '0'
+        run: exit 1
