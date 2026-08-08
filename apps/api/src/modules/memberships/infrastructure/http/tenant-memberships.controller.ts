@@ -121,7 +121,7 @@ export class TenantMembershipsController {
     return this.executeMutation(this.demoteOwnerMembership, membershipId);
   }
 
-  private async executeMutation(
+  private async executeMutation<TResult>(
     useCase: {
       execute(command: {
         readonly authorization: Awaited<
@@ -129,10 +129,10 @@ export class TenantMembershipsController {
         >;
         readonly membershipId: string;
         readonly requestId: string;
-      }): Promise<unknown>;
+      }): Promise<TResult>;
     },
     membershipId: string,
-  ) {
+  ): Promise<TResult> {
     const normalizedMembershipId = requireUuid(membershipId);
     try {
       const authenticated = this.requestContext.requireAuthenticated();
