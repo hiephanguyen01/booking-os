@@ -109,7 +109,12 @@ async function seed(): Promise<void> {
 
   await prisma.tenant.createMany({
     data: [
-      { id: TENANT_ID, slug: TENANT_SLUG, name: "PR26 Membership Management", status: "provisioning" },
+      {
+        id: TENANT_ID,
+        slug: TENANT_SLUG,
+        name: "PR26 Membership Management",
+        status: "provisioning",
+      },
       {
         id: OTHER_TENANT_ID,
         slug: OTHER_TENANT_SLUG,
@@ -272,10 +277,12 @@ test("concurrent owner demotions serialize so exactly one active owner remains",
     include: { role: true },
   });
   const activeOwnerAssignments = assignments.filter(
-    (assignment) => assignment.revokedAt === null && assignment.role.key === SYSTEM_ROLES.tenantOwner,
+    (assignment) =>
+      assignment.revokedAt === null && assignment.role.key === SYSTEM_ROLES.tenantOwner,
   );
   const activeAdminAssignments = assignments.filter(
-    (assignment) => assignment.revokedAt === null && assignment.role.key === SYSTEM_ROLES.tenantAdmin,
+    (assignment) =>
+      assignment.revokedAt === null && assignment.role.key === SYSTEM_ROLES.tenantAdmin,
   );
 
   assert.equal(activeOwnerAssignments.length, 1);
