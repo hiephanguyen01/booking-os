@@ -5,7 +5,7 @@ const databaseUrl =
 const redisUrl = process.env.REDIS_URL ?? "redis://127.0.0.1:6379/1";
 const apiBaseUrl = "http://127.0.0.1:3001/api";
 const consoleOrigin = "http://127.0.0.1:3002";
-const sessionAllowedOrigins = `${consoleOrigin},http://localhost:3002`;
+const sessionAllowedOrigins = `${consoleOrigin},http://localhost:3002,http://tenant-a.booking.localhost:3002`;
 const reuseExistingServer = process.env.CI !== "true";
 
 export default defineConfig({
@@ -35,7 +35,7 @@ export default defineConfig({
         NODE_ENV: "test",
         HOST: "127.0.0.1",
         TRUST_PROXY: "true",
-        TENANT_BASE_DOMAIN: "example.com",
+        TENANT_BASE_DOMAIN: "booking.localhost",
         PORT: "3001",
         API_PREFIX: "api",
         DATABASE_URL: databaseUrl,
