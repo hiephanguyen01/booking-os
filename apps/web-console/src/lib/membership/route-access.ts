@@ -13,17 +13,15 @@ function isActiveTenant(session: ConsoleSessionSummary): boolean {
   return session.state === "active" && session.scope.type === "tenant";
 }
 
+function isPathWithin(pathname: string, root: string): boolean {
+  return pathname === root || pathname.startsWith(`${root}/`);
+}
+
 export function canAccessConsolePath(pathname: string, session: ConsoleSessionSummary): boolean {
-  if (pathname.startsWith("/app/platform/invitation-pending")) {
-    return isActivePlatform(session) || session.state === "invitation_pending";
-  }
-  if (pathname.startsWith("/app/invite/accept")) {
-    return isActivePlatform(session) || session.state === "invitation_pending";
-  }
-  if (pathname.startsWith("/app/platform")) {
+  if (isPathWithin(pathname, "/platform")) {
     return isActivePlatform(session);
   }
-  if (pathname.startsWith("/app/tenant") || pathname.startsWith("/app/settings")) {
+  if (isPathWithin(pathname, "/tenant") || isPathWithin(pathname, "/settings")) {
     return isActiveTenant(session);
   }
   return false;
