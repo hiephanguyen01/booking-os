@@ -61,10 +61,6 @@ function main() {
 
   const drift = status.stdout.trim();
   if (drift !== "") {
-    const diff = run("git", ["diff", "--no-ext-diff", "--", ...GENERATED_PATHS]);
-    if (diff.error === undefined && diff.status === 0) {
-      writeCapturedOutput(diff);
-    }
     fail(
       `Generated artifacts are stale:\n${drift}\nRun pnpm api:generate and commit the result.`,
       1,
