@@ -12,7 +12,7 @@ import { z } from "zod";
 import { readProblemMessage } from "./problem-message";
 
 const DEFAULT_ROLE = "tenant_admin" as const;
-const DEFAULT_EXPIRES_IN_DAYS = 7 as const;
+const INVITATION_EXPIRY_LABEL = "24 hours" as const;
 const inviteMemberSchema = z.object({
   email: z.string().email("Enter a valid administrator email address."),
 });
@@ -40,11 +40,7 @@ export function InviteMemberForm({ tenantId, onInvited }: InviteMemberFormProps)
       const response = await fetch(`/api/tenants/${encodeURIComponent(tenantId)}/invitations`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          email: values.email,
-          role: DEFAULT_ROLE,
-          expires_in_days: DEFAULT_EXPIRES_IN_DAYS,
-        }),
+        body: JSON.stringify({ email: values.email }),
         cache: "no-store",
       });
       if (!response.ok) {
@@ -96,11 +92,11 @@ export function InviteMemberForm({ tenantId, onInvited }: InviteMemberFormProps)
             />
           )}
         </FormField>
-        <FormField id="invitation-expiry" label="Expires in days">
+        <FormField id="invitation-expiry" label="Invitation expiry">
           {(accessibility) => (
             <Input
               id="invitation-expiry"
-              value={DEFAULT_EXPIRES_IN_DAYS}
+              value={INVITATION_EXPIRY_LABEL}
               readOnly
               aria-readonly="true"
               {...accessibility}
