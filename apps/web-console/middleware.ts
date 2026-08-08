@@ -1,15 +1,19 @@
-import { BOOKING_SESSION_COOKIE, readSessionToken } from "@booking-os/auth";
-
 import { resolveAppConfig } from "./src/app-config";
 import {
   type ConsoleSessionSummary,
   canAccessConsolePath,
 } from "./src/lib/membership/route-access";
 import { csrfOriginMismatchResponse, hasMatchingOrigin } from "./src/lib/session/csrf";
+import {
+  EDGE_BOOKING_SESSION_COOKIE,
+  readEdgeSessionToken,
+} from "./src/lib/session/edge-session-cookie";
 
 function exactSessionCookie(request: Request): string | null {
-  const token = readSessionToken(request.headers.get("cookie"));
-  return token === undefined ? null : `${BOOKING_SESSION_COOKIE}=${encodeURIComponent(token)}`;
+  const token = readEdgeSessionToken(request.headers.get("cookie"));
+  return token === undefined
+    ? null
+    : `${EDGE_BOOKING_SESSION_COOKIE}=${encodeURIComponent(token)}`;
 }
 
 function readSessionSummary(payload: unknown): ConsoleSessionSummary | null {
