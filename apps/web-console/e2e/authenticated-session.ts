@@ -22,6 +22,7 @@ export async function installAuthenticatedSession(
       name: SESSION_COOKIE,
       value: token,
       url: input.origin,
+      path: "/",
       httpOnly: true,
       secure: true,
       sameSite: "Lax",
