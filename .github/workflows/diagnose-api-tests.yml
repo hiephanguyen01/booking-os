@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   api-tests:
-    name: Capture API test failure
+    name: Capture root test failure
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -62,20 +62,20 @@ jobs:
       - name: Apply database migrations
         run: pnpm --filter @booking-os/api prisma:migrate:deploy
 
-      - name: Run API tests and capture output
-        id: api-tests
+      - name: Run root tests and capture output
+        id: root-tests
         continue-on-error: true
-        run: pnpm --filter @booking-os/api test 2>&1 | tee api-test.log
+        run: pnpm test 2>&1 | tee root-test.log
 
-      - name: Upload API test output
+      - name: Upload root test output
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: api-test-diagnostics
-          path: api-test.log
+          name: root-test-diagnostics
+          path: root-test.log
           if-no-files-found: error
           retention-days: 1
 
-      - name: Preserve API test failure
-        if: steps.api-tests.outcome == 'failure'
+      - name: Preserve root test failure
+        if: steps.root-tests.outcome == 'failure'
         run: exit 1
