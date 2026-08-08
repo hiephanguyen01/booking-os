@@ -14,14 +14,14 @@ const LOCK_INVITATION_SESSION_SQL = `
     "id",
     "absolute_expires_at" AS "absoluteExpiresAt"
   FROM "auth_sessions"
-  WHERE "tenant_id" = $1
-    AND "id" = $2
+  WHERE "tenant_id" = $1::uuid
+    AND "id" = $2::uuid
     AND "scope_type" = 'tenant'
     AND "state" = 'invitation_pending'
     AND "revoked_at" IS NULL
     AND "compromised_at" IS NULL
-    AND "idle_expires_at" > $3
-    AND "absolute_expires_at" > $3
+    AND "idle_expires_at" > $3::timestamptz
+    AND "absolute_expires_at" > $3::timestamptz
   FOR UPDATE
 `;
 
@@ -29,21 +29,21 @@ const ACTIVATE_INVITATION_SESSION_SQL = `
   UPDATE "auth_sessions"
   SET
     "state" = 'active',
-    "authorization_version" = $3,
+    "authorization_version" = $3::integer,
     "version" = "version" + 1,
-    "last_seen_at" = $4,
-    "updated_at" = $4
-  WHERE "tenant_id" = $1
-    AND "id" = $2
+    "last_seen_at" = $4::timestamptz,
+    "updated_at" = $4::timestamptz
+  WHERE "tenant_id" = $1::uuid
+    AND "id" = $2::uuid
     AND "state" = 'invitation_pending'
     AND "revoked_at" IS NULL
 `;
 
 const REVOKE_INVITATION_SESSION_TOKENS_SQL = `
   UPDATE "auth_session_tokens"
-  SET "revoked_at" = $3
-  WHERE "tenant_id" = $1
-    AND "session_id" = $2
+  SET "revoked_at" = $3::timestamptz
+  WHERE "tenant_id" = $1::uuid
+    AND "session_id" = $2::uuid
     AND "revoked_at" IS NULL
 `;
 
@@ -63,7 +63,21 @@ const INSERT_ROTATED_SESSION_TOKEN_SQL = `
     "reuse_detected_at",
     "revoked_at"
   )
-  VALUES ($1, $2, 'tenant', $3, $4, $5, $6, $7, NULL, NULL, NULL, NULL, NULL)
+  VALUES (
+    $1::uuid,
+    $2::uuid,
+    'tenant',
+    $3::uuid,
+    $4,
+    $5,
+    $6::timestamptz,
+    $7::timestamptz,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL
+  )
 `;
 
 interface LockedInvitationSessionRow {
