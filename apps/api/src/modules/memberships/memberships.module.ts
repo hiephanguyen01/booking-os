@@ -19,14 +19,19 @@ import {
 } from "./application/use-cases/accept-invitation.use-case.js";
 import { BuildPlatformAuthorizationContextUseCase } from "./application/use-cases/build-platform-authorization-context.use-case.js";
 import { BuildTenantAuthorizationContextUseCase } from "./application/use-cases/build-tenant-authorization-context.use-case.js";
+import { DemoteOwnerUseCase } from "./application/use-cases/demote-owner.use-case.js";
 import { GetCurrentInvitationUseCase } from "./application/use-cases/get-current-invitation.use-case.js";
 import { GetTenantProvisioningUseCase } from "./application/use-cases/get-tenant-provisioning.use-case.js";
 import { InviteTenantAdminUseCase } from "./application/use-cases/invite-tenant-admin.use-case.js";
+import { ListMembershipsUseCase } from "./application/use-cases/list-memberships.use-case.js";
 import { PlatformTenantProvisioningWorkflow } from "./application/use-cases/platform-tenant-provisioning.workflow.js";
+import { PromoteOwnerUseCase } from "./application/use-cases/promote-owner.use-case.js";
 import { ProvisionTenantUseCase } from "./application/use-cases/provision-tenant.use-case.js";
 import { ResendInvitationUseCase } from "./application/use-cases/resend-invitation.use-case.js";
 import { ResendOwnerInvitationUseCase } from "./application/use-cases/resend-owner-invitation.use-case.js";
 import { ResolvePendingInvitationLoginUseCase } from "./application/use-cases/resolve-pending-invitation-login.use-case.js";
+import { RevokeMembershipUseCase } from "./application/use-cases/revoke-membership.use-case.js";
+import { SuspendMembershipUseCase } from "./application/use-cases/suspend-membership.use-case.js";
 import { TenantAdminInvitationWorkflow } from "./application/use-cases/tenant-admin-invitation.workflow.js";
 import {
   AesMembershipInvitationEnvelopeAdapter,
@@ -39,6 +44,7 @@ import {
 } from "./infrastructure/crypto/hmac-membership-provisioning-token.adapter.js";
 import { PlatformTenantsController } from "./infrastructure/http/platform-tenants.controller.js";
 import { TenantInvitationsController } from "./infrastructure/http/tenant-invitations.controller.js";
+import { TenantMembershipsController } from "./infrastructure/http/tenant-memberships.controller.js";
 import { PrismaPlatformAuthorizationAdapter } from "./infrastructure/persistence/prisma/prisma-platform-authorization.adapter.js";
 import { PrismaPlatformTenantProvisioningQueryAdapter } from "./infrastructure/persistence/prisma/prisma-platform-tenant-provisioning-query.adapter.js";
 import { PrismaPlatformTenantProvisioningTransactionAdapter } from "./infrastructure/persistence/prisma/prisma-platform-tenant-provisioning-transaction.adapter.js";
@@ -54,7 +60,7 @@ import {
 
 @Module({
   imports: [DatabaseModule, TenancyModule],
-  controllers: [PlatformTenantsController, TenantInvitationsController],
+  controllers: [PlatformTenantsController, TenantInvitationsController, TenantMembershipsController],
   providers: [
     SessionCsrfGuard,
     {
@@ -193,6 +199,36 @@ import {
       ): AcceptInvitationUseCase => new AcceptInvitationUseCase(transactions, invitationTokens),
     },
     {
+      provide: ListMembershipsUseCase,
+      inject: [TENANT_TRANSACTION_PORT],
+      useFactory: (transactions: TenantTransactionPort): ListMembershipsUseCase =>
+        new ListMembershipsUseCase(transactions),
+    },
+    {
+      provide: SuspendMembershipUseCase,
+      inject: [TENANT_TRANSACTION_PORT],
+      useFactory: (transactions: TenantTransactionPort): SuspendMembershipUseCase =>
+        new SuspendMembershipUseCase(transactions),
+    },
+    {
+      provide: RevokeMembershipUseCase,
+      inject: [TENANT_TRANSACTION_PORT],
+      useFactory: (transactions: TenantTransactionPort): RevokeMembershipUseCase =>
+        new RevokeMembershipUseCase(transactions),
+    },
+    {
+      provide: PromoteOwnerUseCase,
+      inject: [TENANT_TRANSACTION_PORT],
+      useFactory: (transactions: TenantTransactionPort): PromoteOwnerUseCase =>
+        new PromoteOwnerUseCase(transactions),
+    },
+    {
+      provide: DemoteOwnerUseCase,
+      inject: [TENANT_TRANSACTION_PORT],
+      useFactory: (transactions: TenantTransactionPort): DemoteOwnerUseCase =>
+        new DemoteOwnerUseCase(transactions),
+    },
+    {
       provide: InviteTenantAdminUseCase,
       inject: [TenantAdminInvitationWorkflow],
       useFactory: (workflow: TenantAdminInvitationWorkflow): InviteTenantAdminUseCase =>
@@ -251,6 +287,11 @@ import {
     ResendInvitationUseCase,
     GetCurrentInvitationUseCase,
     ResolvePendingInvitationLoginUseCase,
+    ListMembershipsUseCase,
+    SuspendMembershipUseCase,
+    RevokeMembershipUseCase,
+    PromoteOwnerUseCase,
+    DemoteOwnerUseCase,
   ],
 })
 export class MembershipsModule {}
