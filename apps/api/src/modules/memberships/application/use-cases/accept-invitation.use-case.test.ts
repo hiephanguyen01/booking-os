@@ -43,7 +43,7 @@ const invitedMembership: TenantMembership = Object.freeze({
   tenantId: TENANT_ID,
   userId: USER_ID,
   status: "invited",
-  authorizationVersion: 0,
+  authorizationVersion: 1,
   acceptedAt: null,
   suspendedAt: null,
   revokedAt: null,
@@ -66,7 +66,7 @@ function createHarness() {
     elevateInvitationSession: async (input) => {
       assert.deepEqual(input, {
         sessionId: SESSION_ID,
-        membershipAuthorizationVersion: 1,
+        membershipAuthorizationVersion: 2,
         now: NOW,
       });
       return transactional("session.elevate", {
@@ -103,14 +103,10 @@ function createHarness() {
         return transactional("membership.activate", {
           ...invitedMembership,
           status: "active" as const,
+          authorizationVersion: 2,
           acceptedAt: NOW,
           updatedAt: NOW,
         });
-      },
-      incrementAuthorizationVersion: async (id: string, now: Date) => {
-        assert.equal(id, MEMBERSHIP_ID);
-        assert.equal(now, NOW);
-        return transactional("membership.version", 1);
       },
     },
     roles: {
@@ -223,7 +219,6 @@ test("accepts a bound owner invitation and elevates the pending session atomical
     "membership.lock",
     "membership.activate",
     "role.assign",
-    "membership.version",
     "tenant.lock",
     "tenant.activate",
     "invitation.accept",
