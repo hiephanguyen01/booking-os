@@ -60,7 +60,8 @@ jobs:
           status=$?
           cat unit-test.log
           if [ "$status" -ne 0 ]; then
-            details="$(tail -n 180 unit-test.log | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'BEGIN { ORS="%0A" } { print }')"
-            echo "::error file=.github/workflows/task5-diagnostic.yml,line=1,title=Task 5 CI test failure::$details"
+            grep -n -B 12 -A 40 -E '^not ok ' unit-test.log > failure-blocks.log || true
+            details="$(head -n 260 failure-blocks.log | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'BEGIN { ORS="%0A" } { print }')"
+            echo "::error file=.github/workflows/task5-diagnostic.yml,line=1,title=Task 5 failing test blocks::$details"
           fi
           exit "$status"
