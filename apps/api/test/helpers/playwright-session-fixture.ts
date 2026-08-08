@@ -4,6 +4,13 @@ import { PrismaClient } from "@prisma/client";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PLAYWRIGHT_SESSION_SECRET = "e2e-only-session-secret-at-least-32-characters";
+const FIXTURE_OWNER_USER_ID = "99999999-9999-4999-8999-999999999999";
+const TENANT_ROLE_IDS = {
+  tenant_owner: "00000000-0000-4000-8000-000000000102",
+  tenant_admin: "00000000-0000-4000-8000-000000000103",
+} as const;
+
+type TenantRoleKey = keyof typeof TENANT_ROLE_IDS;
 
 interface PlatformPlaywrightSessionInput {
   readonly userId: string;
@@ -14,6 +21,7 @@ interface PlatformPlaywrightSessionInput {
 interface TenantPlaywrightSessionInput {
   readonly userId: string;
   readonly hostname: string;
+  readonly tenantRoleKey: TenantRoleKey;
   readonly scope: { readonly type: "tenant"; readonly tenantId: string };
 }
 
@@ -62,8 +70,126 @@ export async function createPlaywrightSession(input: PlaywrightSessionInput): Pr
     });
 
     if (input.scope.type === "tenant") {
+      const tenantId = input.scope.tenantId;
+      const fixtureOwnerEmail = `playwright-${FIXTURE_OWNER_USER_ID}@example.test`;
+      await prisma.user.upsert({
+        where: { id: FIXTURE_OWNER_USER_ID },
+        update: {
+          normalizedEmail: fixtureOwnerEmail,
+          displayEmail: fixtureOwnerEmail,
+          status: "active",
+          authorizationVersion,
+          activatedAt: now,
+          suspendedAt: null,
+          disabledAt: null,
+        },
+        create: {
+          id: FIXTURE_OWNER_USER_ID,
+          normalizedEmail: fixtureOwnerEmail,
+          displayEmail: fixtureOwnerEmail,
+          status: "active",
+          authorizationVersion,
+          activatedAt: now,
+        },
+      });
+
+      await prisma.$transaction(async (transaction) => {
+        await transaction.$executeRawUnsafe("SET LOCAL ROLE booking_app");
+        await transaction.$executeRawUnsafe(
+          "SELECT set_config('app.tenant_id', $1, true)",
+          tenantId,
+        );
+
+        await transaction.tenantMembership.upsert({
+          where: { tenantId_userId: { tenantId, userId: FIXTURE_OWNER_USER_ID } },
+          update: {
+            status: "active",
+            authorizationVersion,
+            acceptedAt: now,
+            suspendedAt: null,
+            revokedAt: null,
+          },
+          create: {
+            tenantId,
+            userId: FIXTURE_OWNER_USER_ID,
+            status: "active",
+            authorizationVersion,
+            acceptedAt: now,
+          },
+        });
+
+        const fixtureOwnerAssignment = await transaction.roleAssignment.findFirst({
+          where: {
+            tenantId,
+            userId: FIXTURE_OWNER_USER_ID,
+            scopeLevel: "tenant",
+            revokedAt: null,
+          },
+          select: { id: true, roleId: true },
+        });
+        if (!fixtureOwnerAssignment) {
+          await transaction.roleAssignment.create({
+            data: {
+              tenantId,
+              userId: FIXTURE_OWNER_USER_ID,
+              scopeLevel: "tenant",
+              roleId: TENANT_ROLE_IDS.tenant_owner,
+            },
+          });
+        } else if (fixtureOwnerAssignment.roleId !== TENANT_ROLE_IDS.tenant_owner) {
+          await transaction.roleAssignment.update({
+            where: { id: fixtureOwnerAssignment.id },
+            data: { roleId: TENANT_ROLE_IDS.tenant_owner },
+          });
+        }
+
+        await transaction.tenantMembership.upsert({
+          where: { tenantId_userId: { tenantId, userId: input.userId } },
+          update: {
+            status: "active",
+            authorizationVersion,
+            acceptedAt: now,
+            suspendedAt: null,
+            revokedAt: null,
+          },
+          create: {
+            tenantId,
+            userId: input.userId,
+            status: "active",
+            authorizationVersion,
+            acceptedAt: now,
+          },
+        });
+
+        const actorAssignment = await transaction.roleAssignment.findFirst({
+          where: {
+            tenantId,
+            userId: input.userId,
+            scopeLevel: "tenant",
+            revokedAt: null,
+          },
+          select: { id: true, roleId: true },
+        });
+        const actorRoleId = TENANT_ROLE_IDS[input.tenantRoleKey];
+        if (!actorAssignment) {
+          await transaction.roleAssignment.create({
+            data: {
+              tenantId,
+              userId: input.userId,
+              scopeLevel: "tenant",
+              roleId: actorRoleId,
+            },
+          });
+        } else if (actorAssignment.roleId !== actorRoleId) {
+          await transaction.roleAssignment.update({
+            where: { id: actorAssignment.id },
+            data: { roleId: actorRoleId },
+          });
+        }
+      });
+
       await prisma.tenant.update({
-        where: { id: input.scope.tenantId },
+        where: { id: tenantId },
         data: { status: "active" },
       });
     }
@@ -90,6 +216,8 @@ export async function createPlaywrightSession(input: PlaywrightSessionInput): Pr
         idleExpiresAt: new Date(now.getTime() + 7 * DAY_MS),
         absoluteExpiresAt,
         lastSeenAt: now,
+        createdAt: now,
+        updatedAt: now,
         tokens: {
           create: {
             id: randomUUID(),
