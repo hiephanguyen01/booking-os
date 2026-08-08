@@ -11,12 +11,7 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
-import {
-  ApiOkResponse,
-  ApiOperation,
-  ApiParam,
-  ApiTags,
-} from "@nestjs/swagger";
+import { ApiOkResponse, ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
 
 import { SupportedApi } from "../../../../api-visibility/api-visibility.decorator.js";
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
@@ -129,7 +124,9 @@ export class TenantMembershipsController {
   private async executeMutation(
     useCase: {
       execute(command: {
-        readonly authorization: Awaited<ReturnType<BuildTenantAuthorizationContextUseCase["execute"]>>;
+        readonly authorization: Awaited<
+          ReturnType<BuildTenantAuthorizationContextUseCase["execute"]>
+        >;
         readonly membershipId: string;
         readonly requestId: string;
       }): Promise<unknown>;
