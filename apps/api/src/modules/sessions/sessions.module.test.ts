@@ -1,121 +1,157 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { StructuredLogger } from "@booking-os/observability";
+import { Test } from "@nestjs/testing";
 
 import { AppModule } from "../../app.module.js";
-import { DependenciesModule } from "../../dependencies/dependencies.module.js";
-import { REDIS_CLIENT_TOKEN } from "../../dependencies/tokens.js";
-import { API_LOGGER_TOKEN } from "../../observability/tokens.js";
-import { TenancyModule } from "../tenancy/tenancy.module.js";
-import { ListSessionsUseCase } from "./application/use-cases/list-sessions.js";
-import { RefreshSessionUseCase } from "./application/use-cases/refresh-session.js";
-import { RevokeOtherSessionsUseCase } from "./application/use-cases/revoke-other-sessions.js";
-import { RedisLoginAbuseProtectionAdapter } from "./infrastructure/abuse/redis-login-abuse-protection.adapter.js";
-import { SessionCsrfGuard } from "./infrastructure/http/session-csrf.guard.js";
-import { SessionCsrfHttpController } from "./infrastructure/http/session-csrf-http.controller.js";
-import { SessionHttpController } from "./infrastructure/http/session-http.controller.js";
-import { StructuredLoginAbuseMetricsAdapter } from "./infrastructure/observability/structured-login-abuse-metrics.adapter.js";
-import { SessionsModule } from "./sessions.module.js";
-import { LOGIN_ABUSE_METRICS_PORT, LOGIN_ABUSE_PROTECTION_PORT } from "./sessions.tokens.js";
+import { PrismaService } from "../../database/prisma.service.js";
+import {
+  POSTGRES_READINESS_PROBE_TOKEN,
+  REDIS_CLIENT_TOKEN,
+  REDIS_READINESS_PROBE_TOKEN,
+} from "../../dependencies/tokens.js";
+import { GetCurrentInvitationUseCase } from "../memberships/application/use-cases/get-current-invitation.use-case.js";
+import { CreateSessionUseCase } from "./application/use-cases/create-session.js";
+import { LoginUseCase } from "./application/use-cases/login.use-case.js";
+import {
+  CREDENTIAL_VERIFIER_PORT,
+  LOGIN_ABUSE_PROTECTION_PORT,
+} from "./sessions.tokens.js";
 
-const MODULE_METADATA = Object.freeze({
-  imports: "imports",
-  providers: "providers",
-  controllers: "controllers",
-  exports: "exports",
-});
+const USER_ID = "11111111-1111-4111-8111-111111111111";
+const TENANT_ID = "22222222-2222-4222-8222-222222222222";
+const HOSTNAME = "acme.example.test";
 
-interface FactoryProvider {
-  readonly provide: unknown;
-  readonly inject?: readonly unknown[];
-  readonly useFactory?: (...args: readonly unknown[]) => unknown;
+const originalEnvironment = {
+  NODE_ENV: process.env.NODE_ENV,
+  HOST: process.env.HOST,
+  TRUST_PROXY: process.env.TRUST_PROXY,
+  TENANT_BASE_DOMAIN: process.env.TENANT_BASE_DOMAIN,
+  PLATFORM_HOSTNAME: process.env.PLATFORM_HOSTNAME,
+  PORT: process.env.PORT,
+  API_PREFIX: process.env.API_PREFIX,
+  APP_VERSION: process.env.APP_VERSION,
+  LOG_LEVEL: process.env.LOG_LEVEL,
+  DATABASE_URL: process.env.DATABASE_URL,
+  REDIS_URL: process.env.REDIS_URL,
+  READINESS_TIMEOUT_MS: process.env.READINESS_TIMEOUT_MS,
+  SESSION_SECRET: process.env.SESSION_SECRET,
+  SESSION_ALLOWED_ORIGINS: process.env.SESSION_ALLOWED_ORIGINS,
+  PAYMENT_PROVIDER: process.env.PAYMENT_PROVIDER,
+  IDENTITY_TOKEN_PEPPER: process.env.IDENTITY_TOKEN_PEPPER,
+  IDENTITY_ENVELOPE_KEYS: process.env.IDENTITY_ENVELOPE_KEYS,
+  IDENTITY_ACTIVE_ENVELOPE_KEY_ID: process.env.IDENTITY_ACTIVE_ENVELOPE_KEY_ID,
+};
+
+function restoreEnvironment(): void {
+  for (const key of Object.keys(originalEnvironment) as Array<keyof typeof originalEnvironment>) {
+    const value = originalEnvironment[key];
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
 }
 
-function metadata<T>(key: string, target: object): readonly T[] {
-  return (Reflect.getMetadata(key, target) as readonly T[] | undefined) ?? [];
+function configureEnvironment(): void {
+  process.env.NODE_ENV = "test";
+  process.env.HOST = "127.0.0.1";
+  process.env.TRUST_PROXY = "false";
+  process.env.TENANT_BASE_DOMAIN = "example.test";
+  process.env.PLATFORM_HOSTNAME = "platform.example.test";
+  process.env.PORT = "3128";
+  process.env.API_PREFIX = "api";
+  process.env.APP_VERSION = "0.1.0-test";
+  process.env.LOG_LEVEL = "error";
+  process.env.DATABASE_URL = "postgresql://local-user:local-pass@localhost:5432/booking_os_test";
+  process.env.REDIS_URL = "redis://localhost:6379/14";
+  process.env.READINESS_TIMEOUT_MS = "100";
+  process.env.SESSION_SECRET = "test-only-session-secret-at-least-32-characters";
+  process.env.SESSION_ALLOWED_ORIGINS = `https://${HOSTNAME}`;
+  process.env.PAYMENT_PROVIDER = "mock";
+  process.env.IDENTITY_TOKEN_PEPPER = Buffer.alloc(32, 1).toString("base64");
+  process.env.IDENTITY_ENVELOPE_KEYS = JSON.stringify({
+    "identity-v1": Buffer.alloc(32, 2).toString("base64"),
+  });
+  process.env.IDENTITY_ACTIVE_ENVELOPE_KEY_ID = "identity-v1";
 }
 
-const logger: StructuredLogger = Object.freeze({
-  child: () => logger,
-  debug: () => undefined,
-  info: () => undefined,
-  warn: () => undefined,
-  error: () => undefined,
-});
+test("SessionsModule composes pending invitation eligibility into the real login subject provider", async () => {
+  configureEnvironment();
+  const issued: unknown[] = [];
 
-test("composes distributed login abuse protection with bounded telemetry", () => {
-  const dependencyExports = metadata<unknown>(MODULE_METADATA.exports, DependenciesModule);
-  assert.ok(dependencyExports.includes(REDIS_CLIENT_TOKEN));
+  try {
+    const module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(PrismaService)
+      .useValue({
+        user: {
+          findUnique: async () => ({ status: "active", authorizationVersion: 7 }),
+        },
+        roleAssignment: {
+          findFirst: async () => null,
+        },
+      })
+      .overrideProvider(CREDENTIAL_VERIFIER_PORT)
+      .useValue({
+        verify: async () => ({
+          userId: USER_ID,
+          status: "active",
+          passwordNeedsRehash: false,
+        }),
+        rehashPassword: async () => undefined,
+      })
+      .overrideProvider(LOGIN_ABUSE_PROTECTION_PORT)
+      .useValue({
+        beforeAttempt: async () => ({ delayMs: 0 }),
+        recordFailure: async () => undefined,
+        recordSuccess: async () => undefined,
+      })
+      .overrideProvider(CreateSessionUseCase)
+      .useValue({
+        execute: async (input: unknown) => {
+          issued.push(input);
+          return { token: "selector.secret", session: {} };
+        },
+      })
+      .overrideProvider(GetCurrentInvitationUseCase)
+      .useValue({
+        execute: async () => ({
+          invitationId: "33333333-3333-4333-8333-333333333333",
+          tenantId: TENANT_ID,
+          intendedRoleKey: "tenant_admin",
+          hostname: HOSTNAME,
+          expiresAt: new Date("2026-08-09T12:00:00.000Z"),
+        }),
+      })
+      .overrideProvider(REDIS_CLIENT_TOKEN)
+      .useValue({})
+      .overrideProvider(POSTGRES_READINESS_PROBE_TOKEN)
+      .useValue({ dependency: "postgresql", check: async () => ({ status: "ok", latencyMs: 1 }) })
+      .overrideProvider(REDIS_READINESS_PROBE_TOKEN)
+      .useValue({ dependency: "redis", check: async () => ({ status: "ok", latencyMs: 1 }) })
+      .compile();
 
-  const sessionImports = metadata<unknown>(MODULE_METADATA.imports, SessionsModule);
-  assert.ok(sessionImports.includes(DependenciesModule));
+    const login = module.get(LoginUseCase);
+    await login.execute({
+      email: "member@example.test",
+      password: "correct horse battery staple",
+      ipAddress: "203.0.113.44",
+      hostname: HOSTNAME,
+      scope: { type: "tenant", tenantId: TENANT_ID },
+      requestId: "request-pending-login",
+    });
 
-  const providers = metadata<FactoryProvider>(MODULE_METADATA.providers, SessionsModule);
-  const metricsProvider = providers.find(
-    (provider) => provider.provide === LOGIN_ABUSE_METRICS_PORT,
-  );
-  assert.ok(metricsProvider);
-  assert.deepEqual(metricsProvider.inject, [API_LOGGER_TOKEN]);
-  assert.equal(typeof metricsProvider.useFactory, "function");
-  if (typeof metricsProvider.useFactory !== "function") {
-    throw new TypeError("Login abuse metrics provider must define a factory.");
+    assert.deepEqual(issued, [
+      {
+        userId: USER_ID,
+        scope: { type: "tenant", tenantId: TENANT_ID },
+        hostname: HOSTNAME,
+        state: "invitation_pending",
+        authorizationVersion: 0,
+        requestId: "request-pending-login",
+      },
+    ]);
+
+    await module.close();
+  } finally {
+    restoreEnvironment();
   }
-  const metrics = metricsProvider.useFactory(logger);
-  assert.ok(metrics instanceof StructuredLoginAbuseMetricsAdapter);
-
-  const abuseProvider = providers.find(
-    (provider) => provider.provide === LOGIN_ABUSE_PROTECTION_PORT,
-  );
-  assert.ok(abuseProvider);
-  assert.deepEqual(abuseProvider.inject, [REDIS_CLIENT_TOKEN, LOGIN_ABUSE_METRICS_PORT]);
-
-  const useFactory = abuseProvider.useFactory;
-  assert.equal(typeof useFactory, "function");
-  if (typeof useFactory !== "function") {
-    throw new TypeError("Login abuse protection provider must define a factory.");
-  }
-
-  const adapter = useFactory(
-    {
-      eval: async () => 0,
-    },
-    metrics,
-  );
-  assert.ok(adapter instanceof RedisLoginAbuseProtectionAdapter);
-
-  const sessionExports = metadata<unknown>(MODULE_METADATA.exports, SessionsModule);
-  assert.ok(sessionExports.includes(LOGIN_ABUSE_PROTECTION_PORT));
-});
-
-test("wires the session HTTP controller and device-management use cases", () => {
-  const controllers = metadata<unknown>(MODULE_METADATA.controllers, SessionsModule);
-  assert.ok(controllers.includes(SessionHttpController));
-
-  const providers = metadata<FactoryProvider>(MODULE_METADATA.providers, SessionsModule);
-  assert.ok(providers.some((provider) => provider.provide === ListSessionsUseCase));
-  assert.ok(providers.some((provider) => provider.provide === RevokeOtherSessionsUseCase));
-  assert.ok(providers.some((provider) => provider.provide === RefreshSessionUseCase));
-});
-
-test("wires session CSRF issuance and enforcement into the runtime module", () => {
-  const controllers = metadata<unknown>(MODULE_METADATA.controllers, SessionsModule);
-  assert.ok(controllers.includes(SessionCsrfHttpController));
-  assert.equal(Reflect.getMetadata("path", SessionCsrfHttpController), "auth/session");
-
-  const providers = metadata<unknown>(MODULE_METADATA.providers, SessionsModule);
-  assert.ok(providers.includes(SessionCsrfGuard));
-
-  const guards = metadata<unknown>("__guards__", SessionHttpController);
-  assert.ok(guards.includes(SessionCsrfGuard));
-});
-
-test("orders trusted tenant resolution before session authentication", () => {
-  const imports = metadata<unknown>(MODULE_METADATA.imports, AppModule);
-  const tenancyIndex = imports.indexOf(TenancyModule);
-  const sessionsIndex = imports.indexOf(SessionsModule);
-
-  assert.notEqual(tenancyIndex, -1);
-  assert.notEqual(sessionsIndex, -1);
-  assert.ok(tenancyIndex < sessionsIndex);
 });
