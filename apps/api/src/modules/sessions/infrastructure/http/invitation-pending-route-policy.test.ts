@@ -3,51 +3,34 @@ import test from "node:test";
 
 import { isInvitationPendingRouteAllowed } from "./invitation-pending-route-policy.js";
 
-const ALLOWED = [
-  ["GET", "/auth/csrf"],
-  ["GET", "/auth/me"],
-  ["POST", "/auth/logout"],
-  ["POST", "/auth/password/reset"],
-  ["GET", "/membership/invitations/current"],
-  ["POST", "/membership/invitations/accept"],
-] as const;
+const ALLOWED_ROUTES = Object.freeze([
+  { method: "GET", path: "/auth/csrf" },
+  { method: "GET", path: "/auth/me" },
+  { method: "POST", path: "/auth/logout" },
+  { method: "POST", path: "/auth/password/reset" },
+  { method: "GET", path: "/membership/invitations/current" },
+  { method: "POST", path: "/membership/invitations/accept" },
+]);
 
-test("admits only the explicit invitation-pending route allowlist", () => {
-  for (const [method, path] of ALLOWED) {
-    assert.equal(
-      isInvitationPendingRouteAllowed({ method, path }),
-      true,
-      `${method} ${path} should be admitted`,
-    );
+test("allows only the explicit invitation-pending route surface", () => {
+  for (const route of ALLOWED_ROUTES) {
+    assert.equal(isInvitationPendingRouteAllowed(route), true, `${route.method} ${route.path}`);
   }
 });
 
-test("rejects normal membership, invitation mutation, and probe routes", () => {
-  for (const [method, path] of [
-    ["GET", "/memberships"],
-    ["POST", "/membership/invitations"],
-    ["POST", "/membership/invitations/invitation-1/resend"],
-    ["GET", "/health"],
-    ["GET", "/ready"],
-    ["GET", "/platform/tenants"],
-  ] as const) {
-    assert.equal(
-      isInvitationPendingRouteAllowed({ method, path }),
-      false,
-      `${method} ${path} should be denied`,
-    );
-  }
-});
+test("fails closed for normal, probe, prefix-confused, and wrong-method routes", () => {
+  const denied = [
+    { method: "GET", path: "/health" },
+    { method: "GET", path: "/memberships" },
+    { method: "POST", path: "/membership/invitations" },
+    { method: "POST", path: "/auth/me" },
+    { method: "GET", path: "/auth/logout" },
+    { method: "GET", path: "/api/auth/me" },
+    { method: "GET", path: "/probe/auth/me" },
+    { method: "GET", path: "/auth/me/extra" },
+  ] as const;
 
-test("matches method and path exactly instead of widening the pending-session surface", () => {
-  for (const [method, path] of [
-    ["POST", "/auth/me"],
-    ["GET", "/auth/logout"],
-    ["GET", "/auth/password/reset"],
-    ["POST", "/membership/invitations/current"],
-    ["GET", "/membership/invitations/accept"],
-    ["GET", "/membership/invitations/current/extra"],
-  ] as const) {
-    assert.equal(isInvitationPendingRouteAllowed({ method, path }), false);
+  for (const route of denied) {
+    assert.equal(isInvitationPendingRouteAllowed(route), false, `${route.method} ${route.path}`);
   }
 });
