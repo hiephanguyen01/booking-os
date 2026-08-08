@@ -86,11 +86,5 @@ export async function middleware(request: Request): Promise<Response | undefined
 }
 
 export const config = {
-  matcher: [
-    "/api/:path*",
-    "/app/platform/:path*",
-    "/app/invite/:path*",
-    "/app/tenant/:path*",
-    "/app/settings/:path*",
-  ],
+  matcher: ["/api/:path*", "/platform/:path*", "/tenant/:path*", "/settings/:path*"],
 };
