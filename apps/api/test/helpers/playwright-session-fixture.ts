@@ -27,6 +27,12 @@ interface TenantPlaywrightSessionInput {
 
 export type PlaywrightSessionInput = PlatformPlaywrightSessionInput | TenantPlaywrightSessionInput;
 
+function isTenantSessionInput(
+  input: PlaywrightSessionInput,
+): input is TenantPlaywrightSessionInput {
+  return "tenantRoleKey" in input && input.scope.type === "tenant";
+}
+
 function deriveSessionDigestKey(): Uint8Array {
   return createHash("sha256")
     .update("booking-os/session-token-digest/v1\0", "utf8")
@@ -69,7 +75,7 @@ export async function createPlaywrightSession(input: PlaywrightSessionInput): Pr
       },
     });
 
-    if (input.scope.type === "tenant") {
+    if (isTenantSessionInput(input)) {
       const tenantId = input.scope.tenantId;
       const tenantRoleKey = input.tenantRoleKey;
       const fixtureOwnerEmail = `playwright-${FIXTURE_OWNER_USER_ID}@example.test`;
