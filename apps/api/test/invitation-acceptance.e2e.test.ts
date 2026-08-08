@@ -74,14 +74,16 @@ async function createTestApplication(): Promise<INestApplication> {
     .overrideProvider(AcceptInvitationUseCase)
     .useValue({
       execute: async (input: unknown) => {
-        assert.deepEqual(input, {
-          tenantId: TENANT_ID,
-          userId: USER_ID,
-          sessionId: SESSION_ID,
-          hostname: HOSTNAME,
-          token: INVITATION_TOKEN,
-          requestId: assert.match as never,
-        });
+        assert.equal(typeof input, "object");
+        assert.notEqual(input, null);
+        const command = input as Readonly<Record<string, unknown>>;
+        assert.equal(command.tenantId, TENANT_ID);
+        assert.equal(command.userId, USER_ID);
+        assert.equal(command.sessionId, SESSION_ID);
+        assert.equal(command.hostname, HOSTNAME);
+        assert.equal(command.token, INVITATION_TOKEN);
+        assert.equal(typeof command.requestId, "string");
+        assert.notEqual((command.requestId as string).trim(), "");
         return { accepted: true as const, rotatedSessionToken: ROTATED_SESSION_TOKEN };
       },
     })
