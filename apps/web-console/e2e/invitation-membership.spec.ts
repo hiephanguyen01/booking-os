@@ -124,14 +124,10 @@ test("tenant owner invites an administrator, inspects state, and suspends the me
   await expect(page.getByText("Administrator", { exact: true })).toBeVisible();
   await page.getByLabel("Administrator email").fill("new-admin@example.test");
   await expect(page.getByLabel("Role")).toHaveValue("tenant_admin");
-  await expect(page.getByLabel("Expires in days")).toHaveValue("7");
+  await expect(page.getByLabel("Invitation expiry")).toHaveValue("24 hours");
   await page.getByRole("button", { name: "Invite administrator" }).click();
 
-  expect(invitationCommand).toEqual({
-    email: "new-admin@example.test",
-    role: "tenant_admin",
-    expires_in_days: 7,
-  });
+  expect(invitationCommand).toEqual({ email: "new-admin@example.test" });
   await expect(page.getByText("Invitation queued for delivery.", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Suspend", exact: true }).click();
