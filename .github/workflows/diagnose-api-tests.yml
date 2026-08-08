@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   api-tests:
-    name: Capture root test failure
+    name: Capture cached root test failure
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -56,13 +56,22 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
+      - name: Restore Turborepo cache
+        uses: actions/cache@v5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-test-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-test-
+            ${{ runner.os }}-turbo-
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Apply database migrations
         run: pnpm --filter @booking-os/api prisma:migrate:deploy
 
-      - name: Run root tests and capture output
+      - name: Run cached root tests and capture output
         id: root-tests
         continue-on-error: true
         run: pnpm test 2>&1 | tee root-test.log
@@ -71,7 +80,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: root-test-diagnostics
+          name: cached-root-test-diagnostics
           path: root-test.log
           if-no-files-found: error
           retention-days: 1
