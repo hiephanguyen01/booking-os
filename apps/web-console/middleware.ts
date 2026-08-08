@@ -11,9 +11,7 @@ import {
 
 function exactSessionCookie(request: Request): string | null {
   const token = readEdgeSessionToken(request.headers.get("cookie"));
-  return token === undefined
-    ? null
-    : `${EDGE_BOOKING_SESSION_COOKIE}=${encodeURIComponent(token)}`;
+  return token === undefined ? null : `${EDGE_BOOKING_SESSION_COOKIE}=${encodeURIComponent(token)}`;
 }
 
 function readSessionSummary(payload: unknown): ConsoleSessionSummary | null {
