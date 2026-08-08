@@ -246,7 +246,7 @@ export function MembersPanel() {
           <CardHeader>
             <CardTitle>Invite administrator</CardTitle>
             <CardDescription>
-              Invitations default to tenant_admin and expire after seven days.
+              Invitations default to tenant_admin and expire after 24 hours.
             </CardDescription>
           </CardHeader>
           <CardContent>
