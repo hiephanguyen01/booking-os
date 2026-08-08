@@ -1,12 +1,24 @@
 import { expect, test } from "@playwright/test";
 
+import { installAuthenticatedSession } from "./authenticated-session.ts";
+
 const CONSOLE_BASE_URL = "http://localhost:3002";
+const PLATFORM_ADMIN_ID = "77777777-7777-4777-8777-777777777777";
 const TENANT_ID = "11111111-1111-4111-8111-111111111111";
 
-test("platform admin bootstraps a tenant and inspects provisioning status", async ({ page }) => {
+test("platform admin bootstraps a tenant and inspects provisioning status", async ({
+  context,
+  page,
+}) => {
   let createCommand: unknown;
   let idempotencyKey: string | null = null;
 
+  await installAuthenticatedSession(context, {
+    origin: CONSOLE_BASE_URL,
+    userId: PLATFORM_ADMIN_ID,
+    hostname: "localhost",
+    scope: { type: "platform" },
+  });
   await page.route(`${CONSOLE_BASE_URL}/api/platform/tenants`, async (route) => {
     if (route.request().method() !== "POST") return route.continue();
     createCommand = route.request().postDataJSON();
