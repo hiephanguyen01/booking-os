@@ -28,10 +28,9 @@ export function TenantProvisioningStatus({ tenantId }: TenantProvisioningStatusP
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(
-        `/api/platform/tenants/${encodeURIComponent(tenantId)}/status`,
-        { cache: "no-store" },
-      );
+      const response = await fetch(`/api/platform/tenants/${encodeURIComponent(tenantId)}/status`, {
+        cache: "no-store",
+      });
       if (!response.ok) {
         setError(await readProblemMessage(response));
         return;

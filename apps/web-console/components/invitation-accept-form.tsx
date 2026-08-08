@@ -49,7 +49,8 @@ export function InvitationAcceptForm() {
   return (
     <div className="grid gap-4">
       <p className="text-sm text-muted-foreground">
-        Accepting this invitation activates your tenant membership and refreshes your tenant session.
+        Accepting this invitation activates your tenant membership and refreshes your tenant
+        session.
       </p>
       {missingToken ? (
         <Alert variant="destructive">

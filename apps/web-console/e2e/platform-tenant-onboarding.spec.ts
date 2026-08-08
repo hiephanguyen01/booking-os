@@ -23,19 +23,22 @@ test("platform admin bootstraps a tenant and inspects provisioning status", asyn
       }),
     });
   });
-  await page.route(`${CONSOLE_BASE_URL}/api/platform/tenants/${TENANT_ID}/status`, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        tenantId: TENANT_ID,
-        slug: "acme-studio",
-        status: "provisioning",
-        ownerMembershipId: "22222222-2222-4222-8222-222222222222",
-        ownerInvitationId: "33333333-3333-4333-8333-333333333333",
-      }),
-    });
-  });
+  await page.route(
+    `${CONSOLE_BASE_URL}/api/platform/tenants/${TENANT_ID}/status`,
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          tenantId: TENANT_ID,
+          slug: "acme-studio",
+          status: "provisioning",
+          ownerMembershipId: "22222222-2222-4222-8222-222222222222",
+          ownerInvitationId: "33333333-3333-4333-8333-333333333333",
+        }),
+      });
+    },
+  );
 
   await page.goto(`${CONSOLE_BASE_URL}/platform/create`);
   await page.getByLabel("Tenant slug").fill("acme-studio");

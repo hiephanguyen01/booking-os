@@ -171,7 +171,9 @@ export function MembersPanel() {
                                   disabled={mutatingId !== null}
                                   onClick={() => void mutateMember(membership.id, "suspend")}
                                 >
-                                  {mutatingId === `${membership.id}:suspend` ? "Suspending…" : "Suspend"}
+                                  {mutatingId === `${membership.id}:suspend`
+                                    ? "Suspending…"
+                                    : "Suspend"}
                                 </Button>
                                 <Button
                                   type="button"
@@ -180,14 +182,18 @@ export function MembersPanel() {
                                   disabled={mutatingId !== null}
                                   onClick={() => void mutateMember(membership.id, "revoke")}
                                 >
-                                  {mutatingId === `${membership.id}:revoke` ? "Revoking…" : "Revoke"}
+                                  {mutatingId === `${membership.id}:revoke`
+                                    ? "Revoking…"
+                                    : "Revoke"}
                                 </Button>
                                 {canManageOwners ? (
                                   <Button
                                     type="button"
                                     size="sm"
                                     disabled={mutatingId !== null}
-                                    onClick={() => void mutateMember(membership.id, "promote-owner")}
+                                    onClick={() =>
+                                      void mutateMember(membership.id, "promote-owner")
+                                    }
                                   >
                                     {mutatingId === `${membership.id}:promote-owner`
                                       ? "Promoting…"
@@ -196,7 +202,10 @@ export function MembersPanel() {
                                 ) : null}
                               </>
                             ) : null}
-                            {!isSelf && membership.status === "active" && isOwner && canManageOwners ? (
+                            {!isSelf &&
+                            membership.status === "active" &&
+                            isOwner &&
+                            canManageOwners ? (
                               <Button
                                 type="button"
                                 size="sm"

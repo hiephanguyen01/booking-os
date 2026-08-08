@@ -152,7 +152,8 @@ export function createMembershipBffHandlers(
 
   async function authenticatedGet(request: Request, path: string): Promise<Response> {
     const cookie = exactSessionCookie(request.headers.get("cookie"));
-    if (cookie === null) return problem(401, "AUTHENTICATION_REQUIRED", "Authentication is required.");
+    if (cookie === null)
+      return problem(401, "AUTHENTICATION_REQUIRED", "Authentication is required.");
     const target = browserTarget(request);
     try {
       const upstream = await dependencies.fetch(apiEndpoint(apiBaseUrl, path), {
@@ -180,7 +181,8 @@ export function createMembershipBffHandlers(
       return problem(403, "ORIGIN_NOT_ALLOWED", "Request origin is not allowed.");
     }
     const cookie = exactSessionCookie(request.headers.get("cookie"));
-    if (cookie === null) return problem(401, "AUTHENTICATION_REQUIRED", "Authentication is required.");
+    if (cookie === null)
+      return problem(401, "AUTHENTICATION_REQUIRED", "Authentication is required.");
 
     try {
       const csrfToken = await sessionCsrf(request, cookie);

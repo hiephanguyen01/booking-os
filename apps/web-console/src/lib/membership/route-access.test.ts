@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { canAccessConsolePath, type ConsoleSessionSummary } from "./route-access.js";
+import { type ConsoleSessionSummary, canAccessConsolePath } from "./route-access.js";
 
 const platform: ConsoleSessionSummary = {
   state: "active",

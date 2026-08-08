@@ -25,9 +25,10 @@ interface InviteMemberFormProps {
 }
 
 export function InviteMemberForm({ tenantId, onInvited }: InviteMemberFormProps) {
-  const [message, setMessage] = useState<
-    { readonly state: "success" | "error"; readonly text: string } | null
-  >(null);
+  const [message, setMessage] = useState<{
+    readonly state: "success" | "error";
+    readonly text: string;
+  } | null>(null);
   const form = useForm<InviteMemberValues>({
     resolver: zodResolver(inviteMemberSchema),
     defaultValues: { email: "" },
@@ -109,7 +110,9 @@ export function InviteMemberForm({ tenantId, onInvited }: InviteMemberFormProps)
       </div>
 
       {message ? (
-        <Alert variant={message.state === "success" ? "success" : "destructive"}>{message.text}</Alert>
+        <Alert variant={message.state === "success" ? "success" : "destructive"}>
+          {message.text}
+        </Alert>
       ) : null}
 
       <SubmitButton

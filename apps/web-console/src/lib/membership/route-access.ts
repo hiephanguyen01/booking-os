@@ -13,10 +13,7 @@ function isActiveTenant(session: ConsoleSessionSummary): boolean {
   return session.state === "active" && session.scope.type === "tenant";
 }
 
-export function canAccessConsolePath(
-  pathname: string,
-  session: ConsoleSessionSummary,
-): boolean {
+export function canAccessConsolePath(pathname: string, session: ConsoleSessionSummary): boolean {
   if (pathname.startsWith("/app/platform/invitation-pending")) {
     return isActivePlatform(session) || session.state === "invitation_pending";
   }

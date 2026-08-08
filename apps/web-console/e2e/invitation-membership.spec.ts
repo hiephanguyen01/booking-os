@@ -41,7 +41,11 @@ test("invited user consumes a fragment-only token and lands in active tenant con
 }) => {
   await page.route(`${CONSOLE_BASE_URL}/api/invitations/*/accept`, async (route) => {
     expect(route.request().url()).toContain(encodeURIComponent(INVITATION_TOKEN));
-    await route.fulfill({ status: 200, contentType: "application/json", body: '{"accepted":true}' });
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: '{"accepted":true}',
+    });
   });
   await page.route(`${CONSOLE_BASE_URL}/api/auth/me`, async (route) => {
     await route.fulfill({
@@ -51,7 +55,11 @@ test("invited user consumes a fragment-only token and lands in active tenant con
     });
   });
   await page.route(`${CONSOLE_BASE_URL}/api/tenants/${TENANT_ID}/members`, async (route) => {
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(members) });
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(members),
+    });
   });
 
   await page.goto(
@@ -80,11 +88,19 @@ test("tenant owner invites an administrator, inspects state, and suspends the me
     });
   });
   await page.route(`${CONSOLE_BASE_URL}/api/tenants/${TENANT_ID}/members`, async (route) => {
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(members) });
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(members),
+    });
   });
   await page.route(`${CONSOLE_BASE_URL}/api/tenants/${TENANT_ID}/invitations`, async (route) => {
     invitationCommand = route.request().postDataJSON();
-    await route.fulfill({ status: 202, contentType: "application/json", body: '{"accepted":true}' });
+    await route.fulfill({
+      status: 202,
+      contentType: "application/json",
+      body: '{"accepted":true}',
+    });
   });
   await page.route(
     `${CONSOLE_BASE_URL}/api/tenants/${TENANT_ID}/members/${ADMIN_MEMBERSHIP_ID}/suspend`,
@@ -131,7 +147,11 @@ test("tenant administrator UI does not expose owner-role mutations", async ({ pa
     });
   });
   await page.route(`${CONSOLE_BASE_URL}/api/tenants/${TENANT_ID}/members`, async (route) => {
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(members) });
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(members),
+    });
   });
 
   await page.goto(`${CONSOLE_BASE_URL}/settings/members`);

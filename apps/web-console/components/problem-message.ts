@@ -5,7 +5,9 @@ export async function readProblemMessage(response: Response): Promise<string> {
       const candidate = payload as Record<string, unknown>;
       const code = typeof candidate.code === "string" ? candidate.code : `HTTP_${response.status}`;
       const message =
-        typeof candidate.message === "string" ? candidate.message : "The request could not be completed.";
+        typeof candidate.message === "string"
+          ? candidate.message
+          : "The request could not be completed.";
       return `${code}: ${message}`;
     }
   } catch {

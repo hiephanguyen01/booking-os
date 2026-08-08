@@ -2,8 +2,8 @@ import { BOOKING_SESSION_COOKIE, readSessionToken } from "@booking-os/auth";
 
 import { resolveAppConfig } from "./src/app-config";
 import {
-  canAccessConsolePath,
   type ConsoleSessionSummary,
+  canAccessConsolePath,
 } from "./src/lib/membership/route-access";
 import { csrfOriginMismatchResponse, hasMatchingOrigin } from "./src/lib/session/csrf";
 
