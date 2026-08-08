@@ -122,8 +122,14 @@ test("membership routes use database-built tenant authority and target membershi
   assert.equal((await controller.list())[0]?.id, TARGET_MEMBERSHIP_ID);
   assert.equal((await controller.suspend(TARGET_MEMBERSHIP_ID)).status, "suspended");
   assert.equal((await controller.revoke(TARGET_MEMBERSHIP_ID)).status, "revoked");
-  assert.equal((await controller.promoteOwner(TARGET_MEMBERSHIP_ID)).roleKey, SYSTEM_ROLES.tenantOwner);
-  assert.equal((await controller.demoteOwner(TARGET_MEMBERSHIP_ID)).roleKey, SYSTEM_ROLES.tenantAdmin);
+  assert.equal(
+    (await controller.promoteOwner(TARGET_MEMBERSHIP_ID)).roleKey,
+    SYSTEM_ROLES.tenantOwner,
+  );
+  assert.equal(
+    (await controller.demoteOwner(TARGET_MEMBERSHIP_ID)).roleKey,
+    SYSTEM_ROLES.tenantAdmin,
+  );
 
   assert.deepEqual(calls, [
     ["authorization", AUTHENTICATED],
