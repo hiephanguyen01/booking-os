@@ -33,7 +33,10 @@ import {
 } from "./infrastructure/abuse/redis-login-abuse-protection.adapter.js";
 import { SessionAuthMiddleware } from "./infrastructure/http/session-auth.middleware.js";
 import { SessionCsrfGuard } from "./infrastructure/http/session-csrf.guard.js";
-import { SessionCsrfHttpController } from "./infrastructure/http/session-csrf-http.controller.js";
+import {
+  CanonicalSessionCsrfHttpController,
+  SessionCsrfHttpController,
+} from "./infrastructure/http/session-csrf-http.controller.js";
 import { SessionHttpController } from "./infrastructure/http/session-http.controller.js";
 import { SessionRequiredGuard } from "./infrastructure/http/session-required.guard.js";
 import { MembershipAwareSessionSubjectAdapter } from "./infrastructure/membership/membership-aware-session-subject.adapter.js";
@@ -59,7 +62,11 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
 
 @Module({
   imports: [DatabaseModule, DependenciesModule, RequestContextModule, MembershipsModule],
-  controllers: [SessionHttpController, SessionCsrfHttpController],
+  controllers: [
+    SessionHttpController,
+    CanonicalSessionCsrfHttpController,
+    SessionCsrfHttpController,
+  ],
   providers: [
     {
       provide: SESSION_REPOSITORY_PORT,

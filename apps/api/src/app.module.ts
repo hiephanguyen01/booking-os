@@ -11,7 +11,10 @@ import { PlatformTenantsController } from "./modules/memberships/infrastructure/
 import { TenantInvitationsController } from "./modules/memberships/infrastructure/http/tenant-invitations.controller.js";
 import { MembershipsModule } from "./modules/memberships/memberships.module.js";
 import { SessionAuthMiddleware } from "./modules/sessions/infrastructure/http/session-auth.middleware.js";
-import { SessionCsrfHttpController } from "./modules/sessions/infrastructure/http/session-csrf-http.controller.js";
+import {
+  CanonicalSessionCsrfHttpController,
+  SessionCsrfHttpController,
+} from "./modules/sessions/infrastructure/http/session-csrf-http.controller.js";
 import { SessionHttpController } from "./modules/sessions/infrastructure/http/session-http.controller.js";
 import { SessionsModule } from "./modules/sessions/sessions.module.js";
 import { TenantResolutionMiddleware } from "./modules/tenancy/infrastructure/http/tenant-resolution.middleware.js";
@@ -40,6 +43,11 @@ export class AppModule implements NestModule {
     consumer.apply(SessionAuthMiddleware).forRoutes(PlatformTenantsController);
     consumer
       .apply(TenantResolutionMiddleware, SessionAuthMiddleware)
-      .forRoutes(TenantInvitationsController, SessionHttpController, SessionCsrfHttpController);
+      .forRoutes(
+        TenantInvitationsController,
+        SessionHttpController,
+        CanonicalSessionCsrfHttpController,
+        SessionCsrfHttpController,
+      );
   }
 }
