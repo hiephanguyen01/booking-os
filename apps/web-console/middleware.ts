@@ -14,6 +14,10 @@ function exactSessionCookie(request: Request): string | null {
   return token === undefined ? null : `${EDGE_BOOKING_SESSION_COOKIE}=${encodeURIComponent(token)}`;
 }
 
+function browserHost(request: Request): string {
+  return request.headers.get("host")?.trim() || new URL(request.url).host;
+}
+
 function readSessionSummary(payload: unknown): ConsoleSessionSummary | null {
   if (typeof payload !== "object" || payload === null || Array.isArray(payload)) return null;
   const session = (payload as Record<string, unknown>).session;
@@ -47,14 +51,13 @@ function readSessionSummary(payload: unknown): ConsoleSessionSummary | null {
 async function hydrateSession(request: Request): Promise<ConsoleSessionSummary | null> {
   const cookie = exactSessionCookie(request);
   if (cookie === null) return null;
-  const requestUrl = new URL(request.url);
   try {
     const response = await fetch(`${resolveAppConfig().apiBaseUrl}/auth/me`, {
       method: "GET",
       headers: {
         accept: "application/json",
         cookie,
-        "x-forwarded-host": requestUrl.host,
+        "x-forwarded-host": browserHost(request),
       },
       cache: "no-store",
       redirect: "error",
