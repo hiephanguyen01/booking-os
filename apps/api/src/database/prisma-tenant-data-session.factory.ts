@@ -32,15 +32,17 @@ function isFactoryOptions(
 
 @Injectable()
 export class PrismaTenantDataSessionFactory {
-  private readonly sessionElevationOptions: PrismaInvitationSessionElevationOptions;
+  private readonly sessionElevationOptions?: PrismaInvitationSessionElevationOptions;
 
   constructor(
     @Inject(EnvironmentService)
-    source: EnvironmentService | PrismaInvitationSessionElevationOptions,
+    source?: EnvironmentService | PrismaInvitationSessionElevationOptions,
   ) {
-    this.sessionElevationOptions = isFactoryOptions(source)
-      ? source
-      : { digestKey: deriveSessionDigestKey(source.sessionSecret) };
+    this.sessionElevationOptions = source
+      ? isFactoryOptions(source)
+        ? source
+        : { digestKey: deriveSessionDigestKey(source.sessionSecret) }
+      : undefined;
   }
 
   create(transaction: Prisma.TransactionClient, tenantId: string): TenantDataSession {
