@@ -40,7 +40,10 @@ const activeOwner: TenantMembership = Object.freeze({
   updatedAt: new Date("2026-08-08T10:00:00.000Z"),
 });
 
-function createTransactions(events: string[], ownerUserIds: readonly string[]): TenantTransactionPort {
+function createTransactions(
+  events: string[],
+  ownerUserIds: readonly string[],
+): TenantTransactionPort {
   return {
     async run(context, work) {
       assert.equal(context.tenantId, TENANT_ID);
