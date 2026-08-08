@@ -75,7 +75,6 @@ function createTransactions(events: string[]): TenantTransactionPort {
         sessions: {
           revokeTenantSessionsForUser: async (input: unknown) => {
             assert.deepEqual(input, {
-              tenantId: TENANT_ID,
               userId: TARGET_ID,
               revokedAt: NOW,
               reason: "membership_suspended",
