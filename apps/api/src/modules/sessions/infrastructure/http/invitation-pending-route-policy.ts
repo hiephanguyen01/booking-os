@@ -4,7 +4,7 @@ export interface InvitationPendingRoute {
 }
 
 const ALLOWED_INVITATION_PENDING_ROUTES = new Set<string>([
-  "GET /auth/csrf",
+  "GET /auth/session/csrf",
   "GET /auth/me",
   "POST /auth/logout",
   "POST /auth/password/reset",
