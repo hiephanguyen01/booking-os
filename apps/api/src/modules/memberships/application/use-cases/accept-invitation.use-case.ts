@@ -101,16 +101,12 @@ export class AcceptInvitationUseCase {
           throw new InvitationInvalidOrExpiredError();
         }
 
-        await session.memberships.activate(lockedMembership.id, now);
+        const activatedMembership = await session.memberships.activate(lockedMembership.id, now);
         await session.roles.assign({
           userId: command.userId,
           roleKey: invitation.intendedRoleKey,
           now,
         });
-        const authorizationVersion = await session.memberships.incrementAuthorizationVersion(
-          lockedMembership.id,
-          now,
-        );
 
         if (invitation.intendedRoleKey === "tenant_owner") {
           const tenant = await session.tenants.lockCurrent();
@@ -123,7 +119,7 @@ export class AcceptInvitationUseCase {
         await session.invitations.accept(invitation.id, now);
         const elevatedSession = await session.sessions.elevateInvitationSession({
           sessionId: command.sessionId,
-          membershipAuthorizationVersion: authorizationVersion,
+          membershipAuthorizationVersion: activatedMembership.authorizationVersion,
           now,
         });
         await session.audit.append({
