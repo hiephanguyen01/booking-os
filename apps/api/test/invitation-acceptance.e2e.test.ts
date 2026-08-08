@@ -98,12 +98,12 @@ after(() => {
   }
 });
 
-test("invitation-pending session obtains CSRF from the canonical allowlisted route", async () => {
+test("invitation-pending session obtains CSRF from the session-bound allowlisted route", async () => {
   const app = await createTestApplication();
 
   try {
     const response = await request(app.getHttpServer())
-      .get("/api/auth/csrf")
+      .get("/api/auth/session/csrf")
       .set("host", HOSTNAME)
       .set("cookie", `${BOOKING_SESSION_COOKIE}=${encodeURIComponent(SESSION_TOKEN)}`)
       .expect(200);
