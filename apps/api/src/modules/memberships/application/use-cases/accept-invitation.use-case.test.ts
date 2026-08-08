@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { TenantExecutionContext } from "@booking-os/contracts";
-
-import type { SessionElevationPort } from "../ports/session-elevation.port.js";
-import type { TenantDataSession, TenantTransactionPort } from "../../../tenancy/application/ports/tenant-transaction.port.js";
+import type {
+  TenantDataSession,
+  TenantTransactionPort,
+} from "../../../tenancy/application/ports/tenant-transaction.port.js";
 import type { MembershipInvitation } from "../../domain/membership-invitation.js";
 import type { TenantMembership } from "../../domain/tenant-membership.js";
+import type { SessionElevationPort } from "../ports/session-elevation.port.js";
 import { AcceptInvitationUseCase } from "./accept-invitation.use-case.js";
 
 const TENANT_ID = "30000000-0000-4000-8000-000000000001";
