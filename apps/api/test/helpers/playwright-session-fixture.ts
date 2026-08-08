@@ -2,12 +2,6 @@ import { createHash, randomUUID } from "node:crypto";
 
 import { PrismaClient } from "@prisma/client";
 
-import {
-  createSessionToken,
-  deriveSessionSecretDigest,
-  parseSessionToken,
-} from "../../../../packages/auth/src/opaque-session.ts";
-
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PLAYWRIGHT_SESSION_SECRET = "e2e-only-session-secret-at-least-32-characters";
 
@@ -33,6 +27,9 @@ function deriveSessionDigestKey(): Uint8Array {
 }
 
 export async function createPlaywrightSession(input: PlaywrightSessionInput): Promise<string> {
+  const { createSessionToken, deriveSessionSecretDigest, parseSessionToken } = await import(
+    "@booking-os/auth"
+  );
   const prisma = new PrismaClient();
   const now = new Date();
   const authorizationVersion = 1;
