@@ -7,9 +7,9 @@ import {
 
 const SESSION_COOKIE = "__Host-booking_session";
 
-interface InstallAuthenticatedSessionInput extends PlaywrightSessionInput {
+type InstallAuthenticatedSessionInput = PlaywrightSessionInput & {
   readonly origin: string;
-}
+};
 
 export async function installAuthenticatedSession(
   context: BrowserContext,
