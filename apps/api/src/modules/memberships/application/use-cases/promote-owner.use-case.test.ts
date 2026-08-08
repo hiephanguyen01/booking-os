@@ -72,7 +72,15 @@ function createTransactions(events: string[]): TenantTransactionPort {
               roleKey: SYSTEM_ROLES.tenantOwner,
               now: NOW,
             });
-            events.push("role.assign");
+            events.push("role.assign-owner");
+          },
+          revoke: async (input: unknown) => {
+            assert.deepEqual(input, {
+              userId: TARGET_ID,
+              roleKey: SYSTEM_ROLES.tenantAdmin,
+              now: NOW,
+            });
+            events.push("role.revoke-admin");
           },
         },
         sessions: {
@@ -121,7 +129,8 @@ test("promotes an active admin, bumps authorization once, and revokes tenant ses
   assert.deepEqual(events, [
     "membership.lock",
     "role.list",
-    "role.assign",
+    "role.revoke-admin",
+    "role.assign-owner",
     "membership.version",
     "session.revoke",
     "audit.append",
