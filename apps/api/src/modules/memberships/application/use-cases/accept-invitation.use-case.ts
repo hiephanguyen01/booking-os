@@ -97,7 +97,7 @@ export class AcceptInvitationUseCase {
         }
 
         const lockedMembership = await session.memberships.lockById(membership.id);
-        if (!lockedMembership || lockedMembership.status !== "invited") {
+        if (lockedMembership?.status !== "invited") {
           throw new InvitationInvalidOrExpiredError();
         }
 
