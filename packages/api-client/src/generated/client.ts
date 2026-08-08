@@ -46,6 +46,10 @@ export interface CreateTenantAdminInvitationParameters {
   readonly body: operations["createTenantAdminInvitation"]["requestBody"]["content"]["application/json"];
 }
 
+export interface AcceptMembershipInvitationParameters {
+  readonly body: operations["acceptMembershipInvitation"]["requestBody"]["content"]["application/json"];
+}
+
 export interface ResendTenantAdminInvitationParameters {
   readonly path: operations["resendTenantAdminInvitation"]["parameters"]["path"];
 }
@@ -78,6 +82,7 @@ export interface GeneratedClient {
   readonly revokeSession: (parameters: RevokeSessionParameters, options?: GeneratedRequestOptions) => Promise<operations["revokeSession"]["responses"][200]["content"]["application/json"]>;
   readonly getHealth: (options?: GeneratedRequestOptions) => Promise<operations["getHealth"]["responses"][200]["content"]["application/json"]>;
   readonly createTenantAdminInvitation: (parameters: CreateTenantAdminInvitationParameters, options?: GeneratedRequestOptions) => Promise<operations["createTenantAdminInvitation"]["responses"][202]["content"]["application/json"]>;
+  readonly acceptMembershipInvitation: (parameters: AcceptMembershipInvitationParameters, options?: GeneratedRequestOptions) => Promise<operations["acceptMembershipInvitation"]["responses"][200]["content"]["application/json"]>;
   readonly getCurrentMembershipInvitation: (options?: GeneratedRequestOptions) => Promise<operations["getCurrentMembershipInvitation"]["responses"][200]["content"]["application/json"]>;
   readonly resendTenantAdminInvitation: (parameters: ResendTenantAdminInvitationParameters, options?: GeneratedRequestOptions) => Promise<operations["resendTenantAdminInvitation"]["responses"][202]["content"]["application/json"]>;
   readonly provisionPlatformTenant: (parameters: ProvisionPlatformTenantParameters, options?: GeneratedRequestOptions) => Promise<operations["provisionPlatformTenant"]["responses"][200]["content"]["application/json"]>;
@@ -175,6 +180,13 @@ export function createGeneratedClient(transport: GeneratedTransport): GeneratedC
       return transport<operations["createTenantAdminInvitation"]["responses"][202]["content"]["application/json"]>({
       method: "POST",
       path: "/api/membership/invitations",
+      body: parameters.body,
+      }, options);
+    },
+    async acceptMembershipInvitation(parameters, options) {
+      return transport<operations["acceptMembershipInvitation"]["responses"][200]["content"]["application/json"]>({
+      method: "POST",
+      path: "/api/membership/invitations/accept",
       body: parameters.body,
       }, options);
     },
