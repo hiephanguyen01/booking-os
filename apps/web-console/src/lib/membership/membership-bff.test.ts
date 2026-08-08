@@ -8,6 +8,8 @@ import { createMembershipBffHandlers } from "./membership-bff.js";
 const API_BASE_URL = "https://api.example.test/api";
 const CONSOLE_ORIGIN = "https://console.example.test";
 
+type CapturedRequest = { url: string; init: RequestInit | undefined };
+
 function sessionRequest(path: string, init: RequestInit = {}): Request {
   const token = createSessionToken();
   const headers = new Headers(init.headers);
@@ -17,7 +19,7 @@ function sessionRequest(path: string, init: RequestInit = {}): Request {
 }
 
 test("membership list forwards only the validated session cookie without caching", async () => {
-  let captured: { url: string; init?: RequestInit } | undefined;
+  let captured: CapturedRequest | undefined;
   const handlers = createMembershipBffHandlers({
     apiBaseUrl: API_BASE_URL,
     fetch: async (input, init) => {
@@ -37,7 +39,7 @@ test("membership list forwards only the validated session cookie without caching
 });
 
 test("membership invitation mints fresh session CSRF and strips UI-only defaults", async () => {
-  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const calls: CapturedRequest[] = [];
   const handlers = createMembershipBffHandlers({
     apiBaseUrl: API_BASE_URL,
     fetch: async (input, init) => {
@@ -71,7 +73,7 @@ test("membership invitation mints fresh session CSRF and strips UI-only defaults
 });
 
 test("platform tenant bootstrap forwards idempotency key and fresh CSRF", async () => {
-  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const calls: CapturedRequest[] = [];
   const handlers = createMembershipBffHandlers({
     apiBaseUrl: API_BASE_URL,
     fetch: async (input, init) => {
