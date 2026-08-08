@@ -84,15 +84,18 @@ export class PrismaInvitationSessionElevationAdapter implements SessionElevation
   constructor(
     private readonly transaction: Prisma.TransactionClient,
     private readonly tenantId: string,
-    private readonly options: PrismaInvitationSessionElevationOptions,
+    private readonly options?: PrismaInvitationSessionElevationOptions,
   ) {
-    this.idFactory = options.idFactory ?? randomUUID;
-    this.tokenFactory = options.tokenFactory ?? (() => createSessionToken());
+    this.idFactory = options?.idFactory ?? randomUUID;
+    this.tokenFactory = options?.tokenFactory ?? (() => createSessionToken());
   }
 
   async elevateInvitationSession(
     input: ElevateInvitationSessionInput,
   ): Promise<SessionElevationResult> {
+    if (!this.options) {
+      throw new Error("Invitation session elevation security configuration is unavailable.");
+    }
     if (
       !Number.isInteger(input.membershipAuthorizationVersion) ||
       input.membershipAuthorizationVersion <= 0
