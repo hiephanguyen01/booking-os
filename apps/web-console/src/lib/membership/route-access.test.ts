@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { config as middlewareConfig } from "../../../middleware.js";
 import { type ConsoleSessionSummary, canAccessConsolePath } from "./route-access.js";
 
 const platform: ConsoleSessionSummary = {
@@ -17,15 +18,15 @@ const tenant: ConsoleSessionSummary = {
 };
 
 const cases = [
-  ["/app/platform/create", platform, true],
-  ["/app/platform/create", tenant, false],
-  ["/app/platform/invitation-pending/status", invitationPending, true],
-  ["/app/invite/accept", invitationPending, true],
-  ["/app/invite/accept", platform, true],
-  ["/app/tenant", tenant, true],
-  ["/app/settings/members", tenant, true],
-  ["/app/settings/members", platform, false],
-  ["/app/tenant", invitationPending, false],
+  ["/platform/create", platform, true],
+  ["/platform/create", tenant, false],
+  ["/platform/invitation-pending/status", invitationPending, true],
+  ["/invite/accept", invitationPending, true],
+  ["/invite/accept", platform, true],
+  ["/tenant", tenant, true],
+  ["/settings/members", tenant, true],
+  ["/settings/members", platform, false],
+  ["/tenant", invitationPending, false],
 ] as const;
 
 for (const [pathname, session, expected] of cases) {
@@ -33,3 +34,13 @@ for (const [pathname, session, expected] of cases) {
     assert.equal(canAccessConsolePath(pathname, session), expected);
   });
 }
+
+test("middleware matcher protects the actual Task 8 page URLs", () => {
+  assert.deepEqual(middlewareConfig.matcher, [
+    "/api/:path*",
+    "/platform/:path*",
+    "/invite/:path*",
+    "/tenant/:path*",
+    "/settings/:path*",
+  ]);
+});
