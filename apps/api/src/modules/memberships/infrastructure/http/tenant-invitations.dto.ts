@@ -5,6 +5,11 @@ export class CreateTenantAdminInvitationRequestDto {
   email!: string;
 }
 
+export class AcceptTenantInvitationRequestDto {
+  @ApiProperty({ type: String })
+  token!: string;
+}
+
 export class TenantInvitationAcceptedResponseDto {
   @ApiProperty({ enum: [true] })
   accepted!: true;
