@@ -1,0 +1,47 @@
+name: Task 5 refresh generated contract
+
+on:
+  push:
+    branches:
+      - feat/sprint-1b-03-task-5-tenant-admin-invitations
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-generated:
+    name: Refresh generated OpenAPI artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NODE_ENV: test
+      API_PREFIX: api
+      DATABASE_URL: postgresql://booking:booking@127.0.0.1:1/booking_os_openapi
+      REDIS_URL: redis://127.0.0.1:1/15
+      SESSION_SECRET: openapi-ci-only-secret-at-least-32-characters
+      PAYMENT_PROVIDER: mock
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/sprint-1b-03-task-5-tenant-admin-invitations
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm api:generate
+      - name: Commit generated artifacts and remove this one-shot workflow
+        shell: bash
+        run: |
+          rm .github/workflows/task5-refresh-generated.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/contracts/openapi/openapi.json packages/api-client/src/generated/schema.ts packages/api-client/src/generated/client.ts .github/workflows/task5-refresh-generated.yml
+          git diff --cached --exit-code && exit 1
+          git commit -m "chore: refresh generated API contract"
+          git push origin HEAD:feat/sprint-1b-03-task-5-tenant-admin-invitations
