@@ -11,6 +11,7 @@ import {
   POSTGRES_READINESS_PROBE_TOKEN,
   REDIS_READINESS_PROBE_TOKEN,
 } from "../src/dependencies/tokens.js";
+import { AcceptInvitationUseCase } from "../src/modules/memberships/application/use-cases/accept-invitation.use-case.js";
 import { GetCurrentSessionUseCase } from "../src/modules/sessions/application/use-cases/get-current-session.use-case.js";
 import { ResolveTenantUseCase } from "../src/modules/tenancy/application/use-cases/resolve-tenant.use-case.js";
 
@@ -19,7 +20,10 @@ const USER_ID = "22222222-2222-4222-8222-222222222222";
 const SESSION_ID = "33333333-3333-4333-8333-333333333333";
 const TENANT_SLUG = "pending-invite";
 const HOSTNAME = `${TENANT_SLUG}.example.test`;
+const ORIGIN = `https://${HOSTNAME}`;
 const SESSION_TOKEN = createSessionToken();
+const ROTATED_SESSION_TOKEN = createSessionToken();
+const INVITATION_TOKEN = "invitation-selector.invitation-secret";
 
 const originalEnvironment = {
   NODE_ENV: process.env.NODE_ENV,
@@ -67,6 +71,20 @@ async function createTestApplication(): Promise<INestApplication> {
         rotationRequired: false,
       }),
     })
+    .overrideProvider(AcceptInvitationUseCase)
+    .useValue({
+      execute: async (input: unknown) => {
+        assert.deepEqual(input, {
+          tenantId: TENANT_ID,
+          userId: USER_ID,
+          sessionId: SESSION_ID,
+          hostname: HOSTNAME,
+          token: INVITATION_TOKEN,
+          requestId: assert.match as never,
+        });
+        return { accepted: true as const, rotatedSessionToken: ROTATED_SESSION_TOKEN };
+      },
+    })
     .compile();
 
   const app = testingModule.createNestApplication();
@@ -88,7 +106,7 @@ before(() => {
   process.env.REDIS_URL = "redis://localhost:6379/1";
   process.env.READINESS_TIMEOUT_MS = "100";
   process.env.SESSION_SECRET = "invitation-acceptance-e2e-secret-32-characters";
-  process.env.SESSION_ALLOWED_ORIGINS = `https://${HOSTNAME}`;
+  process.env.SESSION_ALLOWED_ORIGINS = ORIGIN;
   process.env.PAYMENT_PROVIDER = "mock";
 });
 
@@ -110,6 +128,35 @@ test("invitation-pending session obtains CSRF from the session-bound allowlisted
 
     assert.equal(response.headers["cache-control"], "private, no-store");
     assert.equal(typeof response.body.csrfToken, "string");
+  } finally {
+    await app.close();
+  }
+});
+
+test("invitation-pending session accepts an invitation and receives only the rotated session cookie", async () => {
+  const app = await createTestApplication();
+  const cookie = `${BOOKING_SESSION_COOKIE}=${encodeURIComponent(SESSION_TOKEN)}`;
+
+  try {
+    const csrf = await request(app.getHttpServer())
+      .get("/api/auth/session/csrf")
+      .set("host", HOSTNAME)
+      .set("cookie", cookie)
+      .expect(200);
+
+    const response = await request(app.getHttpServer())
+      .post("/api/membership/invitations/accept")
+      .set("host", HOSTNAME)
+      .set("origin", ORIGIN)
+      .set("cookie", cookie)
+      .set("x-csrf-token", csrf.body.csrfToken)
+      .send({ token: INVITATION_TOKEN })
+      .expect(200);
+
+    assert.deepEqual(response.body, { accepted: true });
+    assert.equal(response.headers["cache-control"], "private, no-store");
+    assert.match(response.headers["set-cookie"]?.[0] ?? "", /^__Host-booking_session=/u);
+    assert.equal(JSON.stringify(response.body).includes(ROTATED_SESSION_TOKEN), false);
   } finally {
     await app.close();
   }
