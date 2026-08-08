@@ -5,7 +5,7 @@ const databaseUrl =
 const redisUrl = process.env.REDIS_URL ?? "redis://127.0.0.1:6379/1";
 const apiBaseUrl = "http://127.0.0.1:3001/api";
 const consoleOrigin = "http://127.0.0.1:3002";
-const sessionAllowedOrigins = `${consoleOrigin},http://localhost:3002,http://tenant-a.booking.localhost:3002`;
+const sessionAllowedOrigins = `${consoleOrigin},http://localhost:3002`;
 const reuseExistingServer = process.env.CI !== "true";
 
 export default defineConfig({
