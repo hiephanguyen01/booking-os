@@ -10,7 +10,7 @@ import {
   REDIS_CLIENT_TOKEN,
   REDIS_READINESS_PROBE_TOKEN,
 } from "../../dependencies/tokens.js";
-import { GetCurrentInvitationUseCase } from "../memberships/application/use-cases/get-current-invitation.use-case.js";
+import { ResolvePendingInvitationLoginUseCase } from "../memberships/application/use-cases/resolve-pending-invitation-login.use-case.js";
 import { CreateSessionUseCase } from "./application/use-cases/create-session.js";
 import { LoginUseCase } from "./application/use-cases/login.use-case.js";
 import { CREDENTIAL_VERIFIER_PORT, LOGIN_ABUSE_PROTECTION_PORT } from "./sessions.tokens.js";
@@ -108,15 +108,9 @@ test("SessionsModule composes pending invitation eligibility into the real login
           return { token: "selector.secret", session: {} };
         },
       })
-      .overrideProvider(GetCurrentInvitationUseCase)
+      .overrideProvider(ResolvePendingInvitationLoginUseCase)
       .useValue({
-        execute: async () => ({
-          invitationId: "33333333-3333-4333-8333-333333333333",
-          tenantId: TENANT_ID,
-          intendedRoleKey: "tenant_admin",
-          hostname: HOSTNAME,
-          expiresAt: new Date("2026-08-09T12:00:00.000Z"),
-        }),
+        execute: async () => true,
       })
       .overrideProvider(REDIS_CLIENT_TOKEN)
       .useValue({})
