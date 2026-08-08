@@ -122,6 +122,11 @@ test("tenant owner invites an administrator, inspects state, and suspends the me
   await page.goto(`${CONSOLE_BASE_URL}/settings/members`);
   await expect(page.getByText(ADMIN_ID, { exact: true })).toBeVisible();
   await expect(page.getByText("Administrator", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Invitations default to tenant_admin and expire after 24 hours.", {
+      exact: true,
+    }),
+  ).toBeVisible();
   await page.getByLabel("Administrator email").fill("new-admin@example.test");
   await expect(page.getByLabel("Role")).toHaveValue("tenant_admin");
   await expect(page.getByLabel("Invitation expiry")).toHaveValue("24 hours");
