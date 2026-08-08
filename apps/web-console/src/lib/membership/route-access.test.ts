@@ -21,9 +21,12 @@ const cases = [
   ["/platform/create", platform, true],
   ["/platform/create", tenant, false],
   ["/platform/status", platform, true],
+  ["/platform-shadow", platform, false],
   ["/tenant", tenant, true],
+  ["/tenant-shadow", tenant, false],
   ["/settings/members", tenant, true],
   ["/settings/members", platform, false],
+  ["/settings-shadow", tenant, false],
   ["/tenant", invitationPending, false],
   ["/unknown", platform, false],
 ] as const;
