@@ -227,8 +227,7 @@ test("generates the contract without binding a port or reaching infrastructure",
       "#/components/schemas/TenantMembershipLifecycleMutationResponseDto",
     );
 
-    const promoteMembership =
-      document.paths["/api/memberships/{membershipId}/promote-owner"]?.post;
+    const promoteMembership = document.paths["/api/memberships/{membershipId}/promote-owner"]?.post;
     assert.equal(
       promoteMembership?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref,
       "#/components/schemas/TenantMembershipRoleMutationResponseDto",
