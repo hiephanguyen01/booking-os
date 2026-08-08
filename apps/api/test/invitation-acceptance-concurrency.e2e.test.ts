@@ -62,13 +62,18 @@ function restoreEnvironmentValue(key: keyof typeof originalEnvironment): void {
 
 async function seed(): Promise<void> {
   const now = new Date();
+  const ownerRole = await prisma.role.upsert({
+    where: { key: "tenant_owner" },
+    update: { scopeLevel: "tenant", isSystem: true },
+    create: { id: randomUUID(), key: "tenant_owner", scopeLevel: "tenant", isSystem: true },
+  });
   await prisma.role.upsert({
     where: { key: "tenant_admin" },
     update: { scopeLevel: "tenant", isSystem: true },
     create: { id: randomUUID(), key: "tenant_admin", scopeLevel: "tenant", isSystem: true },
   });
   await prisma.tenant.create({
-    data: { id: TENANT_ID, slug: TENANT_SLUG, name: "PR26 Acceptance", status: "active" },
+    data: { id: TENANT_ID, slug: TENANT_SLUG, name: "PR26 Acceptance", status: "provisioning" },
   });
   await prisma.tenantDomain.create({
     data: { id: randomUUID(), tenantId: TENANT_ID, hostname: HOSTNAME, isPrimary: true },
@@ -92,6 +97,29 @@ async function seed(): Promise<void> {
         activatedAt: now,
       },
     ],
+  });
+  await prisma.tenantMembership.create({
+    data: {
+      id: randomUUID(),
+      tenantId: TENANT_ID,
+      userId: INVITER_ID,
+      status: "active",
+      authorizationVersion: 1,
+      acceptedAt: now,
+    },
+  });
+  await prisma.roleAssignment.create({
+    data: {
+      id: randomUUID(),
+      userId: INVITER_ID,
+      roleId: ownerRole.id,
+      scopeLevel: "tenant",
+      tenantId: TENANT_ID,
+    },
+  });
+  await prisma.tenant.update({
+    where: { id: TENANT_ID },
+    data: { status: "active" },
   });
   await prisma.tenantMembership.create({
     data: {
