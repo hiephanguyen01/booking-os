@@ -1,0 +1,42 @@
+name: Temporary Task 8 lockfile sync
+
+on:
+  push:
+    branches:
+      - feat/sprint-1b-03-task-5-tenant-admin-invitations
+
+permissions:
+  contents: write
+
+jobs:
+  sync-lockfile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          ref: feat/sprint-1b-03-task-5-tenant-admin-invitations
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Sync lockfile
+        run: pnpm install --lockfile-only
+      - name: Commit lockfile when changed
+        shell: bash
+        run: |
+          if git diff --quiet -- pnpm-lock.yaml; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pnpm-lock.yaml
+          git commit -m "build(web-console): sync Task 8 lockfile"
+          git push origin HEAD:feat/sprint-1b-03-task-5-tenant-admin-invitations
