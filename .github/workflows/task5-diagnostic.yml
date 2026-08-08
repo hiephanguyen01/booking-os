@@ -1,0 +1,66 @@
+name: Task 5 Diagnostic
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  api-unit-diagnostic:
+    name: API unit diagnostic
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: booking
+          POSTGRES_PASSWORD: booking
+          POSTGRES_DB: booking_os_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U booking -d booking_os_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://booking:booking@127.0.0.1:5432/booking_os_test
+      REDIS_URL: redis://127.0.0.1:6379/1
+      SESSION_SECRET: test-only-session-secret-at-least-32-characters
+      PAYMENT_PROVIDER: mock
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @booking-os/api prisma:migrate:deploy
+      - name: Run API tests with diagnostic annotation
+        shell: bash
+        run: |
+          set +e
+          pnpm --filter @booking-os/api test > unit-test.log 2>&1
+          status=$?
+          cat unit-test.log
+          if [ "$status" -ne 0 ]; then
+            details="$(tail -n 120 unit-test.log | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'BEGIN { ORS="%0A" } { print }')"
+            echo "::error file=.github/workflows/task5-diagnostic.yml,line=1,title=Task 5 API test failure::$details"
+          fi
+          exit "$status"
