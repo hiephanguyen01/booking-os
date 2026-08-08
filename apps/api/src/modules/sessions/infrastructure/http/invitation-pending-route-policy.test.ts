@@ -4,7 +4,7 @@ import test from "node:test";
 import { isInvitationPendingRouteAllowed } from "./invitation-pending-route-policy.js";
 
 const ALLOWED_ROUTES = Object.freeze([
-  { method: "GET", path: "/auth/csrf" },
+  { method: "GET", path: "/auth/session/csrf" },
   { method: "GET", path: "/auth/me" },
   { method: "POST", path: "/auth/logout" },
   { method: "POST", path: "/auth/password/reset" },
@@ -25,6 +25,7 @@ test("fails closed for normal, probe, prefix-confused, and wrong-method routes",
     { method: "POST", path: "/membership/invitations" },
     { method: "POST", path: "/auth/me" },
     { method: "GET", path: "/auth/logout" },
+    { method: "GET", path: "/auth/csrf" },
     { method: "GET", path: "/api/auth/me" },
     { method: "GET", path: "/probe/auth/me" },
     { method: "GET", path: "/auth/me/extra" },
