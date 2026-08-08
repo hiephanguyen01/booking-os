@@ -100,6 +100,9 @@ test("generates the contract without binding a port or reaching infrastructure",
       "/api/auth/sessions/{sessionId}",
       "/api/auth/sessions/revoke-others",
       "/api/health",
+      "/api/membership/invitations",
+      "/api/membership/invitations/{invitationId}/resend",
+      "/api/membership/invitations/current",
       "/api/platform/tenants",
       "/api/platform/tenants/{tenantId}",
       "/api/platform/tenants/{tenantId}/owner-invitation/resend",
@@ -114,6 +117,8 @@ test("generates the contract without binding a port or reaching infrastructure",
       [
         "completeAccountActivation",
         "completePasswordReset",
+        "createTenantAdminInvitation",
+        "getCurrentMembershipInvitation",
         "getCurrentSession",
         "getHealth",
         "getPlatformTenantProvisioning",
@@ -127,6 +132,7 @@ test("generates the contract without binding a port or reaching infrastructure",
         "refreshSession",
         "requestPasswordReset",
         "resendPlatformTenantOwnerInvitation",
+        "resendTenantAdminInvitation",
         "revokeOtherSessions",
         "revokeSession",
       ],
@@ -166,6 +172,25 @@ test("generates the contract without binding a port or reaching infrastructure",
     assert.equal(
       revoke?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref,
       "#/components/schemas/RevokeDeviceResponseDto",
+    );
+
+    const createAdminInvitation = document.paths["/api/membership/invitations"]?.post;
+    assert.equal(
+      createAdminInvitation?.responses?.["202"]?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/TenantInvitationAcceptedResponseDto",
+    );
+
+    const currentInvitation = document.paths["/api/membership/invitations/current"]?.get;
+    assert.equal(
+      currentInvitation?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/CurrentTenantInvitationResponseDto",
+    );
+
+    const resendAdminInvitation =
+      document.paths["/api/membership/invitations/{invitationId}/resend"]?.post;
+    assert.equal(
+      resendAdminInvitation?.responses?.["202"]?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/TenantInvitationAcceptedResponseDto",
     );
 
     const resendOwnerInvitation =

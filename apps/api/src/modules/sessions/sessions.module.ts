@@ -10,6 +10,8 @@ import { EnvironmentService } from "../../config/environment.service.js";
 import { DatabaseModule } from "../../database/database.module.js";
 import { DependenciesModule } from "../../dependencies/dependencies.module.js";
 import { REDIS_CLIENT_TOKEN } from "../../dependencies/tokens.js";
+import { TenantResolutionMiddleware } from "../tenancy/infrastructure/http/tenant-resolution.middleware.js";
+import { TenancyModule } from "../tenancy/tenancy.module.js";
 import { API_LOGGER_TOKEN } from "../../observability/tokens.js";
 import type { CredentialVerifierPort } from "./application/ports/credential-verifier.port.js";
 import type { LoginAbuseMetricsPort } from "./application/ports/login-abuse-metrics.port.js";
@@ -55,7 +57,7 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
 }
 
 @Module({
-  imports: [DatabaseModule, DependenciesModule, RequestContextModule],
+  imports: [DatabaseModule, DependenciesModule, RequestContextModule, TenancyModule],
   controllers: [SessionHttpController, SessionCsrfHttpController],
   providers: [
     {
@@ -212,7 +214,7 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
 export class SessionsModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer
-      .apply(SessionAuthMiddleware)
+      .apply(TenantResolutionMiddleware, SessionAuthMiddleware)
       .forRoutes(SessionHttpController, SessionCsrfHttpController);
   }
 }
