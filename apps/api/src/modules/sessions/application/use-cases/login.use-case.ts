@@ -82,6 +82,7 @@ export class LoginUseCase {
 
     const subject = await this.subjects.resolveForLogin({
       userId: credential.userId,
+      hostname: input.hostname,
       scope: input.scope,
     });
     if (!subject) {
