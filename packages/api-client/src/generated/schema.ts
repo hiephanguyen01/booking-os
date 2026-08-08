@@ -244,6 +244,22 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/membership/invitations/accept": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post: operations["acceptMembershipInvitation"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/membership/invitations/current": {
         readonly parameters: {
             readonly query?: never;
@@ -331,6 +347,9 @@ export interface components {
         readonly AcceptedResponseDto: {
             /** @example true */
             readonly accepted: boolean;
+        };
+        readonly AcceptTenantInvitationRequestDto: {
+            readonly token: string;
         };
         readonly ActorDto: {
             /** Format: uuid */
@@ -818,6 +837,29 @@ export interface operations {
         readonly requestBody?: never;
         readonly responses: {
             readonly 202: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["TenantInvitationAcceptedResponseDto"];
+                };
+            };
+        };
+    };
+    readonly acceptMembershipInvitation: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["AcceptTenantInvitationRequestDto"];
+            };
+        };
+        readonly responses: {
+            readonly 200: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
