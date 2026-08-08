@@ -1,4 +1,9 @@
-import { createOneTimeToken } from "@booking-os/auth";
+import {
+  createOneTimeToken,
+  type ParsedOneTimeToken,
+  parseOneTimeToken,
+  verifyOneTimeTokenSecret,
+} from "@booking-os/auth";
 
 import type {
   IssuedMembershipInvitationToken,
@@ -8,6 +13,16 @@ import type {
   IssuedTenantActivationToken,
   TenantActivationTokenPort,
 } from "../../application/ports/tenant-activation-token.port.js";
+
+interface VerifyMembershipInvitationTokenInput {
+  readonly secret: string;
+  readonly expectedTokenHash: string;
+  readonly tenantId: string;
+  readonly userId: string;
+  readonly hostname: string;
+  readonly normalizedEmail: string;
+  readonly intendedRoleKey: string;
+}
 
 function membershipInvitationPurpose(input: {
   readonly tenantId: string;
@@ -54,6 +69,19 @@ export class HmacMembershipInvitationTokenAdapter implements MembershipInvitatio
     input: Parameters<MembershipInvitationTokenPort["issue"]>[0],
   ): IssuedMembershipInvitationToken {
     return issue(this.pepper, membershipInvitationPurpose(input));
+  }
+
+  parse(serialized: string): ParsedOneTimeToken | null {
+    return parseOneTimeToken(serialized);
+  }
+
+  verify(input: VerifyMembershipInvitationTokenInput): boolean {
+    return verifyOneTimeTokenSecret({
+      pepper: this.pepper,
+      purpose: membershipInvitationPurpose(input),
+      secret: input.secret,
+      expectedDigest: input.expectedTokenHash,
+    });
   }
 }
 

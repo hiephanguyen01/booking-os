@@ -7,6 +7,7 @@ export interface LoginSessionSubject {
 
 export interface ResolveLoginSubjectInput {
   readonly userId: string;
+  readonly hostname: string;
   readonly scope: SessionScope;
 }
 

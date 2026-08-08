@@ -13,6 +13,7 @@ import {
 } from "../src/dependencies/tokens.js";
 import { GetCurrentSessionUseCase } from "../src/modules/sessions/application/use-cases/get-current-session.use-case.js";
 import { LoginUseCase } from "../src/modules/sessions/application/use-cases/login.use-case.js";
+import { ResolveTenantUseCase } from "../src/modules/tenancy/application/use-cases/resolve-tenant.use-case.js";
 
 const ORIGIN = "https://console.example.test";
 const HOSTNAME = "console.example.test";
@@ -52,6 +53,8 @@ async function createTestApplication(): Promise<INestApplication> {
     .useValue({ dependency: "postgresql", check: async () => ({ status: "ok", latencyMs: 1 }) })
     .overrideProvider(REDIS_READINESS_PROBE_TOKEN)
     .useValue({ dependency: "redis", check: async () => ({ status: "ok", latencyMs: 1 }) })
+    .overrideProvider(ResolveTenantUseCase)
+    .useValue({ execute: async () => null })
     .overrideProvider(GetCurrentSessionUseCase)
     .useValue({
       execute: async () => ({

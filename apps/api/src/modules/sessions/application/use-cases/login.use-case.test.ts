@@ -128,7 +128,7 @@ test("creates a platform session from a trusted hostname and assignment", async 
     },
   ]);
   assert.deepEqual(harness.subjects.resolveCalls, [
-    { userId: USER_ID, scope: { type: "platform" } },
+    { userId: USER_ID, hostname: "console.example.com", scope: { type: "platform" } },
   ]);
   assert.deepEqual(harness.abuse.calls, ["before", "success"]);
   assert.deepEqual(harness.issued, [
@@ -160,7 +160,11 @@ test("uses the tenant subject hook without accepting tenant authority from crede
   });
 
   assert.deepEqual(harness.subjects.resolveCalls, [
-    { userId: USER_ID, scope: { type: "tenant", tenantId: TENANT_ID } },
+    {
+      userId: USER_ID,
+      hostname: "alpha.example.com",
+      scope: { type: "tenant", tenantId: TENANT_ID },
+    },
   ]);
   assert.deepEqual(harness.issued, [
     {

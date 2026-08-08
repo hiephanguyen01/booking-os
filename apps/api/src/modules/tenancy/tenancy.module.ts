@@ -18,14 +18,8 @@ import { TENANT_DIRECTORY_PORT, TENANT_TRANSACTION_PORT } from "./tenancy.tokens
   imports: [DatabaseModule],
   controllers: [TenantProbeController],
   providers: [
-    {
-      provide: TENANT_DIRECTORY_PORT,
-      useClass: PrismaTenantDirectoryAdapter,
-    },
-    {
-      provide: TENANT_TRANSACTION_PORT,
-      useClass: PrismaTenantTransactionAdapter,
-    },
+    { provide: TENANT_DIRECTORY_PORT, useClass: PrismaTenantDirectoryAdapter },
+    { provide: TENANT_TRANSACTION_PORT, useClass: PrismaTenantTransactionAdapter },
     {
       provide: ResolveTenantUseCase,
       inject: [TENANT_DIRECTORY_PORT, EnvironmentService],
@@ -42,12 +36,9 @@ import { TENANT_DIRECTORY_PORT, TENANT_TRANSACTION_PORT } from "./tenancy.tokens
     },
     TenantResolutionMiddleware,
     TenantRequiredGuard,
-    {
-      provide: APP_GUARD,
-      useExisting: TenantRequiredGuard,
-    },
+    { provide: APP_GUARD, useExisting: TenantRequiredGuard },
   ],
-  exports: [TENANT_TRANSACTION_PORT],
+  exports: [TENANT_TRANSACTION_PORT, ResolveTenantUseCase, TenantResolutionMiddleware],
 })
 export class TenancyModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

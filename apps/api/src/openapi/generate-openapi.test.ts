@@ -100,6 +100,15 @@ test("generates the contract without binding a port or reaching infrastructure",
       "/api/auth/sessions/{sessionId}",
       "/api/auth/sessions/revoke-others",
       "/api/health",
+      "/api/membership/invitations",
+      "/api/membership/invitations/{invitationId}/resend",
+      "/api/membership/invitations/accept",
+      "/api/membership/invitations/current",
+      "/api/memberships",
+      "/api/memberships/{membershipId}/suspend",
+      "/api/memberships/{membershipId}/revoke",
+      "/api/memberships/{membershipId}/promote-owner",
+      "/api/memberships/{membershipId}/demote-owner",
       "/api/platform/tenants",
       "/api/platform/tenants/{tenantId}",
       "/api/platform/tenants/{tenantId}/owner-invitation/resend",
@@ -112,8 +121,12 @@ test("generates the contract without binding a port or reaching infrastructure",
         .filter((operationId): operationId is string => operationId !== undefined)
         .sort(),
       [
+        "acceptMembershipInvitation",
         "completeAccountActivation",
         "completePasswordReset",
+        "createTenantAdminInvitation",
+        "demoteTenantMembershipOwner",
+        "getCurrentMembershipInvitation",
         "getCurrentSession",
         "getHealth",
         "getPlatformTenantProvisioning",
@@ -121,14 +134,19 @@ test("generates the contract without binding a port or reaching infrastructure",
         "getReadiness",
         "getSessionCsrf",
         "listSessions",
+        "listTenantMemberships",
         "loginSession",
         "logoutSession",
+        "promoteTenantMembershipOwner",
         "provisionPlatformTenant",
         "refreshSession",
         "requestPasswordReset",
         "resendPlatformTenantOwnerInvitation",
+        "resendTenantAdminInvitation",
         "revokeOtherSessions",
         "revokeSession",
+        "revokeTenantMembership",
+        "suspendTenantMembership",
       ],
     );
 
@@ -166,6 +184,59 @@ test("generates the contract without binding a port or reaching infrastructure",
     assert.equal(
       revoke?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref,
       "#/components/schemas/RevokeDeviceResponseDto",
+    );
+
+    const createAdminInvitation = document.paths["/api/membership/invitations"]?.post;
+    assert.equal(
+      createAdminInvitation?.responses?.["202"]?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/TenantInvitationAcceptedResponseDto",
+    );
+
+    const acceptInvitation = document.paths["/api/membership/invitations/accept"]?.post;
+    assert.equal(
+      acceptInvitation?.requestBody?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/AcceptTenantInvitationRequestDto",
+    );
+    assert.equal(
+      acceptInvitation?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/TenantInvitationAcceptedResponseDto",
+    );
+
+    const currentInvitation = document.paths["/api/membership/invitations/current"]?.get;
+    assert.equal(
+      currentInvitation?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/CurrentTenantInvitationResponseDto",
+    );
+
+    const resendAdminInvitation =
+      document.paths["/api/membership/invitations/{invitationId}/resend"]?.post;
+    assert.equal(
+      resendAdminInvitation?.responses?.["202"]?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/TenantInvitationAcceptedResponseDto",
+    );
+
+    const suspendMembership = document.paths["/api/memberships/{membershipId}/suspend"]?.post;
+    assert.equal(
+      suspendMembership?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/TenantMembershipLifecycleMutationResponseDto",
+    );
+
+    const revokeMembership = document.paths["/api/memberships/{membershipId}/revoke"]?.post;
+    assert.equal(
+      revokeMembership?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/TenantMembershipLifecycleMutationResponseDto",
+    );
+
+    const promoteMembership = document.paths["/api/memberships/{membershipId}/promote-owner"]?.post;
+    assert.equal(
+      promoteMembership?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/TenantMembershipRoleMutationResponseDto",
+    );
+
+    const demoteMembership = document.paths["/api/memberships/{membershipId}/demote-owner"]?.post;
+    assert.equal(
+      demoteMembership?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/TenantMembershipRoleMutationResponseDto",
     );
 
     const resendOwnerInvitation =

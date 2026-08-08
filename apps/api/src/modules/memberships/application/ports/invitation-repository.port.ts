@@ -20,6 +20,7 @@ export interface InvitationRepositoryPort {
     intendedRoleKey: SystemRole,
   ): Promise<MembershipInvitation | null>;
   lockPendingOwnerInvitation(): Promise<MembershipInvitation | null>;
+  lockPendingById(id: string): Promise<MembershipInvitation | null>;
   findPendingOwnerInvitation(): Promise<MembershipInvitation | null>;
   findCurrentForUser(userId: string): Promise<MembershipInvitation | null>;
   lockBySelector(selector: string): Promise<MembershipInvitation | null>;

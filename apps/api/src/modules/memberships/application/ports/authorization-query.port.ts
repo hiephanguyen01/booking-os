@@ -1,6 +1,7 @@
 import type { PermissionKey, SystemRole } from "@booking-os/auth";
 
 export interface TenantAuthorizationSnapshot {
+  readonly tenantSlug: string;
   readonly membershipId: string;
   readonly membershipStatus: "active";
   readonly membershipAuthorizationVersion: number;

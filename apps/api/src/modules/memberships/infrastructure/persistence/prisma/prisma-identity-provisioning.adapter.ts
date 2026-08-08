@@ -13,13 +13,8 @@ interface IdentityRow {
 
 function mapIdentity(row: IdentityRow, created: boolean): ProvisionedIdentity {
   if (row.status === "pending_activation" || row.status === "active") {
-    return Object.freeze({
-      userId: row.id,
-      status: row.status,
-      created,
-    });
+    return Object.freeze({ userId: row.id, status: row.status, created });
   }
-
   throw new Error("Identity is not eligible for tenant provisioning.");
 }
 
@@ -43,22 +38,18 @@ export class PrismaIdentityProvisioningAdapter implements IdentityProvisioningPo
       input.now,
     );
     const created = inserted[0];
-    if (created) {
-      return mapIdentity(created, true);
-    }
+    if (created) return mapIdentity(created, true);
 
     const existing = await this.transaction.$queryRawUnsafe<readonly IdentityRow[]>(
       `SELECT "id", "status"::text AS "status"
        FROM "users"
        WHERE "normalized_email" = $1
-       LIMIT 1`,
+       LIMIT 1
+       FOR UPDATE`,
       input.normalizedEmail,
     );
     const row = existing[0];
-    if (!row) {
-      throw new Error("Identity provisioning did not resolve a user.");
-    }
-
+    if (!row) throw new Error("Identity provisioning did not resolve a user.");
     return mapIdentity(row, false);
   }
 

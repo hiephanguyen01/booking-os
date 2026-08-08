@@ -18,7 +18,7 @@ export interface IdentityEmailDispatchResult {
 }
 
 function messageFor(
-  template: "account_activation" | "password_reset",
+  template: "account_activation" | "password_reset" | "membership_invitation",
   hostname: string,
   token: string,
   recipient: string,
@@ -31,6 +31,15 @@ function messageFor(
       to: recipient,
       subject: "Activate your Booking OS account",
       text: `Open this link to activate your Booking OS account:\n\n${link}\n\nThis link can be used once and expires in 24 hours.`,
+    });
+  }
+
+  if (template === "membership_invitation") {
+    const link = `https://${hostname}/invite/accept#token=${encodedToken}`;
+    return Object.freeze({
+      to: recipient,
+      subject: "You are invited to Booking OS",
+      text: `Open this link to review and accept your Booking OS invitation:\n\n${link}\n\nThis link can be used once and expires in 24 hours.`,
     });
   }
 
@@ -56,9 +65,7 @@ export class IdentityEmailDispatcher {
     try {
       await this.sender.send(message);
     } catch (error: unknown) {
-      if (error instanceof IdentityEmailDeliveryError) {
-        throw error;
-      }
+      if (error instanceof IdentityEmailDeliveryError) throw error;
       throw new IdentityEmailDeliveryError("identity_email.smtp_temporary", true);
     }
 
