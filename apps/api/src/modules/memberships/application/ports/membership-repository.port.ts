@@ -6,6 +6,7 @@ export interface CreateInvitedMembershipInput {
 }
 
 export interface MembershipRepositoryPort {
+  list(): Promise<readonly TenantMembership[]>;
   findById(id: string): Promise<TenantMembership | null>;
   findByUserId(userId: string): Promise<TenantMembership | null>;
   lockById(id: string): Promise<TenantMembership | null>;
