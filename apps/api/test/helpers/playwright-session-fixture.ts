@@ -71,6 +71,7 @@ export async function createPlaywrightSession(input: PlaywrightSessionInput): Pr
 
     if (input.scope.type === "tenant") {
       const tenantId = input.scope.tenantId;
+      const tenantRoleKey = input.tenantRoleKey;
       const fixtureOwnerEmail = `playwright-${FIXTURE_OWNER_USER_ID}@example.test`;
       await prisma.user.upsert({
         where: { id: FIXTURE_OWNER_USER_ID },
@@ -170,7 +171,7 @@ export async function createPlaywrightSession(input: PlaywrightSessionInput): Pr
           },
           select: { id: true, roleId: true },
         });
-        const actorRoleId = TENANT_ROLE_IDS[input.tenantRoleKey];
+        const actorRoleId = TENANT_ROLE_IDS[tenantRoleKey];
         if (!actorAssignment) {
           await transaction.roleAssignment.create({
             data: {
