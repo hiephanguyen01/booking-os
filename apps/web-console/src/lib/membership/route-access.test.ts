@@ -47,5 +47,8 @@ test("middleware matcher protects the actual authenticated console page URLs", (
 });
 
 test("invitation acceptance shell stays outside auth middleware for fragment handoff", () => {
-  assert.equal(middlewareConfig.matcher.some((pattern) => pattern.startsWith("/invite")), false);
+  assert.equal(
+    middlewareConfig.matcher.some((pattern) => pattern.startsWith("/invite")),
+    false,
+  );
 });
