@@ -22,6 +22,7 @@ import { PlatformTenantProvisioningWorkflow } from "./application/use-cases/plat
 import { ProvisionTenantUseCase } from "./application/use-cases/provision-tenant.use-case.js";
 import { ResendInvitationUseCase } from "./application/use-cases/resend-invitation.use-case.js";
 import { ResendOwnerInvitationUseCase } from "./application/use-cases/resend-owner-invitation.use-case.js";
+import { ResolvePendingInvitationLoginUseCase } from "./application/use-cases/resolve-pending-invitation-login.use-case.js";
 import { TenantAdminInvitationWorkflow } from "./application/use-cases/tenant-admin-invitation.workflow.js";
 import {
   AesMembershipInvitationEnvelopeAdapter,
@@ -198,6 +199,14 @@ import {
         new GetCurrentInvitationUseCase(workflow),
     },
     {
+      provide: ResolvePendingInvitationLoginUseCase,
+      inject: [GetCurrentInvitationUseCase],
+      useFactory: (
+        currentInvitation: GetCurrentInvitationUseCase,
+      ): ResolvePendingInvitationLoginUseCase =>
+        new ResolvePendingInvitationLoginUseCase(currentInvitation),
+    },
+    {
       provide: GetTenantProvisioningUseCase,
       inject: [PrismaPlatformTenantProvisioningQueryAdapter, EnvironmentService],
       useFactory: (
@@ -229,6 +238,7 @@ import {
     InviteTenantAdminUseCase,
     ResendInvitationUseCase,
     GetCurrentInvitationUseCase,
+    ResolvePendingInvitationLoginUseCase,
   ],
 })
 export class MembershipsModule {}

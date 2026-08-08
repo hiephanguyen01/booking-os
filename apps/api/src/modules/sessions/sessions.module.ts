@@ -11,6 +11,8 @@ import { DatabaseModule } from "../../database/database.module.js";
 import { DependenciesModule } from "../../dependencies/dependencies.module.js";
 import { REDIS_CLIENT_TOKEN } from "../../dependencies/tokens.js";
 import { API_LOGGER_TOKEN } from "../../observability/tokens.js";
+import { ResolvePendingInvitationLoginUseCase } from "../memberships/application/use-cases/resolve-pending-invitation-login.use-case.js";
+import { MembershipsModule } from "../memberships/memberships.module.js";
 import type { CredentialVerifierPort } from "./application/ports/credential-verifier.port.js";
 import type { LoginAbuseMetricsPort } from "./application/ports/login-abuse-metrics.port.js";
 import type { LoginAbuseProtectionPort } from "./application/ports/login-abuse-protection.port.js";
@@ -34,6 +36,7 @@ import { SessionCsrfGuard } from "./infrastructure/http/session-csrf.guard.js";
 import { SessionCsrfHttpController } from "./infrastructure/http/session-csrf-http.controller.js";
 import { SessionHttpController } from "./infrastructure/http/session-http.controller.js";
 import { SessionRequiredGuard } from "./infrastructure/http/session-required.guard.js";
+import { MembershipAwareSessionSubjectAdapter } from "./infrastructure/membership/membership-aware-session-subject.adapter.js";
 import { StructuredLoginAbuseMetricsAdapter } from "./infrastructure/observability/structured-login-abuse-metrics.adapter.js";
 import { PrismaCredentialVerifierAdapter } from "./infrastructure/persistence/prisma/prisma-credential-verifier.adapter.js";
 import { PrismaSessionRepositoryAdapter } from "./infrastructure/persistence/prisma/prisma-session-repository.adapter.js";
@@ -55,7 +58,7 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
 }
 
 @Module({
-  imports: [DatabaseModule, DependenciesModule, RequestContextModule],
+  imports: [DatabaseModule, DependenciesModule, RequestContextModule, MembershipsModule],
   controllers: [SessionHttpController, SessionCsrfHttpController],
   providers: [
     {
@@ -70,9 +73,15 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
       provide: CREDENTIAL_VERIFIER_PORT,
       useClass: PrismaCredentialVerifierAdapter,
     },
+    PrismaSessionSubjectAdapter,
     {
       provide: SESSION_SUBJECT_PORT,
-      useClass: PrismaSessionSubjectAdapter,
+      inject: [PrismaSessionSubjectAdapter, ResolvePendingInvitationLoginUseCase],
+      useFactory: (
+        activeSubjects: PrismaSessionSubjectAdapter,
+        pendingInvitations: ResolvePendingInvitationLoginUseCase,
+      ): SessionSubjectPort =>
+        new MembershipAwareSessionSubjectAdapter(activeSubjects, pendingInvitations),
     },
     {
       provide: SESSION_DIGEST_KEY,
