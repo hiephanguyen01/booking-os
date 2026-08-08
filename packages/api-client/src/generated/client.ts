@@ -54,6 +54,22 @@ export interface ResendTenantAdminInvitationParameters {
   readonly path: operations["resendTenantAdminInvitation"]["parameters"]["path"];
 }
 
+export interface DemoteTenantMembershipOwnerParameters {
+  readonly path: operations["demoteTenantMembershipOwner"]["parameters"]["path"];
+}
+
+export interface PromoteTenantMembershipOwnerParameters {
+  readonly path: operations["promoteTenantMembershipOwner"]["parameters"]["path"];
+}
+
+export interface RevokeTenantMembershipParameters {
+  readonly path: operations["revokeTenantMembership"]["parameters"]["path"];
+}
+
+export interface SuspendTenantMembershipParameters {
+  readonly path: operations["suspendTenantMembership"]["parameters"]["path"];
+}
+
 export interface ProvisionPlatformTenantParameters {
   readonly headers: operations["provisionPlatformTenant"]["parameters"]["header"];
   readonly body: operations["provisionPlatformTenant"]["requestBody"]["content"]["application/json"];
@@ -85,6 +101,11 @@ export interface GeneratedClient {
   readonly acceptMembershipInvitation: (parameters: AcceptMembershipInvitationParameters, options?: GeneratedRequestOptions) => Promise<operations["acceptMembershipInvitation"]["responses"][200]["content"]["application/json"]>;
   readonly getCurrentMembershipInvitation: (options?: GeneratedRequestOptions) => Promise<operations["getCurrentMembershipInvitation"]["responses"][200]["content"]["application/json"]>;
   readonly resendTenantAdminInvitation: (parameters: ResendTenantAdminInvitationParameters, options?: GeneratedRequestOptions) => Promise<operations["resendTenantAdminInvitation"]["responses"][202]["content"]["application/json"]>;
+  readonly listTenantMemberships: (options?: GeneratedRequestOptions) => Promise<operations["listTenantMemberships"]["responses"][200]["content"]["application/json"]>;
+  readonly demoteTenantMembershipOwner: (parameters: DemoteTenantMembershipOwnerParameters, options?: GeneratedRequestOptions) => Promise<operations["demoteTenantMembershipOwner"]["responses"][200]["content"]["application/json"]>;
+  readonly promoteTenantMembershipOwner: (parameters: PromoteTenantMembershipOwnerParameters, options?: GeneratedRequestOptions) => Promise<operations["promoteTenantMembershipOwner"]["responses"][200]["content"]["application/json"]>;
+  readonly revokeTenantMembership: (parameters: RevokeTenantMembershipParameters, options?: GeneratedRequestOptions) => Promise<operations["revokeTenantMembership"]["responses"][200]["content"]["application/json"]>;
+  readonly suspendTenantMembership: (parameters: SuspendTenantMembershipParameters, options?: GeneratedRequestOptions) => Promise<operations["suspendTenantMembership"]["responses"][200]["content"]["application/json"]>;
   readonly provisionPlatformTenant: (parameters: ProvisionPlatformTenantParameters, options?: GeneratedRequestOptions) => Promise<operations["provisionPlatformTenant"]["responses"][200]["content"]["application/json"]>;
   readonly getPlatformTenantProvisioning: (parameters: GetPlatformTenantProvisioningParameters, options?: GeneratedRequestOptions) => Promise<operations["getPlatformTenantProvisioning"]["responses"][200]["content"]["application/json"]>;
   readonly resendPlatformTenantOwnerInvitation: (parameters: ResendPlatformTenantOwnerInvitationParameters, options?: GeneratedRequestOptions) => Promise<operations["resendPlatformTenantOwnerInvitation"]["responses"][202]["content"]["application/json"]>;
@@ -200,6 +221,36 @@ export function createGeneratedClient(transport: GeneratedTransport): GeneratedC
       return transport<operations["resendTenantAdminInvitation"]["responses"][202]["content"]["application/json"]>({
       method: "POST",
       path: `/api/membership/invitations/${encodeURIComponent(String(parameters.path.invitationId))}/resend`,
+      }, options);
+    },
+    async listTenantMemberships(options) {
+      return transport<operations["listTenantMemberships"]["responses"][200]["content"]["application/json"]>({
+      method: "GET",
+      path: "/api/memberships",
+      }, options);
+    },
+    async demoteTenantMembershipOwner(parameters, options) {
+      return transport<operations["demoteTenantMembershipOwner"]["responses"][200]["content"]["application/json"]>({
+      method: "POST",
+      path: `/api/memberships/${encodeURIComponent(String(parameters.path.membershipId))}/demote-owner`,
+      }, options);
+    },
+    async promoteTenantMembershipOwner(parameters, options) {
+      return transport<operations["promoteTenantMembershipOwner"]["responses"][200]["content"]["application/json"]>({
+      method: "POST",
+      path: `/api/memberships/${encodeURIComponent(String(parameters.path.membershipId))}/promote-owner`,
+      }, options);
+    },
+    async revokeTenantMembership(parameters, options) {
+      return transport<operations["revokeTenantMembership"]["responses"][200]["content"]["application/json"]>({
+      method: "POST",
+      path: `/api/memberships/${encodeURIComponent(String(parameters.path.membershipId))}/revoke`,
+      }, options);
+    },
+    async suspendTenantMembership(parameters, options) {
+      return transport<operations["suspendTenantMembership"]["responses"][200]["content"]["application/json"]>({
+      method: "POST",
+      path: `/api/memberships/${encodeURIComponent(String(parameters.path.membershipId))}/suspend`,
       }, options);
     },
     async provisionPlatformTenant(parameters, options) {

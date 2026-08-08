@@ -276,6 +276,86 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/memberships": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get: operations["listTenantMemberships"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/memberships/{membershipId}/demote-owner": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post: operations["demoteTenantMembershipOwner"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/memberships/{membershipId}/promote-owner": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post: operations["promoteTenantMembershipOwner"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/memberships/{membershipId}/revoke": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post: operations["revokeTenantMembership"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/memberships/{membershipId}/suspend": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post: operations["suspendTenantMembership"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/platform/tenants": {
         readonly parameters: {
             readonly query?: never;
@@ -489,6 +569,32 @@ export interface components {
         readonly TenantInvitationAcceptedResponseDto: {
             /** @enum {boolean} */
             readonly accepted: true;
+        };
+        readonly TenantMembershipLifecycleMutationResponseDto: {
+            readonly authorizationVersion: number;
+            /** Format: uuid */
+            readonly membershipId: string;
+            readonly revokedSessionCount: number;
+            /** @enum {string} */
+            readonly status: "suspended" | "revoked";
+        };
+        readonly TenantMembershipResponseDto: {
+            readonly authorizationVersion: number;
+            /** Format: uuid */
+            readonly id: string;
+            readonly roleKeys: readonly ("tenant_owner" | "tenant_admin")[];
+            /** @enum {string} */
+            readonly status: "invited" | "active" | "suspended" | "revoked";
+            /** Format: uuid */
+            readonly userId: string;
+        };
+        readonly TenantMembershipRoleMutationResponseDto: {
+            readonly authorizationVersion: number;
+            /** Format: uuid */
+            readonly membershipId: string;
+            readonly revokedSessionCount: number;
+            /** @enum {string} */
+            readonly roleKey: "tenant_owner" | "tenant_admin";
         };
         readonly TenantProvisioningResponseDto: {
             /** Format: uuid */
@@ -884,6 +990,109 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["CurrentTenantInvitationResponseDto"];
+                };
+            };
+        };
+    };
+    readonly listTenantMemberships: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": readonly components["schemas"]["TenantMembershipResponseDto"][];
+                };
+            };
+        };
+    };
+    readonly demoteTenantMembershipOwner: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly membershipId: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["TenantMembershipRoleMutationResponseDto"];
+                };
+            };
+        };
+    };
+    readonly promoteTenantMembershipOwner: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly membershipId: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["TenantMembershipRoleMutationResponseDto"];
+                };
+            };
+        };
+    };
+    readonly revokeTenantMembership: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly membershipId: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["TenantMembershipLifecycleMutationResponseDto"];
+                };
+            };
+        };
+    };
+    readonly suspendTenantMembership: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly membershipId: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["TenantMembershipLifecycleMutationResponseDto"];
                 };
             };
         };
