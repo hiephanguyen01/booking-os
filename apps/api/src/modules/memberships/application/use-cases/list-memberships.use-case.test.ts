@@ -14,7 +14,7 @@ const ACTOR_ID = "10000000-0000-4000-8000-000000000001";
 const TARGET_ID = "10000000-0000-4000-8000-000000000002";
 const MEMBERSHIP_ID = "40000000-0000-4000-8000-000000000002";
 
-const authorization: AuthorizationContext = Object.freeze({
+const authorization: AuthorizationContext = {
   userId: ACTOR_ID,
   sessionId: "60000000-0000-4000-8000-000000000001",
   scope: { type: "tenant", tenantId: TENANT_ID, tenantSlug: "acme" },
@@ -24,7 +24,7 @@ const authorization: AuthorizationContext = Object.freeze({
   permissionKeys: [PERMISSION_KEYS.tenantMembershipRead],
   userAuthorizationVersion: 1,
   membershipAuthorizationVersion: 1,
-});
+};
 
 const membership: TenantMembership = Object.freeze({
   id: MEMBERSHIP_ID,
