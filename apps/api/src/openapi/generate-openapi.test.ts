@@ -102,6 +102,7 @@ test("generates the contract without binding a port or reaching infrastructure",
       "/api/health",
       "/api/membership/invitations",
       "/api/membership/invitations/{invitationId}/resend",
+      "/api/membership/invitations/accept",
       "/api/membership/invitations/current",
       "/api/platform/tenants",
       "/api/platform/tenants/{tenantId}",
@@ -115,6 +116,7 @@ test("generates the contract without binding a port or reaching infrastructure",
         .filter((operationId): operationId is string => operationId !== undefined)
         .sort(),
       [
+        "acceptMembershipInvitation",
         "completeAccountActivation",
         "completePasswordReset",
         "createTenantAdminInvitation",
@@ -177,6 +179,16 @@ test("generates the contract without binding a port or reaching infrastructure",
     const createAdminInvitation = document.paths["/api/membership/invitations"]?.post;
     assert.equal(
       createAdminInvitation?.responses?.["202"]?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/TenantInvitationAcceptedResponseDto",
+    );
+
+    const acceptInvitation = document.paths["/api/membership/invitations/accept"]?.post;
+    assert.equal(
+      acceptInvitation?.requestBody?.content?.["application/json"]?.schema?.$ref,
+      "#/components/schemas/AcceptTenantInvitationRequestDto",
+    );
+    assert.equal(
+      acceptInvitation?.responses?.["200"]?.content?.["application/json"]?.schema?.$ref,
       "#/components/schemas/TenantInvitationAcceptedResponseDto",
     );
 
