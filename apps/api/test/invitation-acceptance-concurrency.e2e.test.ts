@@ -60,6 +60,13 @@ function restoreEnvironmentValue(key: keyof typeof originalEnvironment): void {
   else process.env[key] = value;
 }
 
+function describeRejection(reason: unknown): string {
+  if (reason instanceof Error) {
+    return `${reason.name}: ${reason.message}\n${reason.stack ?? ""}`;
+  }
+  return String(reason);
+}
+
 async function seed(): Promise<void> {
   const now = new Date();
   const ownerRole = await prisma.role.upsert({
@@ -245,10 +252,11 @@ test("two concurrent accepts produce exactly one activation and one rotated live
   const rejected = results.filter(
     (result): result is PromiseRejectedResult => result.status === "rejected",
   );
+  const rejectionDetails = rejected.map(({ reason }) => describeRejection(reason)).join("\n---\n");
 
-  assert.equal(fulfilled.length, 1);
-  assert.equal(rejected.length, 1);
-  assert.ok(rejected[0]?.reason instanceof InvitationInvalidOrExpiredError);
+  assert.equal(fulfilled.length, 1, rejectionDetails);
+  assert.equal(rejected.length, 1, rejectionDetails);
+  assert.ok(rejected[0]?.reason instanceof InvitationInvalidOrExpiredError, rejectionDetails);
   assert.equal(fulfilled[0]?.value.accepted, true);
 
   const invitation = await prisma.membershipInvitation.findUniqueOrThrow({
