@@ -20,13 +20,12 @@ const tenant: ConsoleSessionSummary = {
 const cases = [
   ["/platform/create", platform, true],
   ["/platform/create", tenant, false],
-  ["/platform/invitation-pending/status", invitationPending, true],
-  ["/invite/accept", invitationPending, true],
-  ["/invite/accept", platform, true],
+  ["/platform/status", platform, true],
   ["/tenant", tenant, true],
   ["/settings/members", tenant, true],
   ["/settings/members", platform, false],
   ["/tenant", invitationPending, false],
+  ["/unknown", platform, false],
 ] as const;
 
 for (const [pathname, session, expected] of cases) {
@@ -35,12 +34,15 @@ for (const [pathname, session, expected] of cases) {
   });
 }
 
-test("middleware matcher protects the actual Task 8 page URLs", () => {
+test("middleware matcher protects the actual authenticated console page URLs", () => {
   assert.deepEqual(middlewareConfig.matcher, [
     "/api/:path*",
     "/platform/:path*",
-    "/invite/:path*",
     "/tenant/:path*",
     "/settings/:path*",
   ]);
+});
+
+test("invitation acceptance shell stays outside auth middleware for fragment handoff", () => {
+  assert.equal(middlewareConfig.matcher.some((pattern) => pattern.startsWith("/invite")), false);
 });
