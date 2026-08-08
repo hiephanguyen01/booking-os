@@ -57,7 +57,12 @@ function createTransactions(events: string[]): TenantTransactionPort {
             assert.equal(id, MEMBERSHIP_ID);
             assert.equal(now, NOW);
             events.push("membership.suspend");
-            return { ...activeAdmin, status: "suspended", authorizationVersion: 5, suspendedAt: NOW };
+            return {
+              ...activeAdmin,
+              status: "suspended",
+              authorizationVersion: 5,
+              suspendedAt: NOW,
+            };
           },
         },
         roles: {
@@ -86,7 +91,11 @@ function createTransactions(events: string[]): TenantTransactionPort {
               actorUserId: ACTOR_ID,
               subjectUserId: TARGET_ID,
               requestId: "request-suspend",
-              metadata: { membershipId: MEMBERSHIP_ID, authorizationVersion: 5, revokedSessionCount: 2 },
+              metadata: {
+                membershipId: MEMBERSHIP_ID,
+                authorizationVersion: 5,
+                revokedSessionCount: 2,
+              },
               occurredAt: NOW,
             });
             events.push("audit.append");
