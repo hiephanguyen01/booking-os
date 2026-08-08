@@ -127,7 +127,7 @@ async function seed(): Promise<void> {
       tenantId: TENANT_ID,
       userId: INVITEE_ID,
       status: "invited",
-      authorizationVersion: 0,
+      authorizationVersion: 1,
     },
   });
 
@@ -161,7 +161,7 @@ async function seed(): Promise<void> {
     scope: { type: "tenant", tenantId: TENANT_ID },
     hostname: HOSTNAME,
     state: "invitation_pending",
-    authorizationVersion: 0,
+    authorizationVersion: 1,
     requestId: `pr26-pending-session-${RUN_TAG}`,
   });
   sessionId = created.session.id;
@@ -267,9 +267,9 @@ test("two concurrent accepts produce exactly one activation and one rotated live
   assert.equal(invitation.status, "accepted");
   assert.notEqual(invitation.acceptedAt, null);
   assert.equal(membership.status, "active");
-  assert.equal(membership.authorizationVersion, 1);
+  assert.equal(membership.authorizationVersion, 2);
   assert.equal(session.state, "active");
-  assert.equal(session.authorizationVersion, 1);
+  assert.equal(session.authorizationVersion, 2);
   assert.equal(
     assignments.filter((assignment) => assignment.role.key === "tenant_admin").length,
     1,
