@@ -63,6 +63,11 @@ export class PromoteOwnerUseCase {
           throw new RoleGrantNotAllowedError();
         }
 
+        await session.roles.revoke({
+          userId: membership.userId,
+          roleKey: SYSTEM_ROLES.tenantAdmin,
+          now,
+        });
         await session.roles.assign({
           userId: membership.userId,
           roleKey: SYSTEM_ROLES.tenantOwner,
