@@ -1,10 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import {
-  createSessionToken,
-  deriveSessionSecretDigest,
-  parseSessionToken,
-} from "@booking-os/auth";
+import { createSessionToken, deriveSessionSecretDigest, parseSessionToken } from "@booking-os/auth";
 import { PrismaClient } from "@prisma/client";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -22,9 +18,7 @@ interface TenantPlaywrightSessionInput {
   readonly scope: { readonly type: "tenant"; readonly tenantId: string };
 }
 
-export type PlaywrightSessionInput =
-  | PlatformPlaywrightSessionInput
-  | TenantPlaywrightSessionInput;
+export type PlaywrightSessionInput = PlatformPlaywrightSessionInput | TenantPlaywrightSessionInput;
 
 function deriveSessionDigestKey(): Uint8Array {
   return createHash("sha256")
@@ -40,8 +34,8 @@ export async function createPlaywrightSession(input: PlaywrightSessionInput): Pr
   const fixtureEmail = `playwright-${input.userId}@example.test`;
   const binding =
     input.scope.type === "platform"
-      ? ({ scopeType: "platform" as const, tenantId: null })
-      : ({ scopeType: "tenant" as const, tenantId: input.scope.tenantId });
+      ? { scopeType: "platform" as const, tenantId: null }
+      : { scopeType: "tenant" as const, tenantId: input.scope.tenantId };
 
   try {
     await prisma.user.upsert({
