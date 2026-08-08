@@ -69,6 +69,11 @@ export class DemoteOwnerUseCase {
           throw new LastTenantOwnerError();
         }
 
+        await session.roles.revoke({
+          userId: membership.userId,
+          roleKey: SYSTEM_ROLES.tenantOwner,
+          now,
+        });
         if (!targetRoles.includes(SYSTEM_ROLES.tenantAdmin)) {
           await session.roles.assign({
             userId: membership.userId,
@@ -76,11 +81,6 @@ export class DemoteOwnerUseCase {
             now,
           });
         }
-        await session.roles.revoke({
-          userId: membership.userId,
-          roleKey: SYSTEM_ROLES.tenantOwner,
-          now,
-        });
         const authorizationVersion = await session.memberships.incrementAuthorizationVersion(
           membership.id,
           now,
