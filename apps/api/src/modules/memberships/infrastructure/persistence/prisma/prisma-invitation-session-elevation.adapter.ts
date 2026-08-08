@@ -4,6 +4,10 @@ import { createSessionToken, deriveSessionSecretDigest, parseSessionToken } from
 import type { Prisma } from "@prisma/client";
 
 import type {
+  RevokeTenantSessionsForUserInput,
+  TenantSessionRevocationPort,
+} from "../../../../sessions/application/ports/session-repository.port.js";
+import type {
   ElevateInvitationSessionInput,
   SessionElevationPort,
   SessionElevationResult,
@@ -80,6 +84,33 @@ const INSERT_ROTATED_SESSION_TOKEN_SQL = `
   )
 `;
 
+const REVOKE_TENANT_USER_SESSIONS_SQL = `
+  UPDATE "auth_sessions"
+  SET
+    "state" = 'revoked',
+    "revoked_at" = $3::timestamptz,
+    "revocation_reason" = $4,
+    "compromised_at" = NULL,
+    "version" = "version" + 1,
+    "updated_at" = $3::timestamptz
+  WHERE "tenant_id" = $1::uuid
+    AND "user_id" = $2::uuid
+    AND "scope_type" = 'tenant'
+    AND "revoked_at" IS NULL
+`;
+
+const REVOKE_TENANT_USER_SESSION_TOKENS_SQL = `
+  UPDATE "auth_session_tokens" AS token
+  SET "revoked_at" = $3::timestamptz
+  FROM "auth_sessions" AS session
+  WHERE token."session_id" = session."id"
+    AND token."tenant_id" = $1::uuid
+    AND session."tenant_id" = $1::uuid
+    AND session."user_id" = $2::uuid
+    AND session."scope_type" = 'tenant'
+    AND token."revoked_at" IS NULL
+`;
+
 interface LockedInvitationSessionRow {
   readonly id: string;
   readonly absoluteExpiresAt: Date;
@@ -91,7 +122,9 @@ export interface PrismaInvitationSessionElevationOptions {
   readonly tokenFactory?: () => string;
 }
 
-export class PrismaInvitationSessionElevationAdapter implements SessionElevationPort {
+export class PrismaInvitationSessionElevationAdapter
+  implements SessionElevationPort, TenantSessionRevocationPort
+{
   private readonly idFactory: () => string;
   private readonly tokenFactory: () => string;
 
@@ -177,5 +210,24 @@ export class PrismaInvitationSessionElevationAdapter implements SessionElevation
       sessionId: input.sessionId,
       rotatedToken,
     });
+  }
+
+  async revokeTenantSessionsForUser(input: RevokeTenantSessionsForUserInput): Promise<number> {
+    const revokedSessionCount = await this.transaction.$executeRawUnsafe(
+      REVOKE_TENANT_USER_SESSIONS_SQL,
+      this.tenantId,
+      input.userId,
+      input.revokedAt,
+      input.reason,
+    );
+    if (revokedSessionCount === 0) return 0;
+
+    await this.transaction.$executeRawUnsafe(
+      REVOKE_TENANT_USER_SESSION_TOKENS_SQL,
+      this.tenantId,
+      input.userId,
+      input.revokedAt,
+    );
+    return revokedSessionCount;
   }
 }
