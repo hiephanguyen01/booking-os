@@ -1,7 +1,7 @@
 import {
   createOneTimeToken,
-  parseOneTimeToken,
   type ParsedOneTimeToken,
+  parseOneTimeToken,
   verifyOneTimeTokenSecret,
 } from "@booking-os/auth";
 
