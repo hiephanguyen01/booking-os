@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { StructuredLogger } from "@booking-os/observability";
-import { type MiddlewareConsumer, Module, type NestModule } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 
 import { RequestContextModule } from "../../common/request-context/request-context.module.js";
@@ -11,8 +11,6 @@ import { DatabaseModule } from "../../database/database.module.js";
 import { DependenciesModule } from "../../dependencies/dependencies.module.js";
 import { REDIS_CLIENT_TOKEN } from "../../dependencies/tokens.js";
 import { API_LOGGER_TOKEN } from "../../observability/tokens.js";
-import { TenantResolutionMiddleware } from "../tenancy/infrastructure/http/tenant-resolution.middleware.js";
-import { TenancyModule } from "../tenancy/tenancy.module.js";
 import type { CredentialVerifierPort } from "./application/ports/credential-verifier.port.js";
 import type { LoginAbuseMetricsPort } from "./application/ports/login-abuse-metrics.port.js";
 import type { LoginAbuseProtectionPort } from "./application/ports/login-abuse-protection.port.js";
@@ -57,7 +55,7 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
 }
 
 @Module({
-  imports: [DatabaseModule, DependenciesModule, RequestContextModule, TenancyModule],
+  imports: [DatabaseModule, DependenciesModule, RequestContextModule],
   controllers: [SessionHttpController, SessionCsrfHttpController],
   providers: [
     {
@@ -211,10 +209,4 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
     SessionCsrfGuard,
   ],
 })
-export class SessionsModule implements NestModule {
-  configure(consumer: MiddlewareConsumer): void {
-    consumer
-      .apply(TenantResolutionMiddleware, SessionAuthMiddleware)
-      .forRoutes(SessionHttpController, SessionCsrfHttpController);
-  }
-}
+export class SessionsModule {}
