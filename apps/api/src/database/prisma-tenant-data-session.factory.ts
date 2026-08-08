@@ -32,7 +32,7 @@ function isFactoryOptions(
 
 @Injectable()
 export class PrismaTenantDataSessionFactory {
-  private readonly sessionElevationOptions?: PrismaInvitationSessionElevationOptions;
+  private readonly sessionElevationOptions: PrismaInvitationSessionElevationOptions | undefined;
 
   constructor(
     @Inject(EnvironmentService)
