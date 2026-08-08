@@ -13,10 +13,7 @@ import {
 import { GetCurrentInvitationUseCase } from "../memberships/application/use-cases/get-current-invitation.use-case.js";
 import { CreateSessionUseCase } from "./application/use-cases/create-session.js";
 import { LoginUseCase } from "./application/use-cases/login.use-case.js";
-import {
-  CREDENTIAL_VERIFIER_PORT,
-  LOGIN_ABUSE_PROTECTION_PORT,
-} from "./sessions.tokens.js";
+import { CREDENTIAL_VERIFIER_PORT, LOGIN_ABUSE_PROTECTION_PORT } from "./sessions.tokens.js";
 
 const USER_ID = "11111111-1111-4111-8111-111111111111";
 const TENANT_ID = "22222222-2222-4222-8222-222222222222";
