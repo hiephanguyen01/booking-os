@@ -1,0 +1,124 @@
+name: Diagnose Task 7
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: diagnose-task7-${{ github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Task 7 quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Restore Turborepo cache
+        uses: actions/cache@v5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-task7-quality-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-quality-
+            ${{ runner.os }}-turbo-
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check formatting and static rules
+        run: pnpm check:ci
+      - name: Verify frontend library boundaries
+        run: pnpm verify:frontend-libraries
+      - name: Lint workspaces
+        run: pnpm lint
+      - name: Typecheck workspaces
+        run: pnpm typecheck
+
+  test:
+    name: Task 7 root tests
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: booking
+          POSTGRES_PASSWORD: booking
+          POSTGRES_DB: booking_os_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U booking -d booking_os_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://booking:booking@127.0.0.1:5432/booking_os_test
+      REDIS_URL: redis://127.0.0.1:6379/1
+      SESSION_SECRET: test-only-session-secret-at-least-32-characters
+      PAYMENT_PROVIDER: mock
+      NODE_ENV: test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Restore Turborepo cache
+        uses: actions/cache@v5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-task7-test-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-test-
+            ${{ runner.os }}-turbo-
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate Prisma schema
+        run: pnpm --filter @booking-os/api prisma:validate
+      - name: Apply database migrations
+        run: pnpm --filter @booking-os/api prisma:migrate:deploy
+      - name: Run root tests and capture output
+        id: root-tests
+        continue-on-error: true
+        run: pnpm test 2>&1 | tee task7-root-test.log
+      - name: Upload root test output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task7-root-test-diagnostics
+          path: task7-root-test.log
+          retention-days: 1
+      - name: Preserve root test failure
+        if: steps.root-tests.outcome == 'failure'
+        run: exit 1
