@@ -26,9 +26,7 @@ test("membership list forwards only the validated session cookie without caching
     },
   });
 
-  const response = await handlers.listMemberships(
-    sessionRequest("/api/tenants/tenant-a/members"),
-  );
+  const response = await handlers.listMemberships(sessionRequest("/api/tenants/tenant-a/members"));
 
   assert.equal(response.status, 200);
   assert.equal(captured?.url, `${API_BASE_URL}/memberships`);
