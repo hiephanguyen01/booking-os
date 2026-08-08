@@ -1,32 +1,11 @@
-import type { SystemRole } from "@booking-os/auth";
-
 import type {
   TenantDataSession,
   TenantTransactionPort,
 } from "../../../tenancy/application/ports/tenant-transaction.port.js";
 import { InvitationInvalidOrExpiredError } from "../../domain/membership-errors.js";
 import { isPendingInvitationAvailable } from "../../domain/membership-invitation.js";
+import type { MembershipInvitationTokenPort } from "../ports/membership-invitation-token.port.js";
 import type { SessionElevationPort } from "../ports/session-elevation.port.js";
-
-export interface ParsedMembershipInvitationToken {
-  readonly selector: string;
-  readonly secret: string;
-}
-
-export interface VerifyMembershipInvitationTokenInput {
-  readonly secret: string;
-  readonly expectedTokenHash: string;
-  readonly tenantId: string;
-  readonly userId: string;
-  readonly hostname: string;
-  readonly normalizedEmail: string;
-  readonly intendedRoleKey: SystemRole;
-}
-
-export interface InvitationAcceptanceTokenPort {
-  parse(serialized: string): ParsedMembershipInvitationToken | null;
-  verify(input: VerifyMembershipInvitationTokenInput): boolean;
-}
 
 export interface AcceptInvitationCommand {
   readonly tenantId: string;
@@ -49,7 +28,7 @@ type InvitationAcceptanceDataSession = TenantDataSession & {
 export class AcceptInvitationUseCase {
   constructor(
     private readonly transactions: TenantTransactionPort,
-    private readonly tokens: InvitationAcceptanceTokenPort,
+    private readonly tokens: MembershipInvitationTokenPort,
     private readonly clock: () => Date = () => new Date(),
   ) {}
 
