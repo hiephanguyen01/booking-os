@@ -207,7 +207,7 @@ export function createMembershipBffHandlers(
       const upstream = await dependencies.fetch(apiEndpoint(apiBaseUrl, options.path), {
         method: "POST",
         headers,
-        body,
+        ...(body === undefined ? {} : { body }),
         cache: "no-store",
         redirect: "error",
       });
