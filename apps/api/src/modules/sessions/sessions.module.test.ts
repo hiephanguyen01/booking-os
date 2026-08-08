@@ -113,7 +113,11 @@ test("SessionsModule composes pending invitation eligibility into the real login
         execute: async () => true,
       })
       .overrideProvider(REDIS_CLIENT_TOKEN)
-      .useValue({})
+      .useValue({
+        status: "ready",
+        quit: async () => "OK",
+        disconnect: () => undefined,
+      })
       .overrideProvider(POSTGRES_READINESS_PROBE_TOKEN)
       .useValue({ dependency: "postgresql", check: async () => ({ status: "ok", latencyMs: 1 }) })
       .overrideProvider(REDIS_READINESS_PROBE_TOKEN)
