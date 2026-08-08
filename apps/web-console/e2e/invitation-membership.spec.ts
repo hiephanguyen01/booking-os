@@ -71,7 +71,7 @@ test("invited user consumes a fragment-only token and lands in active tenant con
 
   await page.getByRole("button", { name: "Accept invitation" }).click();
   await expect(page).toHaveURL(`${CONSOLE_BASE_URL}/settings/members`);
-  await expect(page.getByRole("heading", { name: "Members" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Members", exact: true })).toBeVisible();
 });
 
 test("tenant owner invites an administrator, inspects state, and suspends the member", async ({
