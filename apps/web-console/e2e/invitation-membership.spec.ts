@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-const CONSOLE_BASE_URL = "http://localhost:3002";
+import { installAuthenticatedSession } from "./authenticated-session.ts";
+
+const CONSOLE_HOSTNAME = "tenant-a.booking.localhost";
+const CONSOLE_BASE_URL = `http://${CONSOLE_HOSTNAME}:3002`;
 const TENANT_ID = "11111111-1111-4111-8111-111111111111";
 const OWNER_ID = "22222222-2222-4222-8222-222222222222";
 const ADMIN_ID = "33333333-3333-4333-8333-333333333333";
@@ -37,8 +40,15 @@ const members = [
 ];
 
 test("invited user consumes a fragment-only token and lands in active tenant context", async ({
+  context,
   page,
 }) => {
+  await installAuthenticatedSession(context, {
+    origin: CONSOLE_BASE_URL,
+    userId: OWNER_ID,
+    hostname: CONSOLE_HOSTNAME,
+    scope: { type: "tenant", tenantId: TENANT_ID },
+  });
   await page.route(`${CONSOLE_BASE_URL}/api/invitations/*/accept`, async (route) => {
     expect(route.request().url()).toContain(encodeURIComponent(INVITATION_TOKEN));
     await route.fulfill({
@@ -75,11 +85,18 @@ test("invited user consumes a fragment-only token and lands in active tenant con
 });
 
 test("tenant owner invites an administrator, inspects state, and suspends the member", async ({
+  context,
   page,
 }) => {
   let invitationCommand: unknown;
   let suspended = false;
 
+  await installAuthenticatedSession(context, {
+    origin: CONSOLE_BASE_URL,
+    userId: OWNER_ID,
+    hostname: CONSOLE_HOSTNAME,
+    scope: { type: "tenant", tenantId: TENANT_ID },
+  });
   await page.route(`${CONSOLE_BASE_URL}/api/auth/me`, async (route) => {
     await route.fulfill({
       status: 200,
@@ -139,7 +156,13 @@ test("tenant owner invites an administrator, inspects state, and suspends the me
   await expect.poll(() => suspended).toBe(true);
 });
 
-test("tenant administrator UI does not expose owner-role mutations", async ({ page }) => {
+test("tenant administrator UI does not expose owner-role mutations", async ({ context, page }) => {
+  await installAuthenticatedSession(context, {
+    origin: CONSOLE_BASE_URL,
+    userId: ADMIN_ID,
+    hostname: CONSOLE_HOSTNAME,
+    scope: { type: "tenant", tenantId: TENANT_ID },
+  });
   await page.route(`${CONSOLE_BASE_URL}/api/auth/me`, async (route) => {
     await route.fulfill({
       status: 200,
