@@ -1,3 +1,4 @@
+import { serializeSessionCookie } from "@booking-os/auth";
 import {
   BadRequestException,
   Body,
@@ -10,6 +11,7 @@ import {
   Param,
   Post,
   Req,
+  Res,
   UseGuards,
 } from "@nestjs/common";
 import {
@@ -27,6 +29,7 @@ import type { RequestHeaders } from "../../../../common/request-context/request-
 import { SessionCsrfGuard } from "../../../../common/security/session-csrf.guard.js";
 import { SessionRequired } from "../../../../common/security/session-required.decorator.js";
 import { EnvironmentService } from "../../../../config/environment.service.js";
+import { AcceptInvitationUseCase } from "../../application/use-cases/accept-invitation.use-case.js";
 import {
   BuildTenantAuthorizationContextUseCase,
   TenantAuthorizationDeniedError,
@@ -39,6 +42,7 @@ import {
   RoleGrantNotAllowedError,
 } from "../../domain/membership-errors.js";
 import {
+  AcceptTenantInvitationRequestDto,
   CreateTenantAdminInvitationRequestDto,
   CurrentTenantInvitationResponseDto,
   TenantInvitationAcceptedResponseDto,
@@ -46,6 +50,10 @@ import {
 
 interface TenantInvitationRequest {
   readonly headers: RequestHeaders;
+}
+
+interface TenantInvitationHeaderResponse {
+  setHeader(name: string, value: string): void;
 }
 
 function firstHeaderValue(value: string | string[] | undefined): string | undefined {
@@ -80,6 +88,12 @@ function requireUuid(value: unknown): string {
   return normalized;
 }
 
+function requireToken(value: unknown): string {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  if (!normalized) throw new BadRequestException("token is required.");
+  return normalized;
+}
+
 @SupportedApi()
 @ApiTags("membership-invitations")
 @UseGuards(SessionCsrfGuard)
@@ -93,6 +107,8 @@ export class TenantInvitationsController {
     @Inject(ResendInvitationUseCase) private readonly resendInvitation: ResendInvitationUseCase,
     @Inject(GetCurrentInvitationUseCase)
     private readonly getCurrentInvitation: GetCurrentInvitationUseCase,
+    @Inject(AcceptInvitationUseCase)
+    private readonly acceptInvitation: AcceptInvitationUseCase,
     @Inject(EnvironmentService)
     private readonly environment: Pick<EnvironmentService, "trustProxy">,
   ) {}
@@ -112,6 +128,45 @@ export class TenantInvitationsController {
         userId: authenticated.actorId,
         hostname,
       });
+    } catch (error: unknown) {
+      if (error instanceof InvitationInvalidOrExpiredError) throw new NotFoundException();
+      throw error;
+    }
+  }
+
+  @SessionRequired()
+  @Post("accept")
+  @HttpCode(200)
+  @ApiOperation({ operationId: "acceptMembershipInvitation" })
+  @ApiBody({ type: AcceptTenantInvitationRequestDto })
+  @ApiOkResponse({ type: TenantInvitationAcceptedResponseDto })
+  async accept(
+    @Body() body: AcceptTenantInvitationRequestDto,
+    @Req() request: TenantInvitationRequest,
+    @Res({ passthrough: true }) response: TenantInvitationHeaderResponse,
+  ): Promise<{ readonly accepted: true }> {
+    const authenticated = this.requestContext.requireAuthenticated();
+    if (
+      authenticated.authScope.type !== "tenant" ||
+      authenticated.sessionState !== "invitation_pending"
+    ) {
+      throw new ForbiddenException("Invitation-pending session is required.");
+    }
+    const hostname = effectiveHostname(request.headers, this.environment.trustProxy);
+    if (!hostname) throw new BadRequestException("A valid host is required.");
+
+    try {
+      const result = await this.acceptInvitation.execute({
+        tenantId: authenticated.authScope.tenantId,
+        userId: authenticated.actorId,
+        sessionId: authenticated.sessionId,
+        hostname,
+        token: requireToken(body?.token),
+        requestId: authenticated.requestId,
+      });
+      response.setHeader("Cache-Control", "private, no-store");
+      response.setHeader("Set-Cookie", serializeSessionCookie(result.rotatedSessionToken));
+      return { accepted: true };
     } catch (error: unknown) {
       if (error instanceof InvitationInvalidOrExpiredError) throw new NotFoundException();
       throw error;
