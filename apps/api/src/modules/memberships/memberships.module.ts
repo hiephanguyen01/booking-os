@@ -60,7 +60,11 @@ import {
 
 @Module({
   imports: [DatabaseModule, TenancyModule],
-  controllers: [PlatformTenantsController, TenantInvitationsController, TenantMembershipsController],
+  controllers: [
+    PlatformTenantsController,
+    TenantInvitationsController,
+    TenantMembershipsController,
+  ],
   providers: [
     SessionCsrfGuard,
     {
