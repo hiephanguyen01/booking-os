@@ -47,6 +47,7 @@ test("invited user consumes a fragment-only token and lands in active tenant con
     origin: CONSOLE_BASE_URL,
     userId: OWNER_ID,
     hostname: CONSOLE_HOSTNAME,
+    tenantRoleKey: "tenant_owner",
     scope: { type: "tenant", tenantId: TENANT_ID },
   });
   await page.route(`${CONSOLE_BASE_URL}/api/invitations/*/accept`, async (route) => {
@@ -95,6 +96,7 @@ test("tenant owner invites an administrator, inspects state, and suspends the me
     origin: CONSOLE_BASE_URL,
     userId: OWNER_ID,
     hostname: CONSOLE_HOSTNAME,
+    tenantRoleKey: "tenant_owner",
     scope: { type: "tenant", tenantId: TENANT_ID },
   });
   await page.route(`${CONSOLE_BASE_URL}/api/auth/me`, async (route) => {
@@ -161,6 +163,7 @@ test("tenant administrator UI does not expose owner-role mutations", async ({ co
     origin: CONSOLE_BASE_URL,
     userId: ADMIN_ID,
     hostname: CONSOLE_HOSTNAME,
+    tenantRoleKey: "tenant_admin",
     scope: { type: "tenant", tenantId: TENANT_ID },
   });
   await page.route(`${CONSOLE_BASE_URL}/api/auth/me`, async (route) => {
