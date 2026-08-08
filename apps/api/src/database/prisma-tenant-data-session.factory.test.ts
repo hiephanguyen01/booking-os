@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  createSessionToken,
-  deriveSessionSecretDigest,
-  parseSessionToken,
-} from "@booking-os/auth";
+import { createSessionToken, deriveSessionSecretDigest, parseSessionToken } from "@booking-os/auth";
 import type { Prisma } from "@prisma/client";
 
 import type { SessionElevationPort } from "../modules/memberships/application/ports/session-elevation.port.js";
