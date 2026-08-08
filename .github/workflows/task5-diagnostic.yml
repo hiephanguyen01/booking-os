@@ -65,3 +65,36 @@ jobs:
             echo "::error file=.github/workflows/task5-diagnostic.yml,line=1,title=Task 5 failing test blocks::$details"
           fi
           exit "$status"
+
+  generated-contract:
+    name: Generated contract artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NODE_ENV: test
+      API_PREFIX: api
+      DATABASE_URL: postgresql://booking:booking@127.0.0.1:1/booking_os_openapi
+      REDIS_URL: redis://127.0.0.1:1/15
+      SESSION_SECRET: openapi-ci-only-secret-at-least-32-characters
+      PAYMENT_PROVIDER: mock
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm api:generate
+      - uses: actions/upload-artifact@v4
+        with:
+          name: task5-generated-contract
+          if-no-files-found: error
+          retention-days: 1
+          path: |
+            packages/contracts/openapi/openapi.json
+            packages/api-client/src/generated/schema.ts
+            packages/api-client/src/generated/client.ts
