@@ -13,6 +13,10 @@ import type { PlatformTenantProvisioningTransactionPort } from "./application/po
 import type { TenantActivationEnvelopePort } from "./application/ports/tenant-activation-envelope.port.js";
 import type { TenantActivationTokenPort } from "./application/ports/tenant-activation-token.port.js";
 import type { TenantAdminInvitationEnvelopePort } from "./application/ports/tenant-admin-invitation-envelope.port.js";
+import {
+  AcceptInvitationUseCase,
+  type InvitationAcceptanceTokenPort,
+} from "./application/use-cases/accept-invitation.use-case.js";
 import { BuildPlatformAuthorizationContextUseCase } from "./application/use-cases/build-platform-authorization-context.use-case.js";
 import { BuildTenantAuthorizationContextUseCase } from "./application/use-cases/build-tenant-authorization-context.use-case.js";
 import { GetCurrentInvitationUseCase } from "./application/use-cases/get-current-invitation.use-case.js";
@@ -179,6 +183,14 @@ import {
       inject: [TENANT_TRANSACTION_PORT],
       useFactory: (transactions: TenantTransactionPort): BuildTenantAuthorizationContextUseCase =>
         new BuildTenantAuthorizationContextUseCase(transactions),
+    },
+    {
+      provide: AcceptInvitationUseCase,
+      inject: [TENANT_TRANSACTION_PORT, MEMBERSHIP_INVITATION_TOKEN_PORT],
+      useFactory: (
+        transactions: TenantTransactionPort,
+        invitationTokens: InvitationAcceptanceTokenPort,
+      ): AcceptInvitationUseCase => new AcceptInvitationUseCase(transactions, invitationTokens),
     },
     {
       provide: InviteTenantAdminUseCase,
