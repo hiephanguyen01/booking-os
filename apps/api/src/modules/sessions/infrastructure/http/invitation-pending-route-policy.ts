@@ -1,9 +1,9 @@
-export interface InvitationPendingRouteInput {
+export interface InvitationPendingRoute {
   readonly method: string;
   readonly path: string;
 }
 
-const INVITATION_PENDING_ROUTES = new Set([
+const ALLOWED_INVITATION_PENDING_ROUTES = new Set<string>([
   "GET /auth/csrf",
   "GET /auth/me",
   "POST /auth/logout",
@@ -12,6 +12,6 @@ const INVITATION_PENDING_ROUTES = new Set([
   "POST /membership/invitations/accept",
 ]);
 
-export function isInvitationPendingRouteAllowed(input: InvitationPendingRouteInput): boolean {
-  return INVITATION_PENDING_ROUTES.has(`${input.method} ${input.path}`);
+export function isInvitationPendingRouteAllowed(route: InvitationPendingRoute): boolean {
+  return ALLOWED_INVITATION_PENDING_ROUTES.has(`${route.method} ${route.path}`);
 }
