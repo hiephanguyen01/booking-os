@@ -1,4 +1,4 @@
-name: Temporary Task 8 lockfile sync
+name: Temporary Task 8 workspace sync
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  sync-lockfile:
+  sync-workspace:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -27,16 +27,22 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-      - name: Sync lockfile
-        run: pnpm install --lockfile-only
-      - name: Commit lockfile when changed
+      - name: Install dependencies and sync lockfile
+        run: pnpm install --no-frozen-lockfile
+      - name: Format Task 8 files
+        run: >-
+          pnpm exec biome check --write
+          apps/web-console
+          e2e/platform-tenant-onboarding.spec.ts
+          e2e/invitation-membership.spec.ts
+      - name: Commit workspace updates when changed
         shell: bash
         run: |
-          if git diff --quiet -- pnpm-lock.yaml; then
+          if git diff --quiet; then
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add pnpm-lock.yaml
-          git commit -m "build(web-console): sync Task 8 lockfile"
+          git add apps/web-console pnpm-lock.yaml e2e/platform-tenant-onboarding.spec.ts e2e/invitation-membership.spec.ts
+          git commit -m "style(web-console): format Task 8 workspace"
           git push origin HEAD:feat/sprint-1b-03-task-5-tenant-admin-invitations
