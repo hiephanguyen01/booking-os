@@ -1,7 +1,12 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { createSessionToken, deriveSessionSecretDigest, parseSessionToken } from "@booking-os/auth";
 import { PrismaClient } from "@prisma/client";
+
+import {
+  createSessionToken,
+  deriveSessionSecretDigest,
+  parseSessionToken,
+} from "../../../../packages/auth/src/opaque-session.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PLAYWRIGHT_SESSION_SECRET = "e2e-only-session-secret-at-least-32-characters";
