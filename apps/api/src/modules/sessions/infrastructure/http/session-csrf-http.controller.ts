@@ -39,25 +39,3 @@ export class SessionCsrfHttpController extends CsrfController {
     return super.getCsrf(request, response);
   }
 }
-
-@SupportedApi()
-@ApiTags("sessions")
-@Controller("auth")
-export class CanonicalSessionCsrfHttpController extends SessionCsrfHttpController {
-  constructor(
-    @Inject(RequestContextStorage) requestContext: RequestContextStorage,
-    @Inject(EnvironmentService) environment: EnvironmentService,
-  ) {
-    super(requestContext, environment);
-  }
-
-  @Get("csrf")
-  @ApiOperation({ operationId: "getCsrf" })
-  @ApiOkResponse({ type: SessionCsrfResponseDto })
-  override getCsrf(
-    @Req() request: SessionCsrfRequest,
-    @Res({ passthrough: true }) response: SessionCsrfHeaderResponse,
-  ): CsrfResponse {
-    return super.getCsrf(request, response);
-  }
-}
