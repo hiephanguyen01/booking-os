@@ -6,12 +6,13 @@ import {
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
-import { PATH_METADATA } from "@nestjs/common/constants";
 import { Reflector } from "@nestjs/core";
 
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import { isInvitationPendingRouteAllowed } from "./invitation-pending-route-policy.js";
 import { SESSION_REQUIRED_METADATA } from "./session-required.decorator.js";
+
+const PATH_METADATA_KEY = "path";
 
 interface HttpRouteRequest {
   readonly method?: unknown;
@@ -20,8 +21,8 @@ interface HttpRouteRequest {
   };
 }
 
-function singlePathMetadata(target: Function): string | undefined {
-  const value = Reflect.getMetadata(PATH_METADATA, target) as unknown;
+function singlePathMetadata(target: object): string | undefined {
+  const value = Reflect.getMetadata(PATH_METADATA_KEY, target) as unknown;
 
   if (typeof value === "string") {
     return value;
