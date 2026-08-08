@@ -14,18 +14,6 @@ export interface IssuedMembershipInvitationToken {
   readonly tokenHash: string;
 }
 
-export interface ParsedMembershipInvitationToken {
-  readonly selector: string;
-  readonly secret: string;
-}
-
-export interface VerifyMembershipInvitationTokenInput extends IssueMembershipInvitationTokenInput {
-  readonly secret: string;
-  readonly expectedTokenHash: string;
-}
-
 export interface MembershipInvitationTokenPort {
   issue(input: IssueMembershipInvitationTokenInput): IssuedMembershipInvitationToken;
-  parse(serialized: string): ParsedMembershipInvitationToken | null;
-  verify(input: VerifyMembershipInvitationTokenInput): boolean;
 }
