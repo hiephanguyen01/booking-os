@@ -13,6 +13,17 @@
         ],
         "type": "object"
       },
+      "AcceptTenantInvitationRequestDto": {
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
       "ActorDto": {
         "properties": {
           "id": {
@@ -65,6 +76,18 @@
         ],
         "type": "object"
       },
+      "CreateTenantAdminInvitationRequestDto": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
       "CurrentAuthenticationResponseDto": {
         "properties": {
           "actor": {
@@ -77,6 +100,40 @@
         "required": [
           "actor",
           "session"
+        ],
+        "type": "object"
+      },
+      "CurrentTenantInvitationResponseDto": {
+        "properties": {
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "hostname": {
+            "type": "string"
+          },
+          "intendedRoleKey": {
+            "enum": [
+              "tenant_owner",
+              "tenant_admin"
+            ],
+            "type": "string"
+          },
+          "invitationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "tenantId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "invitationId",
+          "tenantId",
+          "intendedRoleKey",
+          "hostname",
+          "expiresAt"
         ],
         "type": "object"
       },
@@ -405,6 +462,123 @@
           "lastSeenAt",
           "idleExpiresAt",
           "absoluteExpiresAt"
+        ],
+        "type": "object"
+      },
+      "TenantInvitationAcceptedResponseDto": {
+        "properties": {
+          "accepted": {
+            "enum": [
+              true
+            ],
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accepted"
+        ],
+        "type": "object"
+      },
+      "TenantMembershipLifecycleMutationResponseDto": {
+        "properties": {
+          "authorizationVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "membershipId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "revokedSessionCount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "status": {
+            "enum": [
+              "suspended",
+              "revoked"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "membershipId",
+          "status",
+          "authorizationVersion",
+          "revokedSessionCount"
+        ],
+        "type": "object"
+      },
+      "TenantMembershipResponseDto": {
+        "properties": {
+          "authorizationVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "roleKeys": {
+            "items": {
+              "enum": [
+                "tenant_owner",
+                "tenant_admin"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "invited",
+              "active",
+              "suspended",
+              "revoked"
+            ],
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "status",
+          "authorizationVersion",
+          "roleKeys"
+        ],
+        "type": "object"
+      },
+      "TenantMembershipRoleMutationResponseDto": {
+        "properties": {
+          "authorizationVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "membershipId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "revokedSessionCount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "roleKey": {
+            "enum": [
+              "tenant_owner",
+              "tenant_admin"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "membershipId",
+          "roleKey",
+          "authorizationVersion",
+          "revokedSessionCount"
         ],
         "type": "object"
       },
@@ -814,6 +988,277 @@
         "summary": "",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/api/membership/invitations": {
+      "post": {
+        "operationId": "createTenantAdminInvitation",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTenantAdminInvitationRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantInvitationAcceptedResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "membership-invitations"
+        ]
+      }
+    },
+    "/api/membership/invitations/{invitationId}/resend": {
+      "post": {
+        "operationId": "resendTenantAdminInvitation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invitationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantInvitationAcceptedResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "membership-invitations"
+        ]
+      }
+    },
+    "/api/membership/invitations/accept": {
+      "post": {
+        "operationId": "acceptMembershipInvitation",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptTenantInvitationRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantInvitationAcceptedResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "membership-invitations"
+        ]
+      }
+    },
+    "/api/membership/invitations/current": {
+      "get": {
+        "operationId": "getCurrentMembershipInvitation",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentTenantInvitationResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "membership-invitations"
+        ]
+      }
+    },
+    "/api/memberships": {
+      "get": {
+        "operationId": "listTenantMemberships",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TenantMembershipResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "memberships"
+        ]
+      }
+    },
+    "/api/memberships/{membershipId}/demote-owner": {
+      "post": {
+        "operationId": "demoteTenantMembershipOwner",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "membershipId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantMembershipRoleMutationResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "memberships"
+        ]
+      }
+    },
+    "/api/memberships/{membershipId}/promote-owner": {
+      "post": {
+        "operationId": "promoteTenantMembershipOwner",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "membershipId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantMembershipRoleMutationResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "memberships"
+        ]
+      }
+    },
+    "/api/memberships/{membershipId}/revoke": {
+      "post": {
+        "operationId": "revokeTenantMembership",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "membershipId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantMembershipLifecycleMutationResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "memberships"
+        ]
+      }
+    },
+    "/api/memberships/{membershipId}/suspend": {
+      "post": {
+        "operationId": "suspendTenantMembership",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "membershipId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantMembershipLifecycleMutationResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "memberships"
         ]
       }
     },

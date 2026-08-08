@@ -58,6 +58,17 @@ export class PrismaMembershipRepositoryAdapter implements MembershipRepositoryPo
     private readonly tenantId: string,
   ) {}
 
+  async list(): Promise<readonly TenantMembership[]> {
+    const rows = await this.transaction.$queryRawUnsafe<readonly MembershipRow[]>(
+      `SELECT ${MEMBERSHIP_COLUMNS}
+       FROM "tenant_memberships"
+       WHERE "tenant_id" = $1::uuid
+       ORDER BY "created_at", "id"`,
+      this.tenantId,
+    );
+    return Object.freeze(rows.map(mapMembership));
+  }
+
   async findById(id: string): Promise<TenantMembership | null> {
     const rows = await this.transaction.$queryRawUnsafe<readonly MembershipRow[]>(
       `SELECT ${MEMBERSHIP_COLUMNS}

@@ -3,11 +3,17 @@ import { IdentityEmailDeliveryError } from "./identity-email-error.js";
 
 export const IDENTITY_ACTIVATION_EVENT = "identity.activation.requested.v1" as const;
 export const IDENTITY_PASSWORD_RESET_EVENT = "identity.password_reset.requested.v1" as const;
+export const MEMBERSHIP_ADMIN_INVITATION_EVENT =
+  "membership.admin_invitation.requested.v1" as const;
 
 export type IdentityEmailEventType =
   | typeof IDENTITY_ACTIVATION_EVENT
-  | typeof IDENTITY_PASSWORD_RESET_EVENT;
-export type IdentityEmailTemplate = "account_activation" | "password_reset";
+  | typeof IDENTITY_PASSWORD_RESET_EVENT
+  | typeof MEMBERSHIP_ADMIN_INVITATION_EVENT;
+export type IdentityEmailTemplate =
+  | "account_activation"
+  | "password_reset"
+  | "membership_invitation";
 
 export interface IdentityEmailEnvelope {
   readonly version: 1;
@@ -25,6 +31,9 @@ export interface ParsedIdentityEmailEvent {
   readonly hostname: string;
   readonly template: IdentityEmailTemplate;
   readonly envelope: IdentityEmailEnvelope;
+  readonly tenantId?: string;
+  readonly invitationId?: string;
+  readonly intendedRoleKey?: "tenant_admin";
 }
 
 const SAFE_HOSTNAME_PATTERN = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::\d{1,5})?$/;
@@ -39,50 +48,85 @@ function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
 }
 
 function nonEmptyString(value: unknown): string {
-  if (typeof value !== "string" || value.length === 0) {
-    return invalidEvent();
-  }
+  if (typeof value !== "string" || value.length === 0) return invalidEvent();
   return value;
 }
 
 export function isIdentityEmailEventType(value: string): value is IdentityEmailEventType {
-  return value === IDENTITY_ACTIVATION_EVENT || value === IDENTITY_PASSWORD_RESET_EVENT;
+  return (
+    value === IDENTITY_ACTIVATION_EVENT ||
+    value === IDENTITY_PASSWORD_RESET_EVENT ||
+    value === MEMBERSHIP_ADMIN_INVITATION_EVENT
+  );
 }
 
 function expectedTemplate(eventType: IdentityEmailEventType): IdentityEmailTemplate {
-  return eventType === IDENTITY_ACTIVATION_EVENT ? "account_activation" : "password_reset";
+  if (eventType === IDENTITY_ACTIVATION_EVENT) return "account_activation";
+  if (eventType === IDENTITY_PASSWORD_RESET_EVENT) return "password_reset";
+  return "membership_invitation";
+}
+
+function parseEnvelope(value: unknown): IdentityEmailEnvelope {
+  if (!isRecord(value) || value.version !== 1) return invalidEvent();
+  return Object.freeze({
+    version: 1,
+    keyId: nonEmptyString(value.keyId),
+    iv: nonEmptyString(value.iv),
+    ciphertext: nonEmptyString(value.ciphertext),
+    tag: nonEmptyString(value.tag),
+  });
 }
 
 export function parseIdentityEmailEvent(
   name: string,
   data: OutboxJobPayload,
 ): ParsedIdentityEmailEvent {
-  if (!isIdentityEmailEventType(name) || data.aggregateType !== "user") {
+  if (!isIdentityEmailEventType(name) || !isRecord(data.payload) || data.payload.version !== 1) {
     return invalidEvent();
   }
 
   const eventId = nonEmptyString(data.eventId);
-  const userId = nonEmptyString(data.aggregateId);
-  if (!isRecord(data.payload) || data.payload.version !== 1) {
-    return invalidEvent();
-  }
-
   const recipient = nonEmptyString(data.payload.recipient);
   const hostname = nonEmptyString(data.payload.hostname).toLowerCase();
-  const template = nonEmptyString(data.payload.template);
-  const envelope = data.payload.envelope;
-
   if (
     !SIMPLE_EMAIL_PATTERN.test(recipient) ||
     recipient.includes("\r") ||
     recipient.includes("\n") ||
-    !SAFE_HOSTNAME_PATTERN.test(hostname) ||
-    template !== expectedTemplate(name) ||
-    !isRecord(envelope) ||
-    envelope.version !== 1
+    !SAFE_HOSTNAME_PATTERN.test(hostname)
   ) {
     return invalidEvent();
   }
+  const envelope = parseEnvelope(data.payload.envelope);
+
+  if (name === MEMBERSHIP_ADMIN_INVITATION_EVENT) {
+    if (data.aggregateType !== "membership_invitation") return invalidEvent();
+    const tenantId = nonEmptyString(data.tenantId);
+    const invitationId = nonEmptyString(data.aggregateId);
+    const userId = nonEmptyString(data.payload.userId);
+    if (
+      data.payload.purpose !== "membership_invitation" ||
+      data.payload.intendedRoleKey !== "tenant_admin"
+    ) {
+      return invalidEvent();
+    }
+    return Object.freeze({
+      eventId,
+      eventType: name,
+      userId,
+      recipient,
+      hostname,
+      template: "membership_invitation",
+      envelope,
+      tenantId,
+      invitationId,
+      intendedRoleKey: "tenant_admin",
+    });
+  }
+
+  if (data.aggregateType !== "user") return invalidEvent();
+  const userId = nonEmptyString(data.aggregateId);
+  const template = nonEmptyString(data.payload.template);
+  if (template !== expectedTemplate(name)) return invalidEvent();
 
   return Object.freeze({
     eventId,
@@ -91,12 +135,6 @@ export function parseIdentityEmailEvent(
     recipient,
     hostname,
     template,
-    envelope: Object.freeze({
-      version: 1,
-      keyId: nonEmptyString(envelope.keyId),
-      iv: nonEmptyString(envelope.iv),
-      ciphertext: nonEmptyString(envelope.ciphertext),
-      tag: nonEmptyString(envelope.tag),
-    }),
+    envelope,
   });
 }

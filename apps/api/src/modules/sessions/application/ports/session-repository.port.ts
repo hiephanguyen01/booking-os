@@ -63,6 +63,16 @@ export interface RevokeOtherSessionsInput {
   readonly reason: string;
 }
 
+export interface RevokeTenantSessionsForUserInput {
+  readonly userId: string;
+  readonly revokedAt: Date;
+  readonly reason: string;
+}
+
+export interface TenantSessionRevocationPort {
+  revokeTenantSessionsForUser(input: RevokeTenantSessionsForUserInput): Promise<number>;
+}
+
 export interface SessionRepositoryPort {
   create(input: CreateSessionRecord): Promise<CreateSessionRecord>;
   findBySelector(input: FindSessionInput): Promise<StoredSessionWithToken | null>;

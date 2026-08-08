@@ -1,7 +1,10 @@
 import { createDecipheriv } from "node:crypto";
 
 import { IdentityEmailDeliveryError } from "./identity-email-error.js";
-import type { ParsedIdentityEmailEvent } from "./identity-email-event.js";
+import {
+  MEMBERSHIP_ADMIN_INVITATION_EVENT,
+  type ParsedIdentityEmailEvent,
+} from "./identity-email-event.js";
 
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}$/;
@@ -14,10 +17,7 @@ function invalidEnvelope(): never {
 }
 
 function decodeBase64Url(value: string, expectedBytes?: number): Buffer {
-  if (!BASE64URL_PATTERN.test(value)) {
-    return invalidEnvelope();
-  }
-
+  if (!BASE64URL_PATTERN.test(value)) return invalidEnvelope();
   const decoded = Buffer.from(value, "base64url");
   if (
     decoded.toString("base64url") !== value ||
@@ -29,6 +29,26 @@ function decodeBase64Url(value: string, expectedBytes?: number): Buffer {
 }
 
 function associatedData(event: ParsedIdentityEmailEvent): Buffer {
+  if (event.eventType === MEMBERSHIP_ADMIN_INVITATION_EVENT) {
+    if (!event.tenantId || !event.invitationId || event.intendedRoleKey !== "tenant_admin") {
+      return invalidEnvelope();
+    }
+    return Buffer.from(
+      [
+        "booking-os:membership-email:v1",
+        event.eventType,
+        event.eventId,
+        event.tenantId,
+        event.invitationId,
+        event.userId,
+        event.hostname,
+        event.recipient,
+        event.intendedRoleKey,
+      ].join("\0"),
+      "utf8",
+    );
+  }
+
   return Buffer.from(
     [
       "booking-os:identity-email:v1",
@@ -53,9 +73,7 @@ export function decryptIdentityEmailToken(
     const key = Object.hasOwn(keyring, event.envelope.keyId)
       ? keyring[event.envelope.keyId]
       : undefined;
-    if (!key || key.byteLength !== AES_KEY_BYTES) {
-      return invalidEnvelope();
-    }
+    if (!key || key.byteLength !== AES_KEY_BYTES) return invalidEnvelope();
 
     const iv = decodeBase64Url(event.envelope.iv, GCM_IV_BYTES);
     const ciphertext = decodeBase64Url(event.envelope.ciphertext);

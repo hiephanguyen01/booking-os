@@ -35,7 +35,7 @@ export default defineConfig({
         NODE_ENV: "test",
         HOST: "127.0.0.1",
         TRUST_PROXY: "true",
-        TENANT_BASE_DOMAIN: "example.com",
+        TENANT_BASE_DOMAIN: "booking.localhost",
         PORT: "3001",
         API_PREFIX: "api",
         DATABASE_URL: databaseUrl,

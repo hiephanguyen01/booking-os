@@ -207,6 +207,9 @@ importers:
       react-hook-form:
         specifier: 'catalog:'
         version: 7.83.0(react@19.2.8)
+      zod:
+        specifier: 'catalog:'
+        version: 4.4.3
     devDependencies:
       '@booking-os/testing':
         specifier: workspace:*

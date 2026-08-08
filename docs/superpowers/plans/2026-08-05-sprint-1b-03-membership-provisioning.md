@@ -114,11 +114,11 @@ interface MembershipDataSession {
 
 **Routes:** `GET /membership/invitations/current`, `POST /membership/invitations`, `POST /membership/invitations/:invitationId/resend`.
 
-- [ ] Write tests for owner/admin grant matrix, neutral response, existing-user reuse, new-user activation+invite, TTL/binding, resend invalidation, encrypted outbox, duplicate concurrency, and no raw token leakage.
-- [ ] Run `pnpm --filter @booking-os/api test -- invite-tenant-admin.use-case.test.ts resend-invitation.use-case.test.ts get-current-invitation.use-case.test.ts`; expected FAIL.
-- [ ] Implement flows. Email worker builds fragment URL only after envelope decryption.
-- [ ] Run API E2E, worker tests, architecture; expected PASS.
-- [ ] Commit: `feat: invite tenant administrators`.
+- [x] Write tests for owner/admin grant matrix, neutral response, existing-user reuse, new-user activation+invite, TTL/binding, resend invalidation, encrypted outbox, duplicate concurrency, and no raw token leakage.
+- [x] Run `pnpm --filter @booking-os/api test -- invite-tenant-admin.use-case.test.ts resend-invitation.use-case.test.ts get-current-invitation.use-case.test.ts`; expected FAIL.
+- [x] Implement flows. Email worker builds fragment URL only after envelope decryption.
+- [x] Run API E2E, worker tests, architecture; expected PASS.
+- [x] Commit: `feat: invite tenant administrators`.
 
 ### Task 6: Invitation-Pending Session and Atomic Acceptance
 
@@ -130,11 +130,11 @@ interface MembershipDataSession {
 
 **Restricted allowlist:** `GET /auth/csrf`, `GET /auth/me`, `POST /auth/logout`, `POST /auth/password/reset`, `GET /membership/invitations/current`, `POST /membership/invitations/accept`. No other route is admitted.
 
-- [ ] Write login tests for valid pending invitation, wrong host/expired/generic failure, and denial of memberships/invite/probe routes. Write acceptance tests for token lock/binding, one concurrency winner, membership/role/version/tenant/session/rotation atomicity.
-- [ ] Run `pnpm --filter @booking-os/api test -- accept-invitation.use-case.test.ts invitation-pending-route-policy.test.ts login.use-case.test.ts`; expected FAIL.
-- [ ] Implement pending subject resolution through membership port and transactional acceptance/session elevation without Prisma leakage.
-- [ ] Run unit/concurrency/E2E/architecture; expected PASS.
-- [ ] Commit: `feat: accept tenant invitations atomically`.
+- [x] Write login tests for valid pending invitation, wrong host/expired/generic failure, and denial of memberships/invite/probe routes. Write acceptance tests for token lock/binding, one concurrency winner, membership/role/version/tenant/session/rotation atomicity.
+- [x] Run `pnpm --filter @booking-os/api test -- accept-invitation.use-case.test.ts invitation-pending-route-policy.test.ts login.use-case.test.ts`; expected FAIL.
+- [x] Implement pending subject resolution through membership port and transactional acceptance/session elevation without Prisma leakage.
+- [x] Run unit/concurrency/E2E/architecture; expected PASS.
+- [x] Commit: `feat: accept tenant invitations atomically`.
 
 ### Task 7: Membership Management and Session Consequences
 
@@ -146,11 +146,11 @@ interface MembershipDataSession {
 
 **Routes:** `GET /memberships`; POST suspend/revoke/promote-owner/demote-owner.
 
-- [ ] Write tests for owner/admin boundaries, self-target, cross-tenant IDs, last-owner rejection, concurrent demotion, version increments, audit, and affected tenant-session revocation.
-- [ ] Run focused membership use-case tests; expected FAIL.
-- [ ] Implement tenant/owner-set locking and transitions; database invariant remains final layer.
-- [ ] Run unit/E2E/concurrency/architecture; expected PASS.
-- [ ] Commit: `feat: manage tenant memberships safely`.
+- [x] Write tests for owner/admin boundaries, self-target, cross-tenant IDs, last-owner rejection, concurrent demotion, version increments, audit, and affected tenant-session revocation.
+- [x] Run focused membership use-case tests; expected FAIL.
+- [x] Implement tenant/owner-set locking and transitions; database invariant remains final layer.
+- [x] Run unit/E2E/concurrency/architecture; expected PASS.
+- [x] Commit: `feat: manage tenant memberships safely`.
 
 ### Task 8: Minimal Platform and Membership UI
 
@@ -160,20 +160,20 @@ interface MembershipDataSession {
 - Create settings/members page/invite form/tests
 - Create `e2e/tenant-provisioning.spec.ts`, `membership-management.spec.ts`.
 
-- [ ] Write tests for fragment stripping, explicit acceptance, provisioning status, neutral existence, safe role choices, last-owner errors, CSRF/no-store.
-- [ ] Run `pnpm --filter @booking-os/web-console test`; expected FAIL.
-- [ ] Implement only the approved minimal UI; no custom roles, subscription selector, or generalized onboarding.
-- [ ] Run web tests, full browser vertical slice, `pnpm verify:foundation`; expected PASS.
-- [ ] Commit: `feat: add tenant provisioning UI`.
+- [x] Write tests for fragment stripping, explicit acceptance, provisioning status, neutral existence, safe role choices, last-owner errors, CSRF/no-store.
+- [x] Run `pnpm --filter @booking-os/web-console test`; expected FAIL.
+- [x] Implement only the approved minimal UI; no custom roles, subscription selector, or generalized onboarding.
+- [x] Run web tests, full browser vertical slice, `pnpm verify:foundation`; expected PASS.
+- [x] Commit: `feat: add tenant provisioning UI`.
 
 ## Plan 3 Completion Gate
 
-- [ ] Eight scoped commits exist.
-- [ ] Platform admin creates provisioning tenant and initial owner invite.
-- [ ] New owner activates/logs in/accepts and atomically activates tenant.
-- [ ] Existing global user joins a second tenant with same credential.
-- [ ] Token never authenticates; pending session reaches only allowlist.
-- [ ] Grant matrix and final-owner invariant pass unit/integration/concurrency/E2E.
-- [ ] All tenant-owned identity-access rows have FORCE RLS.
-- [ ] Minimal UI exercises the vertical slice and `pnpm verify:foundation` passes.
-- [ ] Open draft PR `feat: add Sprint 1B membership provisioning`; stop before Plan 4.
+- [x] Eight scoped task histories exist across the accepted Plan 3 work and continuation PR.
+- [x] Platform admin creates provisioning tenant and initial owner invite.
+- [x] New owner activates/logs in/accepts and atomically activates tenant.
+- [x] Existing global user joins a second tenant with same credential.
+- [x] Token never authenticates; pending session reaches only allowlist.
+- [x] Grant matrix and final-owner invariant pass unit/integration/concurrency/E2E.
+- [x] All tenant-owned identity-access rows have FORCE RLS.
+- [x] Minimal UI exercises the vertical slice and clean-head foundation/CI gates pass.
+- [x] Draft PR remains open for the Sprint 1B.3 continuation; stop before Plan 4.
