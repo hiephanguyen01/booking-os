@@ -10,6 +10,7 @@ import request from "supertest";
 
 import { AppModule } from "../src/app.module.js";
 import { PrismaService } from "../src/database/prisma.service.js";
+import { RevokeMembershipUseCase } from "../src/modules/memberships/application/use-cases/revoke-membership.use-case.js";
 import { SuspendMembershipUseCase } from "../src/modules/memberships/application/use-cases/suspend-membership.use-case.js";
 import { CreateSessionUseCase } from "../src/modules/sessions/application/use-cases/create-session.js";
 
@@ -52,6 +53,7 @@ const originalEnvironment = {
 let app: INestApplication;
 let prisma: PrismaService;
 let createSession: CreateSessionUseCase;
+let revokeMembership: RevokeMembershipUseCase;
 let suspendMembership: SuspendMembershipUseCase;
 let tenantSession: Awaited<ReturnType<CreateSessionUseCase["execute"]>>;
 let otherTenantSession: Awaited<ReturnType<CreateSessionUseCase["execute"]>>;
@@ -70,7 +72,10 @@ function ownerAuthorization(): AuthorizationContext {
     membershipId: OWNER_MEMBERSHIP_ID,
     membershipStatus: "active",
     roleKeys: [SYSTEM_ROLES.tenantOwner],
-    permissionKeys: [PERMISSION_KEYS.tenantMembershipAdminSuspend],
+    permissionKeys: [
+      PERMISSION_KEYS.tenantMembershipAdminSuspend,
+      PERMISSION_KEYS.tenantMembershipAdminRevoke,
+    ],
     userAuthorizationVersion: 1,
     membershipAuthorizationVersion: 1,
   };
@@ -255,6 +260,7 @@ before(async () => {
   await app.init();
   prisma = app.get(PrismaService);
   createSession = app.get(CreateSessionUseCase);
+  revokeMembership = app.get(RevokeMembershipUseCase);
   suspendMembership = app.get(SuspendMembershipUseCase);
   await cleanup();
   await seed();
@@ -271,7 +277,7 @@ after(async () => {
   }
 });
 
-test("suspension revokes only the affected tenant sessions and makes its cookie stale", async () => {
+test("suspension then revocation isolates the target tenant's membership and sessions", async () => {
   const tenantCookie = `${BOOKING_SESSION_COOKIE}=${encodeURIComponent(tenantSession.token)}`;
   const otherTenantCookie = `${BOOKING_SESSION_COOKIE}=${encodeURIComponent(otherTenantSession.token)}`;
 
@@ -326,6 +332,57 @@ test("suspension revokes only the affected tenant sessions and makes its cookie 
   assert.equal(unaffectedSession.state, "active");
   assert.equal(unaffectedSession.revokedAt, null);
   assert.ok(unaffectedTokens.every((token) => token.revokedAt === null));
+
+  await request(app.getHttpServer())
+    .get("/api/auth/me")
+    .set("host", HOSTNAME)
+    .set("cookie", tenantCookie)
+    .expect(401);
+  await request(app.getHttpServer())
+    .get("/api/auth/me")
+    .set("host", OTHER_HOSTNAME)
+    .set("cookie", otherTenantCookie)
+    .expect(200);
+
+  const revokeResult = await revokeMembership.execute({
+    authorization: ownerAuthorization(),
+    membershipId: TARGET_MEMBERSHIP_ID,
+    requestId: `pr26-revoke-${RUN_TAG}`,
+  });
+
+  assert.equal(revokeResult.status, "revoked");
+  assert.equal(revokeResult.authorizationVersion, 3);
+  assert.equal(revokeResult.revokedSessionCount, 0);
+
+  const revokedMembership = await prisma.tenantMembership.findUniqueOrThrow({
+    where: { id: TARGET_MEMBERSHIP_ID },
+  });
+  const stillActiveOtherTenantMembership = await prisma.tenantMembership.findUniqueOrThrow({
+    where: { id: OTHER_TARGET_MEMBERSHIP_ID },
+  });
+  assert.equal(revokedMembership.status, "revoked");
+  assert.equal(revokedMembership.authorizationVersion, 3);
+  assert.equal(stillActiveOtherTenantMembership.status, "active");
+  assert.equal(stillActiveOtherTenantMembership.authorizationVersion, 1);
+
+  const stillRevokedSession = await prisma.authSession.findUniqueOrThrow({
+    where: { id: tenantSession.session.id },
+  });
+  const stillRevokedTokens = await prisma.authSessionToken.findMany({
+    where: { sessionId: tenantSession.session.id },
+  });
+  const stillLiveOtherTenantSession = await prisma.authSession.findUniqueOrThrow({
+    where: { id: otherTenantSession.session.id },
+  });
+  const stillLiveOtherTenantTokens = await prisma.authSessionToken.findMany({
+    where: { sessionId: otherTenantSession.session.id },
+  });
+  assert.equal(stillRevokedSession.state, "revoked");
+  assert.notEqual(stillRevokedSession.revokedAt, null);
+  assert.ok(stillRevokedTokens.every((token) => token.revokedAt !== null));
+  assert.equal(stillLiveOtherTenantSession.state, "active");
+  assert.equal(stillLiveOtherTenantSession.revokedAt, null);
+  assert.ok(stillLiveOtherTenantTokens.every((token) => token.revokedAt === null));
 
   await request(app.getHttpServer())
     .get("/api/auth/me")

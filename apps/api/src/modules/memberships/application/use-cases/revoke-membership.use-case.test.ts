@@ -40,7 +40,17 @@ const activeAdmin: TenantMembership = Object.freeze({
   updatedAt: new Date("2026-08-08T10:00:00.000Z"),
 });
 
-function createTransactions(events: string[]): TenantTransactionPort {
+const suspendedAdmin: TenantMembership = Object.freeze({
+  ...activeAdmin,
+  status: "suspended",
+  suspendedAt: new Date("2026-08-09T01:00:00.000Z"),
+  updatedAt: new Date("2026-08-09T01:00:00.000Z"),
+});
+
+function createTransactions(
+  events: string[],
+  membership: TenantMembership = activeAdmin,
+): TenantTransactionPort {
   return {
     async run(context, work) {
       assert.equal(context.tenantId, TENANT_ID);
@@ -51,14 +61,14 @@ function createTransactions(events: string[]): TenantTransactionPort {
           lockById: async (id: string) => {
             assert.equal(id, MEMBERSHIP_ID);
             events.push("membership.lock");
-            return activeAdmin;
+            return membership;
           },
           revoke: async (id: string, now: Date) => {
             assert.equal(id, MEMBERSHIP_ID);
             assert.equal(now, NOW);
             events.push("membership.revoke");
             return {
-              ...activeAdmin,
+              ...membership,
               status: "revoked",
               authorizationVersion: 8,
               revokedAt: NOW,
@@ -108,6 +118,34 @@ function createTransactions(events: string[]): TenantTransactionPort {
 test("revokes an active admin and revokes only that tenant's sessions", async () => {
   const events: string[] = [];
   const useCase = new RevokeMembershipUseCase(createTransactions(events), () => NOW);
+
+  const result = await useCase.execute({
+    authorization,
+    membershipId: MEMBERSHIP_ID,
+    requestId: "request-revoke",
+  });
+
+  assert.deepEqual(events, [
+    "membership.lock",
+    "role.list",
+    "membership.revoke",
+    "session.revoke",
+    "audit.append",
+  ]);
+  assert.deepEqual(result, {
+    membershipId: MEMBERSHIP_ID,
+    status: "revoked",
+    authorizationVersion: 8,
+    revokedSessionCount: 3,
+  });
+});
+
+test("revokes a suspended admin through the existing role, session, and audit flow", async () => {
+  const events: string[] = [];
+  const useCase = new RevokeMembershipUseCase(
+    createTransactions(events, suspendedAdmin),
+    () => NOW,
+  );
 
   const result = await useCase.execute({
     authorization,

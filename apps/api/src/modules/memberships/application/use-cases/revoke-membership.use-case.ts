@@ -50,7 +50,9 @@ export class RevokeMembershipUseCase {
       async (session) => {
         const membership = await session.memberships.lockById(command.membershipId);
         if (!membership) throw new MembershipRequiredError();
-        if (membership.status !== "active") throw new MembershipInactiveError();
+        if (membership.status !== "active" && membership.status !== "suspended") {
+          throw new MembershipInactiveError();
+        }
 
         const targetRoles = await session.roles.listActiveRoleKeys(membership.userId);
         if (
