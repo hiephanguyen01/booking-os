@@ -80,9 +80,41 @@ derive the public host and protocol with the same validated forwarded-protocol
 strategy used by identity and membership BFFs. Existing cross-origin rejection
 and secure-cookie sanitization remain unchanged.
 
+## Pending-session and identity follow-up
+
+The next live checkpoint exposed three additional contract mismatches:
+
+1. A valid existing-user invitation reaches the pending-session branch, but
+   that branch snapshots `authorizationVersion: 0`. PostgreSQL deliberately
+   requires positive authorization and session versions, and the security
+   contract says sessions snapshot the global user's authorization version.
+   After invitation eligibility succeeds, the membership-aware subject adapter
+   will read the current active user authorization version and use that positive
+   value. If the user no longer has a current version, login fails closed.
+2. Activation and password-reset forms currently declare every command as
+   platform-scoped. Tenant activation links contain only a fragment token, so a
+   browser cannot authoritatively supply a tenant ID. The API HTTP boundary will
+   instead derive identity scope from the already-resolved request context: an
+   exact platform hostname produces platform scope, and a resolved tenant host
+   produces tenant scope with its authoritative tenant ID. Unknown hosts fail
+   closed. Browser command bodies contain only email, or token and password;
+   client-supplied scope fields do not select authorization scope.
+3. The pre-auth CSRF service verifies tokens for 15 minutes but passes
+   `maxAge: 900` to Express, which interprets the value as milliseconds and
+   serializes `Max-Age=0`. The cookie option will use `900_000` milliseconds so
+   the transport lifetime matches the cryptographic lifetime; the real HTTP
+   response must serialize `Max-Age=900` seconds.
+
+Each correction receives a test-first regression at the boundary that failed:
+pending-subject resolution, authoritative identity command construction, and
+the actual Nest/Express `Set-Cookie` header.
+
 ## Scope
 
-No changes to Caddy configuration, API allowed origins, session cookie policy,
-or token cryptography are included. In addition to public-origin derivation,
-the live-flow follow-up extends the already-defined owner invitation event
-contract and the provisioning status response/UI.
+No changes to Caddy configuration, API allowed origins, the authenticated
+session-cookie policy, or token cryptography are included. In addition to
+public-origin derivation, the live-flow follow-up extends the already-defined
+owner invitation event contract and provisioning status response/UI, aligns
+pending-session authorization snapshots with the database invariant, derives
+public identity scope from authoritative host context, and corrects the
+pre-auth CSRF cookie lifetime unit.

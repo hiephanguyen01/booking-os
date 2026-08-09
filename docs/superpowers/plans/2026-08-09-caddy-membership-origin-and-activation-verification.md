@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Accept valid HTTPS membership mutations through local Caddy while retaining origin protection, and protect activation success feedback with regression coverage.
+**Goal:** Complete the local HTTPS tenant onboarding flow while retaining origin, scope, session-version, and CSRF protections at every browser/API boundary.
 
-**Architecture:** Membership BFF derives its public target from `Host` and validated `X-Forwarded-Proto`, matching the identity BFF. Tests cover this proxy boundary; activation receives only a success-state test because its backend completion already works.
+**Architecture:** Browser BFFs derive their public target from `Host` and validated `X-Forwarded-Proto`. Pending sessions snapshot the active user's positive authorization version, public identity commands derive scope from the API's resolved host context, and the pre-auth cookie lifetime matches its 15-minute cryptographic proof. Tests cover each live-failing boundary before implementation.
 
 **Tech Stack:** Next.js, TypeScript, Node test runner, Vitest, Testing Library, pnpm.
 
@@ -12,8 +12,11 @@
 
 - Accept only `http` or `https` from the first `X-Forwarded-Proto` value; otherwise use the request URL protocol.
 - Reject absent, malformed, or cross-site browser origins before upstream requests.
-- Do not change Caddy, API allowed origins, token handling, or session cookie policy.
+- Do not change Caddy, API allowed origins, authenticated session-cookie policy, or token cryptography.
 - Write and observe a failing membership regression test before production behavior changes.
+- Pending invitation sessions must use the current positive `User.authorizationVersion`; `0` is invalid.
+- Public identity scope comes only from the exact platform hostname or resolved tenant request context, never from browser-supplied scope fields.
+- Pre-auth CSRF proof and cookie lifetimes are both 15 minutes: Express receives `900_000` milliseconds and emits `Max-Age=900` seconds.
 
 ---
 
@@ -22,6 +25,11 @@
 - Modify `apps/web-console/src/lib/membership/membership-bff.ts`: public browser target derivation.
 - Modify `apps/web-console/src/lib/membership/membership-bff.test.ts`: Caddy TLS-termination regression.
 - Modify `apps/web-console/src/components/identity/identity-forms.test.tsx`: activation success UI assertion.
+- Modify `apps/api/src/modules/sessions/infrastructure/membership/membership-aware-session-subject.adapter.ts`: positive pending-session authorization snapshot.
+- Modify `apps/api/src/modules/identity/infrastructure/http/identity-public.controller.ts`: request-derived identity command scope.
+- Modify `apps/api/src/modules/identity/infrastructure/http/identity-public.nest.controller.ts`: authoritative platform/tenant scope resolution.
+- Modify identity form components and tests: omit browser-supplied scope fields.
+- Modify `apps/api/src/modules/identity/infrastructure/http/pre-auth-csrf.ts`: Express millisecond cookie lifetime.
 
 ### Task 1: Preserve public HTTPS origin in membership BFF
 
@@ -370,3 +378,219 @@ git commit -m "fix(console): honor forwarded HTTPS origin for sessions"
 - [ ] **Step 3:** Pause for confirmation immediately before submitting `OwnerDev123!`; after confirmation, activate/login owner and accept the invitation once, then verify single-use.
 - [ ] **Step 4:** Invite and activate `admin2@example.test`, pausing for confirmation before submitting `Admin2Dev123!`.
 - [ ] **Step 5:** Verify member roles, authorization boundaries, owner controls, last-owner invariant, logout/reset/session behavior, and automated test checkpoints from the attached checklist. Do not inspect browser cookie storage; infer session correctness from application behavior and API contracts.
+
+### Task 9: Persist a valid pending-session authorization version
+
+**Files:**
+
+- Modify: `apps/api/src/modules/sessions/infrastructure/membership/membership-aware-session-subject.adapter.ts`
+- Modify: `apps/api/src/modules/sessions/infrastructure/membership/membership-aware-session-subject.adapter.test.ts`
+- Modify: `apps/api/src/modules/sessions/sessions.module.test.ts`
+
+**Interfaces:**
+
+- Consumes: `SessionSubjectPort.currentAuthorizationVersion(userId): Promise<number | null>` after a tenant invitation is proven eligible.
+- Produces: `{ state: "invitation_pending", authorizationVersion: positiveUserVersion }`, or `null` when the user version is unavailable.
+
+- [ ] **Step 1: Write the failing pending-subject regressions**
+
+Change the eligible invitation test so the active-subject double returns user
+authorization version `7` and assert:
+
+```ts
+assert.deepEqual(result, { state: "invitation_pending", authorizationVersion: 7 });
+assert.deepEqual(harness.active.versionCalls, [USER_ID]);
+```
+
+Add a second case with `authorizationVersion = null` and assert the adapter
+returns `null`. Update the AppModule composition test to expect the positive
+version returned by its real subject provider instead of `0`.
+
+- [ ] **Step 2: Verify RED**
+
+```bash
+pnpm --filter @booking-os/api test -- membership-aware-session-subject.adapter.test.ts sessions.module.test.ts
+```
+
+Expected: current production returns `authorizationVersion: 0` and does not
+consult the current user version.
+
+- [ ] **Step 3: Implement the minimal fail-closed snapshot**
+
+After pending invitation eligibility succeeds, call
+`activeSubjects.currentAuthorizationVersion(input.userId)`. Return `null` when
+the result is `null` or not a positive integer; otherwise return the pending
+subject with that exact version. Do not relax the database constraint.
+
+- [ ] **Step 4: Verify GREEN and typecheck**
+
+```bash
+pnpm --filter @booking-os/api test -- membership-aware-session-subject.adapter.test.ts sessions.module.test.ts
+pnpm --filter @booking-os/api typecheck
+```
+
+Expected: both commands exit 0.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/api/src/modules/sessions/infrastructure/membership/membership-aware-session-subject.adapter.ts apps/api/src/modules/sessions/infrastructure/membership/membership-aware-session-subject.adapter.test.ts apps/api/src/modules/sessions/sessions.module.test.ts
+git commit -m "fix(api): persist valid pending session versions"
+```
+
+### Task 10: Derive public identity scope from authoritative host context
+
+**Files:**
+
+- Modify: `apps/api/src/modules/identity/infrastructure/http/identity-public.controller.ts`
+- Modify: `apps/api/src/modules/identity/infrastructure/http/identity-public.controller.test.ts`
+- Modify: `apps/api/src/modules/identity/infrastructure/http/identity-public.nest.controller.ts`
+- Modify: `apps/api/src/modules/identity/infrastructure/http/identity-public.nest.controller.test.ts`
+- Modify: `apps/web-console/src/components/identity/forgot-password-form.tsx`
+- Modify: `apps/web-console/src/components/identity/password-command-form.tsx`
+- Modify: `apps/web-console/src/components/identity/identity-forms.test.tsx`
+- Regenerate: `packages/contracts/openapi/openapi.json`
+- Regenerate: `packages/api-client/src/generated/schema.ts`
+- Regenerate: `packages/api-client/src/generated/client.ts`
+
+**Interfaces:**
+
+- Produces on `IdentityPublicHttpRequest`:
+
+```ts
+readonly scope:
+  | { readonly type: "platform" }
+  | { readonly type: "tenant"; readonly tenantId: string };
+```
+
+- Consumes: exact effective hostname, `EnvironmentService.platformHostname`, and optional `RequestContext.tenantId` populated by tenant resolution middleware.
+- Browser request bodies contain `{ email }` or `{ token, newPassword }`; scope fields cannot select the command scope.
+
+- [ ] **Step 1: Write failing API and form regressions**
+
+In the core controller test, create a tenant-scoped request and assert activation,
+forgot-password, and reset executors receive:
+
+```ts
+scopeType: "tenant",
+tenantId: "11111111-1111-4111-8111-111111111111",
+```
+
+even when an extra browser body field claims `scopeType: "platform"`.
+
+In the Nest controller test, assert exact platform host resolves platform scope,
+a request context with `tenantId` resolves tenant scope, and an unknown host with
+no tenant context throws before reaching the core controller.
+
+In `identity-forms.test.tsx`, assert activation, forgot-password, and reset
+payloads omit both `scopeType` and `tenantId`.
+
+- [ ] **Step 2: Verify RED**
+
+```bash
+pnpm --filter @booking-os/api test -- identity-public.controller.test.ts identity-public.nest.controller.test.ts
+pnpm --filter @booking-os/web-console test -- identity-forms.test.tsx
+```
+
+Expected: commands fail because the core trusts body scope and the forms hardcode
+platform scope.
+
+- [ ] **Step 3: Implement authoritative scope resolution**
+
+Add `scope` to `IdentityPublicHttpRequest`. At the Nest boundary, derive tenant
+scope only from `RequestContextStorage.require().tenantId`; otherwise derive
+platform scope only when the normalized effective hostname equals
+`EnvironmentService.platformHostname`. Reject every unresolved non-platform
+hostname. Build all three identity use-case commands from `request.scope` and
+remove scope properties from the public body DTOs and browser form payloads.
+
+- [ ] **Step 4: Verify GREEN, generated contracts, and typechecks**
+
+```bash
+pnpm --filter @booking-os/api test -- identity-public.controller.test.ts identity-public.nest.controller.test.ts
+pnpm --filter @booking-os/web-console test -- identity-forms.test.tsx identity-bff.test.ts
+pnpm api:generate
+pnpm api:check-generated
+pnpm --filter @booking-os/api typecheck
+pnpm --filter @booking-os/web-console typecheck
+```
+
+Expected: all commands exit 0; generated request schemas no longer require
+browser-supplied identity scope.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/api/src/modules/identity/infrastructure/http/identity-public.controller.ts apps/api/src/modules/identity/infrastructure/http/identity-public.controller.test.ts apps/api/src/modules/identity/infrastructure/http/identity-public.nest.controller.ts apps/api/src/modules/identity/infrastructure/http/identity-public.nest.controller.test.ts apps/web-console/src/components/identity/forgot-password-form.tsx apps/web-console/src/components/identity/password-command-form.tsx apps/web-console/src/components/identity/identity-forms.test.tsx packages/contracts/openapi/openapi.json packages/api-client/src/generated/schema.ts packages/api-client/src/generated/client.ts
+git commit -m "fix(identity): derive public scope from hostname"
+```
+
+### Task 11: Align the pre-auth CSRF cookie lifetime
+
+**Files:**
+
+- Modify: `apps/api/src/modules/identity/infrastructure/http/pre-auth-csrf.ts`
+- Modify: `apps/api/src/modules/identity/infrastructure/http/pre-auth-csrf.test.ts`
+- Modify: `apps/api/src/modules/identity/infrastructure/http/identity-public.controller.test.ts`
+- Modify: `apps/api/test/identity-routing.e2e.test.ts`
+
+**Interfaces:**
+
+- Produces: Express cookie option `maxAge: 900_000` milliseconds and HTTP header attribute `Max-Age=900` seconds.
+- Preserves: 15-minute token verification boundary and `Secure; HttpOnly; Path=/; SameSite=Strict`.
+
+- [ ] **Step 1: Write the failing HTTP regression**
+
+Extend `identity-routing.e2e.test.ts` to assert the real response cookie contains
+all of:
+
+```ts
+assert.match(cookie, /; Max-Age=900;/u);
+assert.match(cookie, /; Path=\//u);
+assert.match(cookie, /; HttpOnly/u);
+assert.match(cookie, /; Secure/u);
+assert.match(cookie, /; SameSite=Strict/u);
+```
+
+Update the service/controller expected cookie option to the independently
+derived millisecond value `15 * 60 * 1000`.
+
+- [ ] **Step 2: Verify RED**
+
+```bash
+pnpm --filter @booking-os/api test:e2e -- identity-routing.e2e.test.ts
+pnpm --filter @booking-os/api test -- pre-auth-csrf.test.ts identity-public.controller.test.ts
+```
+
+Expected: the HTTP assertion sees `Max-Age=0` and unit expectations see `900`.
+
+- [ ] **Step 3: Implement the single unit correction**
+
+Use the existing `CSRF_TTL_MS` constant as the cookie `maxAge` value and type the
+option as `900_000`. Do not change signing, purpose binding, or verification.
+
+- [ ] **Step 4: Verify GREEN and typecheck**
+
+```bash
+pnpm --filter @booking-os/api test:e2e -- identity-routing.e2e.test.ts
+pnpm --filter @booking-os/api test -- pre-auth-csrf.test.ts identity-public.controller.test.ts
+pnpm --filter @booking-os/api typecheck
+```
+
+Expected: all commands exit 0 and the real header emits `Max-Age=900`.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/api/src/modules/identity/infrastructure/http/pre-auth-csrf.ts apps/api/src/modules/identity/infrastructure/http/pre-auth-csrf.test.ts apps/api/src/modules/identity/infrastructure/http/identity-public.controller.test.ts apps/api/test/identity-routing.e2e.test.ts
+git commit -m "fix(identity): align pre-auth csrf lifetime"
+```
+
+### Task 12: Resume owner/admin/security live flow
+
+**Files:** Verify only.
+
+- [ ] **Step 1:** Restart or reload API, verify health/readiness, and log in `owner@example.test` on `acme-studio` using the already-confirmed password.
+- [ ] **Step 2:** Accept the still-pending owner invitation once, verify the second use fails, and confirm membership/role/tenant activation.
+- [ ] **Step 3:** Invite `admin2@example.test`, verify tenant-host activation and invitation emails, and pause immediately before submitting `Admin2Dev123!` for fresh confirmation.
+- [ ] **Step 4:** Complete the remaining authorization, final-owner, logout/reset/session, cross-tenant, hostname, TLS, automated-suite, and working-tree checkpoints from the attached checklist.
