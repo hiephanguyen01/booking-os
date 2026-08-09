@@ -27,7 +27,9 @@ export type GetPlatformTenantProvisioningInput = Readonly<{
   tenantId: string;
 }>;
 
-export type GetPlatformTenantProvisioningResult = Omit<ProvisionPlatformTenantResult, "replayed">;
+export type GetPlatformTenantProvisioningResult = Readonly<
+  Omit<ProvisionPlatformTenantResult, "replayed"> & { tenantName: string }
+>;
 
 export type ResendOwnerInvitationInput = Readonly<{
   actorUserId: string;

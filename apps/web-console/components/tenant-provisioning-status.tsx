@@ -12,6 +12,7 @@ interface TenantProvisioningStatusProps {
 
 interface ProvisioningStatus {
   readonly tenantId: string;
+  readonly tenantName: string;
   readonly slug: string;
   readonly status: "provisioning";
   readonly ownerMembershipId: string;
@@ -54,7 +55,11 @@ export function TenantProvisioningStatus({ tenantId }: TenantProvisioningStatusP
         <dl className="grid gap-3 rounded-md border bg-muted/30 p-4 text-sm sm:grid-cols-2">
           <div>
             <dt className="font-medium text-muted-foreground">Tenant</dt>
-            <dd className="font-semibold">{status.slug}</dd>
+            <dd className="font-semibold">{status.tenantName}</dd>
+          </div>
+          <div>
+            <dt className="font-medium text-muted-foreground">Tenant slug</dt>
+            <dd className="font-mono text-xs">{status.slug}</dd>
           </div>
           <div>
             <dt className="font-medium text-muted-foreground">Status</dt>

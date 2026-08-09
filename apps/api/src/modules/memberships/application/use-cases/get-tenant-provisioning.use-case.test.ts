@@ -33,6 +33,7 @@ function createHarness() {
       calls.push(input);
       return {
         tenantId: input.tenantId,
+        tenantName: "Acme Studio",
         slug: "acme",
         status: "provisioning" as const,
         ownerMembershipId: "40000000-0000-4000-8000-000000000001",
@@ -95,6 +96,7 @@ test("returns neutral provisioning state without owner existence metadata", asyn
 
   assert.deepEqual(result, {
     tenantId: TENANT_ID,
+    tenantName: "Acme Studio",
     slug: "acme",
     status: "provisioning",
     ownerMembershipId: "40000000-0000-4000-8000-000000000001",

@@ -16,6 +16,9 @@ export class TenantProvisioningResponseDto {
   readonly tenantId!: string;
 
   @ApiProperty({ type: String })
+  readonly tenantName!: string;
+
+  @ApiProperty({ type: String })
   readonly slug!: string;
 
   @ApiProperty({ type: String, enum: ["provisioning"] })

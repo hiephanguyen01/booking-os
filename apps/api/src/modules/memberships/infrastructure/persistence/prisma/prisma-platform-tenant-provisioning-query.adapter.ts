@@ -33,6 +33,7 @@ export class PrismaPlatformTenantProvisioningQueryAdapter
         }
         return Object.freeze({
           tenantId: tenant.id,
+          tenantName: tenant.name,
           slug: tenant.slug,
           status: "provisioning",
           ownerMembershipId: membership.id,
