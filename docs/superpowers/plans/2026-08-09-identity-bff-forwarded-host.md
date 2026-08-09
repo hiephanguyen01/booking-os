@@ -4,7 +4,7 @@
 
 **Goal:** Preserve the browser hostname across the identity BFF so host-bound activation tokens complete through the local HTTPS topology.
 
-**Architecture:** The identity BFF derives the browser origin and host from the incoming Next.js request, then forwards the host as `x-forwarded-host` to both the pre-auth CSRF handshake and the completion request. The existing API `TRUST_PROXY=true` setting derives the original browser hostname from that header.
+**Architecture:** The identity BFF derives the browser host from the incoming Next.js request and forwards it to both the pre-auth CSRF handshake and completion request. The identity API adapter explicitly selects the forwarded hostname only when `TRUST_PROXY=true`; the BFF retains its API-origin CSRF handshake.
 
 **Tech Stack:** TypeScript, Next.js route handlers, Node.js `node:test`, pnpm.
 
@@ -18,15 +18,18 @@
 
 ---
 
-### Task 1: Forward the trusted browser host in identity BFF calls
+### Task 1: Preserve the trusted browser target across identity calls
 
 **Files:**
 - Modify: `apps/web-console/src/lib/identity/identity-bff.test.ts`
 - Modify: `apps/web-console/src/lib/identity/identity-bff.ts`
+- Modify: `apps/api/src/modules/identity/infrastructure/http/identity-public.nest.controller.test.ts`
+- Modify: `apps/api/src/modules/identity/infrastructure/http/identity-public.nest.controller.ts`
+- Modify: `apps/api/src/modules/tenancy/infrastructure/http/effective-hostname.ts`
 
 **Interfaces:**
 - Consumes: `Request.url`, which represents the trusted browser-facing console URL.
-- Produces: `x-forwarded-host` on the upstream `GET /auth/csrf` and the upstream identity `POST`.
+- Produces: `x-forwarded-host` on the upstream `GET /auth/csrf` and identity `POST`; the API validates this hostname only under proxy trust.
 
 - [ ] **Step 1: Write the failing regression assertion**
 

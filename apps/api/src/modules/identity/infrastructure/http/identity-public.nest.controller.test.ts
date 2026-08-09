@@ -5,6 +5,7 @@ import { Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 
+import { EnvironmentService } from "../../../../config/environment.service.js";
 import {
   createSupportedOpenApiDocument,
   serializeOpenApiDocument,
@@ -25,7 +26,10 @@ const CORE_CONTROLLER_STUB = {
 @Module({
   imports: [DiscoveryModule],
   controllers: [NestIdentityPublicController],
-  providers: [{ provide: IdentityPublicController, useValue: CORE_CONTROLLER_STUB }],
+  providers: [
+    { provide: IdentityPublicController, useValue: CORE_CONTROLLER_STUB },
+    { provide: EnvironmentService, useValue: { trustProxy: false } },
+  ],
 })
 class IdentityHttpTestModule {}
 
@@ -88,6 +92,26 @@ test("extracts only the effective hostname, exact origin, CSRF values, and reque
     requestId: "request-123",
   });
   assert.equal(JSON.stringify(request).includes("must-not-be-returned"), false);
+});
+
+test("uses the trusted forwarded browser target for identity CSRF", () => {
+  const request = toIdentityPublicHttpRequest(
+    {
+      hostname: "127.0.0.1",
+      protocol: "http",
+      headers: {
+        host: "127.0.0.1:3001",
+        origin: "http://127.0.0.1:3001",
+        "x-forwarded-host": "platform.booking.localhost",
+      },
+      requestId: null,
+    },
+    true,
+  );
+
+  assert.equal(request.hostname, "platform.booking.localhost");
+  assert.equal(request.expectedOrigin, "http://127.0.0.1:3001");
+  assert.equal(request.origin, "http://127.0.0.1:3001");
 });
 
 test("rejects ambiguous security headers instead of selecting one value", () => {

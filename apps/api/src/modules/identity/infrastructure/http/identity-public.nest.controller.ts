@@ -22,6 +22,8 @@ import {
 } from "@nestjs/swagger";
 
 import { SupportedApi } from "../../../../api-visibility/api-visibility.decorator.js";
+import { EnvironmentService } from "../../../../config/environment.service.js";
+import { effectiveHostname } from "../../../tenancy/infrastructure/http/effective-hostname.js";
 import type { IdentityScopeType } from "../../domain/user.js";
 import {
   type CompleteIdentityPasswordBody,
@@ -112,7 +114,7 @@ function normalizeProtocol(value: string): "http" | "https" {
   return protocol;
 }
 
-function trustedRequestOrigin(request: NestIdentityRequest, hostname: string): string {
+function trustedRequestOrigin(request: NestIdentityRequest): string {
   const host = singleHeader(request.headers.host);
   if (!host) {
     throw new TypeError("Identity request host is required.");
@@ -122,10 +124,6 @@ function trustedRequestOrigin(request: NestIdentityRequest, hostname: string): s
   try {
     origin = new URL(`${normalizeProtocol(request.protocol)}://${host}`);
   } catch {
-    throw new TypeError("Identity request host is invalid.");
-  }
-
-  if (origin.hostname.toLowerCase() !== hostname) {
     throw new TypeError("Identity request host is invalid.");
   }
 
@@ -157,11 +155,15 @@ function preAuthCookie(value: string | null): string | null {
 
 export function toIdentityPublicHttpRequest(
   request: NestIdentityRequest,
+  trustProxy = false,
 ): IdentityPublicHttpRequest {
-  const hostname = normalizeHostname(request.hostname);
+  const hostname = effectiveHostname(request.headers, trustProxy);
+  if (!hostname) {
+    throw new TypeError("Identity request hostname cannot be empty.");
+  }
   return Object.freeze({
-    hostname,
-    expectedOrigin: trustedRequestOrigin(request, hostname),
+    hostname: normalizeHostname(hostname),
+    expectedOrigin: trustedRequestOrigin(request),
     origin: singleHeader(request.headers.origin),
     csrfCookie: preAuthCookie(singleHeader(request.headers.cookie)),
     csrfToken: singleHeader(request.headers["x-csrf-token"]),
@@ -169,9 +171,12 @@ export function toIdentityPublicHttpRequest(
   });
 }
 
-function requestContext(request: NestIdentityRequest): IdentityPublicHttpRequest {
+function requestContext(
+  request: NestIdentityRequest,
+  trustProxy: boolean,
+): IdentityPublicHttpRequest {
   try {
-    return toIdentityPublicHttpRequest(request);
+    return toIdentityPublicHttpRequest(request, trustProxy);
   } catch (error: unknown) {
     throw new BadRequestException(error instanceof Error ? error.message : SECURITY_HEADER_ERROR);
   }
@@ -184,6 +189,8 @@ export class NestIdentityPublicController {
   constructor(
     @Inject(IdentityPublicController)
     private readonly core: IdentityPublicController,
+    @Inject(EnvironmentService)
+    private readonly environment: Pick<EnvironmentService, "trustProxy">,
   ) {}
 
   @Get("csrf")
@@ -199,7 +206,11 @@ export class NestIdentityPublicController {
     if (!PURPOSES.includes(purpose)) {
       throw new BadRequestException("Unsupported pre-auth CSRF purpose.");
     }
-    return this.core.getCsrf(purpose, requestContext(request), response);
+    return this.core.getCsrf(
+      purpose,
+      requestContext(request, this.environment.trustProxy),
+      response,
+    );
   }
 
   @Post("activation/complete")
@@ -213,7 +224,11 @@ export class NestIdentityPublicController {
     @Req() request: NestIdentityRequest,
     @Res({ passthrough: true }) response: IdentityPublicHttpResponse,
   ): Promise<{ readonly completed: true }> {
-    return this.core.completeActivation(body, requestContext(request), response);
+    return this.core.completeActivation(
+      body,
+      requestContext(request, this.environment.trustProxy),
+      response,
+    );
   }
 
   @Post("password/forgot")
@@ -227,7 +242,11 @@ export class NestIdentityPublicController {
     @Req() request: NestIdentityRequest,
     @Res({ passthrough: true }) response: IdentityPublicHttpResponse,
   ): Promise<{ readonly accepted: true }> {
-    return this.core.requestPasswordReset(body, requestContext(request), response);
+    return this.core.requestPasswordReset(
+      body,
+      requestContext(request, this.environment.trustProxy),
+      response,
+    );
   }
 
   @Post("password/reset")
@@ -241,6 +260,10 @@ export class NestIdentityPublicController {
     @Req() request: NestIdentityRequest,
     @Res({ passthrough: true }) response: IdentityPublicHttpResponse,
   ): Promise<{ readonly completed: true }> {
-    return this.core.completePasswordReset(body, requestContext(request), response);
+    return this.core.completePasswordReset(
+      body,
+      requestContext(request, this.environment.trustProxy),
+      response,
+    );
   }
 }

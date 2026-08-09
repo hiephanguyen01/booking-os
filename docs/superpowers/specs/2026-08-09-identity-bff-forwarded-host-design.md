@@ -33,14 +33,15 @@ in the supported local HTTPS topology.
 
 Derive the browser target from the trusted incoming Next.js `Request` URL in
 `identity-bff.ts`, as the session and membership BFFs already do. Send its
-`host` as `x-forwarded-host` on both upstream identity requests:
+host as `x-forwarded-host` on both upstream identity requests:
 
 1. `GET /auth/csrf?purpose=...`
 2. the matching completion or password-forgot `POST`
 
-The API already runs with `TRUST_PROXY=true` in the local HTTPS runbook, so
-Express uses this BFF-set header as the request hostname. The CSRF handshake
-and token completion then use the same hostname that was bound into the token.
+The identity HTTP adapter explicitly uses the forwarded hostname only when
+`TRUST_PROXY=true`; it otherwise derives the target from the direct API
+request. The BFF keeps its API-origin CSRF handshake, while token completion
+uses the external hostname bound into the token.
 
 ## Data flow
 
@@ -52,6 +53,7 @@ Browser: https://platform.booking.localhost/activate#token=...
        x-forwarded-host: platform.booking.localhost
   -> POST http://127.0.0.1:3001/api/auth/activation/complete
        x-forwarded-host: platform.booking.localhost
+       Origin: http://127.0.0.1:3001
   -> API validates CSRF and token against platform.booking.localhost
 ```
 

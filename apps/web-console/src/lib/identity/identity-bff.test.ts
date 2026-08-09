@@ -109,6 +109,7 @@ test("activation consumes the token only on the server-side API call", async () 
     new Headers(calls[1]?.init?.headers).get("x-forwarded-host"),
     "platform.booking.localhost",
   );
+  assert.equal(new Headers(calls[1]?.init?.headers).get("origin"), "https://api.example.test");
   assert.deepEqual(JSON.parse(String(calls[1]?.init?.body)), {
     token: "selector.secret",
     newPassword: "correct horse battery staple",

@@ -1,7 +1,7 @@
-export type HostHeaders = Readonly<Record<string, string | string[] | undefined>>;
+export type HostHeaders = Readonly<Record<string, string | readonly string[] | undefined>>;
 
-function firstHeaderValue(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
+function firstHeaderValue(value: string | readonly string[] | undefined): string | undefined {
+  return typeof value === "string" ? value : value?.[0];
 }
 
 function stripPort(hostname: string): string {
