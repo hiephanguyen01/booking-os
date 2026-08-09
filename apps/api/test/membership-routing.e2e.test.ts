@@ -18,6 +18,7 @@ import {
   POSTGRES_READINESS_PROBE_TOKEN,
   REDIS_READINESS_PROBE_TOKEN,
 } from "../src/dependencies/tokens.js";
+import { BuildAuthorizationContextUseCase } from "../src/modules/authorization/application/use-cases/build-authorization-context.use-case.js";
 import { BuildTenantAuthorizationContextUseCase } from "../src/modules/memberships/application/use-cases/build-tenant-authorization-context.use-case.js";
 import {
   type ListMembershipsCommand,
@@ -78,6 +79,7 @@ function restoreEnvironmentValue(key: keyof typeof originalEnvironment): void {
 interface CompositionObservations {
   readonly resolvedHostnames: string[];
   readonly sessionInputs: GetCurrentSessionInput[];
+  readonly guardAuthorizationInputs: AuthenticatedRequestContext[];
   readonly authorizationInputs: AuthenticatedRequestContext[];
   readonly listCommands: ListMembershipsCommand[];
 }
@@ -85,10 +87,13 @@ interface CompositionObservations {
 async function createTestApplication(): Promise<{
   readonly app: INestApplication;
   readonly observations: CompositionObservations;
+  readonly setGuardAuthorization: (authorization: AuthorizationContext) => void;
 }> {
+  let guardAuthorization = AUTHORIZATION;
   const observations: CompositionObservations = {
     resolvedHostnames: [],
     sessionInputs: [],
+    guardAuthorizationInputs: [],
     authorizationInputs: [],
     listCommands: [],
   };
@@ -120,6 +125,13 @@ async function createTestApplication(): Promise<{
         };
       },
     })
+    .overrideProvider(BuildAuthorizationContextUseCase)
+    .useValue({
+      execute: async (authenticated: AuthenticatedRequestContext) => {
+        observations.guardAuthorizationInputs.push(authenticated);
+        return guardAuthorization;
+      },
+    })
     .overrideProvider(BuildTenantAuthorizationContextUseCase)
     .useValue({
       execute: async (authenticated: AuthenticatedRequestContext) => {
@@ -147,7 +159,13 @@ async function createTestApplication(): Promise<{
   const app = testingModule.createNestApplication();
   app.setGlobalPrefix("api");
   await app.init();
-  return { app, observations };
+  return {
+    app,
+    observations,
+    setGuardAuthorization: (authorization) => {
+      guardAuthorization = authorization;
+    },
+  };
 }
 
 before(() => {
@@ -174,7 +192,7 @@ after(() => {
 });
 
 test("AppModule resolves tenant authentication before listing memberships", async () => {
-  const { app, observations } = await createTestApplication();
+  const { app, observations, setGuardAuthorization } = await createTestApplication();
 
   try {
     const response = await request(app.getHttpServer())
@@ -199,6 +217,11 @@ test("AppModule resolves tenant authentication before listing memberships", asyn
     assert.equal(observations.sessionInputs[0]?.token, SESSION_TOKEN);
     assert.equal(typeof observations.sessionInputs[0]?.requestId, "string");
     assert.notEqual(observations.sessionInputs[0]?.requestId, "");
+    assert.equal(observations.guardAuthorizationInputs.length, 1);
+    assert.equal(
+      observations.guardAuthorizationInputs[0]?.requestId,
+      observations.sessionInputs[0]?.requestId,
+    );
     assert.equal(observations.authorizationInputs.length, 1);
     assert.deepEqual(
       {
@@ -223,6 +246,14 @@ test("AppModule resolves tenant authentication before listing memberships", asyn
     assert.deepEqual(observations.listCommands, [
       { authorization: AUTHORIZATION, requestId: observations.sessionInputs[0]?.requestId },
     ]);
+
+    setGuardAuthorization({ ...AUTHORIZATION, permissionKeys: [] });
+    await request(app.getHttpServer())
+      .get("/api/memberships")
+      .set("host", HOSTNAME)
+      .set("cookie", `${BOOKING_SESSION_COOKIE}=${encodeURIComponent(SESSION_TOKEN)}`)
+      .expect(403);
+    assert.equal(observations.listCommands.length, 1);
   } finally {
     await app.close();
   }

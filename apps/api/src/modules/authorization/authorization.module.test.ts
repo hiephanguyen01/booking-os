@@ -7,13 +7,21 @@ import { AppModule } from "../../app.module.js";
 import { AuthorizationModule } from "./authorization.module.js";
 import {
   AUTHORIZATION_REPOSITORY_PORT,
+  PROTECTED_REQUEST_AUTHORIZATION_PORT,
   SESSION_AUTHORIZATION_REFRESH_PORT,
 } from "./authorization.tokens.js";
 
 test("authorization integration tokens are distinct symbols", () => {
-  assert.equal(typeof AUTHORIZATION_REPOSITORY_PORT, "symbol");
-  assert.equal(typeof SESSION_AUTHORIZATION_REFRESH_PORT, "symbol");
-  assert.notEqual(AUTHORIZATION_REPOSITORY_PORT, SESSION_AUTHORIZATION_REFRESH_PORT);
+  const tokens = [
+    AUTHORIZATION_REPOSITORY_PORT,
+    PROTECTED_REQUEST_AUTHORIZATION_PORT,
+    SESSION_AUTHORIZATION_REFRESH_PORT,
+  ];
+  assert.equal(
+    tokens.every((token) => typeof token === "symbol"),
+    true,
+  );
+  assert.equal(new Set(tokens).size, tokens.length);
 });
 
 test("AppModule composes the AuthorizationModule boundary", () => {

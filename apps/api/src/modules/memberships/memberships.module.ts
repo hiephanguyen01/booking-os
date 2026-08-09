@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 import { SessionCsrfGuard } from "../../common/security/session-csrf.guard.js";
 import { EnvironmentService } from "../../config/environment.service.js";
 import { DatabaseModule } from "../../database/database.module.js";
+import { AuthorizationModule } from "../authorization/authorization.module.js";
 import type { TenantTransactionPort } from "../tenancy/application/ports/tenant-transaction.port.js";
 import { TenancyModule } from "../tenancy/tenancy.module.js";
 import { TENANT_TRANSACTION_PORT } from "../tenancy/tenancy.tokens.js";
@@ -59,7 +60,7 @@ import {
 } from "./memberships.tokens.js";
 
 @Module({
-  imports: [DatabaseModule, TenancyModule],
+  imports: [AuthorizationModule, DatabaseModule, TenancyModule],
   controllers: [
     PlatformTenantsController,
     TenantInvitationsController,

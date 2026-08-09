@@ -1,6 +1,7 @@
-import { canGrantRole, PERMISSION_KEYS, SYSTEM_ROLES } from "@booking-os/auth";
+import { PERMISSION_KEYS } from "@booking-os/auth";
 import type { AuthorizationContext } from "@booking-os/contracts";
 
+import { membershipTargetAllowed } from "../../../authorization/domain/membership-target.policy.js";
 import type { TenantTransactionPort } from "../../../tenancy/application/ports/tenant-transaction.port.js";
 import {
   MembershipInactiveError,
@@ -54,12 +55,13 @@ export class SuspendMembershipUseCase {
 
         const targetRoles = await session.roles.listActiveRoleKeys(membership.userId);
         if (
-          !canGrantRole({
-            actorRoles: authorization.roleKeys,
-            targetCurrentRoles: targetRoles,
-            requestedRole: SYSTEM_ROLES.tenantAdmin,
+          !membershipTargetAllowed({
             action: "suspend",
-          }).allowed
+            actorMembershipId: authorization.membershipId,
+            targetMembershipId: membership.id,
+            actorRoles: authorization.roleKeys,
+            targetRoles,
+          })
         ) {
           throw new RoleGrantNotAllowedError();
         }

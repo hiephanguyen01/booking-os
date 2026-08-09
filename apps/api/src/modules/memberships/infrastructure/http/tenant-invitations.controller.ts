@@ -29,6 +29,11 @@ import type { RequestHeaders } from "../../../../common/request-context/request-
 import { SessionCsrfGuard } from "../../../../common/security/session-csrf.guard.js";
 import { SessionRequired } from "../../../../common/security/session-required.decorator.js";
 import { EnvironmentService } from "../../../../config/environment.service.js";
+import {
+  PermissionGuard,
+  PermissionGuardExempt,
+  RequiresPermission,
+} from "../../../authorization/authorization.http.js";
 import { AcceptInvitationUseCase } from "../../application/use-cases/accept-invitation.use-case.js";
 import {
   BuildTenantAuthorizationContextUseCase,
@@ -96,7 +101,7 @@ function requireToken(value: unknown): string {
 
 @SupportedApi()
 @ApiTags("membership-invitations")
-@UseGuards(SessionCsrfGuard)
+@UseGuards(SessionCsrfGuard, PermissionGuard)
 @Controller("membership/invitations")
 export class TenantInvitationsController {
   constructor(
@@ -114,6 +119,7 @@ export class TenantInvitationsController {
   ) {}
 
   @SessionRequired()
+  @PermissionGuardExempt("invitation_pending")
   @Get("current")
   @ApiOperation({ operationId: "getCurrentMembershipInvitation" })
   @ApiOkResponse({ type: CurrentTenantInvitationResponseDto })
@@ -135,6 +141,7 @@ export class TenantInvitationsController {
   }
 
   @SessionRequired()
+  @PermissionGuardExempt("invitation_pending")
   @Post("accept")
   @HttpCode(200)
   @ApiOperation({ operationId: "acceptMembershipInvitation" })
@@ -174,6 +181,7 @@ export class TenantInvitationsController {
   }
 
   @SessionRequired()
+  @RequiresPermission("tenant.membership.admin.invite")
   @Post()
   @HttpCode(202)
   @ApiOperation({ operationId: "createTenantAdminInvitation" })
@@ -199,6 +207,7 @@ export class TenantInvitationsController {
   }
 
   @SessionRequired()
+  @RequiresPermission("tenant.membership.admin.invite")
   @Post(":invitationId/resend")
   @HttpCode(202)
   @ApiOperation({ operationId: "resendTenantAdminInvitation" })

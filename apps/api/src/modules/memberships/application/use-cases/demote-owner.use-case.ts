@@ -1,6 +1,7 @@
-import { canGrantRole, PERMISSION_KEYS, SYSTEM_ROLES } from "@booking-os/auth";
+import { PERMISSION_KEYS, SYSTEM_ROLES } from "@booking-os/auth";
 import type { AuthorizationContext } from "@booking-os/contracts";
 
+import { membershipTargetAllowed } from "../../../authorization/domain/membership-target.policy.js";
 import type { TenantTransactionPort } from "../../../tenancy/application/ports/tenant-transaction.port.js";
 import {
   LastTenantOwnerError,
@@ -55,17 +56,28 @@ export class DemoteOwnerUseCase {
 
         const targetRoles = await session.roles.listActiveRoleKeys(membership.userId);
         if (
-          !canGrantRole({
-            actorRoles: authorization.roleKeys,
-            targetCurrentRoles: targetRoles,
-            requestedRole: SYSTEM_ROLES.tenantAdmin,
+          !membershipTargetAllowed({
             action: "demote",
-          }).allowed ||
+            actorMembershipId: authorization.membershipId,
+            targetMembershipId: membership.id,
+            actorRoles: authorization.roleKeys,
+            targetRoles,
+            activeOwnerCount: Number.MAX_SAFE_INTEGER,
+          }) ||
           !ownerUserIds.includes(membership.userId)
         ) {
           throw new RoleGrantNotAllowedError();
         }
-        if (ownerUserIds.length <= 1) {
+        if (
+          !membershipTargetAllowed({
+            action: "demote",
+            actorMembershipId: authorization.membershipId,
+            targetMembershipId: membership.id,
+            actorRoles: authorization.roleKeys,
+            targetRoles,
+            activeOwnerCount: ownerUserIds.length,
+          })
+        ) {
           throw new LastTenantOwnerError();
         }
 

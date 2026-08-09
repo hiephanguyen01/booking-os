@@ -30,6 +30,7 @@ import type { RequestHeaders } from "../../../../common/request-context/request-
 import { SessionCsrfGuard } from "../../../../common/security/session-csrf.guard.js";
 import { SessionRequired } from "../../../../common/security/session-required.decorator.js";
 import { EnvironmentService } from "../../../../config/environment.service.js";
+import { PermissionGuard, RequiresPermission } from "../../../authorization/authorization.http.js";
 import {
   BuildPlatformAuthorizationContextUseCase,
   PlatformAuthorizationDeniedError,
@@ -96,7 +97,7 @@ function requireEmail(value: unknown, field: string): string {
 
 @SupportedApi()
 @ApiTags("platform-tenants")
-@UseGuards(SessionCsrfGuard)
+@UseGuards(SessionCsrfGuard, PermissionGuard)
 @Controller("platform/tenants")
 export class PlatformTenantsController {
   constructor(
@@ -112,6 +113,7 @@ export class PlatformTenantsController {
   ) {}
 
   @SessionRequired()
+  @RequiresPermission("platform.tenants.provision")
   @Post()
   @HttpCode(200)
   @ApiOperation({ operationId: "provisionPlatformTenant" })
@@ -141,6 +143,7 @@ export class PlatformTenantsController {
   }
 
   @SessionRequired()
+  @RequiresPermission("platform.tenants.provision")
   @Get(":tenantId")
   @ApiOperation({ operationId: "getPlatformTenantProvisioning" })
   @ApiParam({ name: "tenantId", type: String, format: "uuid" })
@@ -159,6 +162,7 @@ export class PlatformTenantsController {
   }
 
   @SessionRequired()
+  @RequiresPermission("platform.tenants.provision")
   @Post(":tenantId/owner-invitation/resend")
   @HttpCode(202)
   @ApiOperation({ operationId: "resendPlatformTenantOwnerInvitation" })

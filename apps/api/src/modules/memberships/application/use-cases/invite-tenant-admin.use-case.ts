@@ -1,6 +1,7 @@
-import { canGrantRole, normalizeEmail, PERMISSION_KEYS, SYSTEM_ROLES } from "@booking-os/auth";
+import { normalizeEmail, PERMISSION_KEYS } from "@booking-os/auth";
 import type { AuthorizationContext } from "@booking-os/contracts";
 
+import { membershipTargetAllowed } from "../../../authorization/domain/membership-target.policy.js";
 import { RoleGrantNotAllowedError } from "../../domain/membership-errors.js";
 import type { TenantAdminInvitationWorkflowPort } from "../ports/tenant-admin-invitation-workflow.port.js";
 
@@ -26,12 +27,12 @@ export class InviteTenantAdminUseCase {
       command.authorization.scope.type !== "tenant" ||
       command.authorization.membershipStatus !== "active" ||
       !command.authorization.permissionKeys.includes(PERMISSION_KEYS.tenantMembershipAdminInvite) ||
-      !canGrantRole({
-        actorRoles: command.authorization.roleKeys,
-        targetCurrentRoles: [],
-        requestedRole: SYSTEM_ROLES.tenantAdmin,
+      !membershipTargetAllowed({
         action: "invite",
-      }).allowed
+        actorMembershipId: command.authorization.membershipId,
+        actorRoles: command.authorization.roleKeys,
+        targetRoles: [],
+      })
     ) {
       throw new RoleGrantNotAllowedError();
     }

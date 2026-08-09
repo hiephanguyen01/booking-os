@@ -17,6 +17,7 @@ import { SupportedApi } from "../../../../api-visibility/api-visibility.decorato
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import { SessionCsrfGuard } from "../../../../common/security/session-csrf.guard.js";
 import { SessionRequired } from "../../../../common/security/session-required.decorator.js";
+import { PermissionGuard, RequiresPermission } from "../../../authorization/authorization.http.js";
 import {
   BuildTenantAuthorizationContextUseCase,
   TenantAuthorizationDeniedError,
@@ -50,7 +51,7 @@ function requireUuid(value: unknown): string {
 
 @SupportedApi()
 @ApiTags("memberships")
-@UseGuards(SessionCsrfGuard)
+@UseGuards(SessionCsrfGuard, PermissionGuard)
 @Controller("memberships")
 export class TenantMembershipsController {
   constructor(
@@ -66,6 +67,7 @@ export class TenantMembershipsController {
   ) {}
 
   @SessionRequired()
+  @RequiresPermission("tenant.membership.read")
   @Get()
   @ApiOperation({ operationId: "listTenantMemberships" })
   @ApiOkResponse({ type: TenantMembershipResponseDto, isArray: true })
@@ -82,6 +84,7 @@ export class TenantMembershipsController {
   }
 
   @SessionRequired()
+  @RequiresPermission("tenant.membership.admin.suspend")
   @Post(":membershipId/suspend")
   @HttpCode(200)
   @ApiOperation({ operationId: "suspendTenantMembership" })
@@ -92,6 +95,7 @@ export class TenantMembershipsController {
   }
 
   @SessionRequired()
+  @RequiresPermission("tenant.membership.admin.revoke")
   @Post(":membershipId/revoke")
   @HttpCode(200)
   @ApiOperation({ operationId: "revokeTenantMembership" })
@@ -102,6 +106,7 @@ export class TenantMembershipsController {
   }
 
   @SessionRequired()
+  @RequiresPermission("tenant.membership.owner.promote")
   @Post(":membershipId/promote-owner")
   @HttpCode(200)
   @ApiOperation({ operationId: "promoteTenantMembershipOwner" })
@@ -112,6 +117,7 @@ export class TenantMembershipsController {
   }
 
   @SessionRequired()
+  @RequiresPermission("tenant.membership.owner.demote")
   @Post(":membershipId/demote-owner")
   @HttpCode(200)
   @ApiOperation({ operationId: "demoteTenantMembershipOwner" })
