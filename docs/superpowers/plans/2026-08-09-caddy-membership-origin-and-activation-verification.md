@@ -747,3 +747,69 @@ authorization version is 1, and one rotated session token remains live.
 git add apps/api/src/modules/memberships/application/ports/session-elevation.port.ts apps/api/src/modules/memberships/application/use-cases/accept-invitation.use-case.ts apps/api/src/modules/memberships/application/use-cases/accept-invitation.use-case.test.ts apps/api/src/modules/memberships/infrastructure/persistence/prisma/prisma-invitation-session-elevation.adapter.ts apps/api/src/database/prisma-tenant-data-session.factory.test.ts apps/api/test/invitation-acceptance-concurrency.e2e.test.ts
 git commit -m "fix(api): preserve invitation session auth version"
 ```
+
+### Task 15: Allow suspended tenant administrators to be revoked
+
+**Files:**
+
+- Modify: `apps/api/src/modules/memberships/application/use-cases/revoke-membership.use-case.ts`
+- Modify: `apps/api/src/modules/memberships/application/use-cases/revoke-membership.use-case.test.ts`
+- Modify: `apps/api/test/membership-session-revocation.e2e.test.ts`
+
+**Interfaces:**
+
+- Revoke target state may be `active` or `suspended`.
+- `invited` and `revoked` targets remain invalid lifecycle inputs.
+- Self-revocation, target-role policy, owner protection, tenant scoping, audit,
+  authorization-version increments, and tenant-only session revocation remain
+  unchanged.
+
+- [ ] **Step 1: Write failing suspended-revoke regressions**
+
+Add a focused use-case case whose locked tenant-admin membership is suspended
+and assert revoke succeeds through role policy, persistence, session revocation,
+and audit with the next authorization version.
+
+Extend `membership-session-revocation.e2e.test.ts` so its existing suspension
+flow then invokes `RevokeMembershipUseCase`. Assert:
+
+- target membership becomes `revoked`;
+- target membership authorization version advances from 1 to 2 to 3;
+- the already-revoked target session/token remain unavailable;
+- the same user's other-tenant membership stays active at version 1 and its
+  session/token remain live.
+
+- [ ] **Step 2: Verify RED**
+
+```bash
+cd apps/api
+node --test --test-concurrency=1 --import tsx src/modules/memberships/application/use-cases/revoke-membership.use-case.test.ts test/membership-session-revocation.e2e.test.ts
+```
+
+Expected: the suspended target throws `MembershipInactiveError` and the
+integration revoke cannot complete.
+
+- [ ] **Step 3: Admit the suspended lifecycle state**
+
+Change the revoke target-state guard to accept `active` or `suspended`.
+Do not change the repository transition, policy checks, controller mapping, or
+session revocation behavior.
+
+- [ ] **Step 4: Verify GREEN and typecheck**
+
+```bash
+cd apps/api
+node --test --test-concurrency=1 --import tsx src/modules/memberships/application/use-cases/revoke-membership.use-case.test.ts test/membership-session-revocation.e2e.test.ts
+cd ../..
+pnpm --filter @booking-os/api typecheck
+```
+
+Expected: focused tests pass with target version 3, other-tenant version 1, and
+only the target-tenant session unavailable.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/api/src/modules/memberships/application/use-cases/revoke-membership.use-case.ts apps/api/src/modules/memberships/application/use-cases/revoke-membership.use-case.test.ts apps/api/test/membership-session-revocation.e2e.test.ts
+git commit -m "fix(api): revoke suspended tenant admins"
+```

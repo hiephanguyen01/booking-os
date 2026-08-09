@@ -148,6 +148,24 @@ concurrency regression must activate membership version 1 to 2 while proving
 the session stays at global user version 1 and retains exactly one live rotated
 token.
 
+## Suspended-membership revocation follow-up
+
+The owner can suspend an active tenant administrator and the suspension
+immediately revokes that tenant's sessions. The next intended lifecycle action,
+revoke, currently returns HTTP 409 because `RevokeMembershipUseCase` accepts
+only an active target. Suspension is a reversible access stop; revocation is
+the terminal removal action, so an owner must be able to revoke either an
+active or suspended tenant administrator.
+
+The revoke use case will admit targets in `active` or `suspended` state while
+continuing to fail closed for `invited` and already-`revoked` targets. Existing
+self-revocation rejection, role-grant policy, owner protection, tenant
+transaction scoping, authorization-version increments, audit emission, and
+tenant-session revocation remain unchanged. The integration regression must
+exercise active → suspended → revoked, prove authorization version increments
+at each transition, and prove the same user's other-tenant membership/session
+remain unaffected.
+
 ## Scope
 
 No changes to Caddy configuration, API allowed origins, the authenticated
@@ -160,4 +178,5 @@ pre-auth CSRF cookie lifetime unit. Protected tenant-membership routes also
 receive the already-required authoritative tenant and authenticated-session
 middleware composition. Invitation-session elevation preserves the global user
 authorization snapshot instead of replacing it with a tenant membership
-version.
+version. Tenant administrators may progress from suspended to terminally
+revoked without weakening owner or cross-tenant protections.
