@@ -222,10 +222,10 @@ Also read `main` branch metadata and confirm the branch reports protected.
 
 - [ ] **Step 5: Update the runbook status only from fresh evidence**
 
-If verified, add:
+If verified on this implementation cycle, add:
 
 ```text
-Automation status: applied and verified on <exact date>.
+Automation status: applied and verified on 2026-08-09.
 ```
 
 If not verified, keep the limitation/open checkpoint text.
