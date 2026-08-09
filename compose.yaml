@@ -56,7 +56,7 @@ services:
       dockerfile: infra/minio/Dockerfile
       args:
         GO_IMAGE_VERSION: ${MINIO_GO_IMAGE_VERSION:?MINIO_GO_IMAGE_VERSION is required}
-        ALPINE_VERSION: ${MINIO_ALPINE_VERSION:?MINIO_ALPINE_VERSION is required}
+        ALPINE_VERSION: ${MINIO_ALPINE_VERSION:?ALPINE_VERSION is required}
         MINIO_SERVER_VERSION: ${MINIO_SERVER_VERSION:?MINIO_SERVER_VERSION is required}
         MINIO_CLIENT_VERSION: ${MINIO_CLIENT_VERSION:?MINIO_CLIENT_VERSION is required}
     restart: unless-stopped
@@ -119,10 +119,29 @@ services:
     networks:
       - booking-network
 
+  caddy:
+    image: caddy:${CADDY_VERSION:?CADDY_VERSION is required}
+    profiles:
+      - https
+    restart: unless-stopped
+    ports:
+      - "${CADDY_HTTP_PORT:?CADDY_HTTP_PORT is required}:80"
+      - "${CADDY_HTTPS_PORT:?CADDY_HTTPS_PORT is required}:443"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - booking-network
+
 volumes:
   postgres_data:
   redis_data:
   minio_data:
+  caddy_data:
+  caddy_config:
 
 networks:
   booking-network:
