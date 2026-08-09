@@ -28,7 +28,7 @@ test("issues a host-only secure nonce cookie and opaque purpose-bound proof", ()
     secure: true,
     sameSite: "strict",
     path: "/",
-    maxAge: 900,
+    maxAge: 15 * 60 * 1000,
   });
   assert.equal(issued.expiresAt.toISOString(), "2026-08-05T10:45:00.000Z");
   assert.doesNotMatch(issued.token, new RegExp(issued.cookie.value, "u"));

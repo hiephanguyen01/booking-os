@@ -65,7 +65,7 @@ function createDependencies(): {
               secure: true,
               sameSite: "strict",
               path: "/",
-              maxAge: 900,
+              maxAge: (15 * 60 * 1000) as 900_000,
             },
           },
         }),
@@ -109,6 +109,13 @@ test("GET csrf sets a secure host-only cookie without exposing its nonce", () =>
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal(response.headers.get("referrer-policy"), "no-referrer");
   assert.equal(response.cookies[0]?.name, "__Host-booking_pre_auth_csrf");
+  assert.deepEqual(response.cookies[0]?.options, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict",
+    path: "/",
+    maxAge: 15 * 60 * 1000,
+  });
 });
 
 test("password-forgot validates purpose and returns the same neutral response", async () => {

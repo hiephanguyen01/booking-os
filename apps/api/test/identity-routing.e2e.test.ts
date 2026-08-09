@@ -107,7 +107,13 @@ test("GET /api/auth/csrf is registered by AppModule and returns a host-only pre-
 
     assert.equal(response.headers["cache-control"], "no-store");
     assert.equal(response.headers["referrer-policy"], "no-referrer");
-    assert.match(response.headers["set-cookie"]?.[0] ?? "", /^__Host-booking_pre_auth_csrf=/u);
+    const cookie = response.headers["set-cookie"]?.[0] ?? "";
+    assert.match(cookie, /^__Host-booking_pre_auth_csrf=/u);
+    assert.match(cookie, /; Max-Age=900;/u);
+    assert.match(cookie, /; Path=\//u);
+    assert.match(cookie, /; HttpOnly/u);
+    assert.match(cookie, /; Secure/u);
+    assert.match(cookie, /; SameSite=Strict/u);
     assert.equal(typeof response.body.csrfToken, "string");
     assert.match(response.body.expiresAt, /^202[0-9]-/u);
   } finally {

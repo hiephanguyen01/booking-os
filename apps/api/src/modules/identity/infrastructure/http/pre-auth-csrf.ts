@@ -3,7 +3,7 @@ import { createHmac, randomBytes as cryptoRandomBytes, timingSafeEqual } from "n
 export const PRE_AUTH_CSRF_COOKIE_NAME = "__Host-booking_pre_auth_csrf" as const;
 
 const CSRF_VERSION = "v1" as const;
-const CSRF_TTL_MS = 15 * 60 * 1000;
+const CSRF_TTL_MS = (15 * 60 * 1000) as 900_000;
 const NONCE_BYTES = 32;
 const MINIMUM_SECRET_BYTES = 32;
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/u;
@@ -15,7 +15,7 @@ export interface PreAuthCsrfCookieOptions {
   readonly secure: true;
   readonly sameSite: "strict";
   readonly path: "/";
-  readonly maxAge: 900;
+  readonly maxAge: 900_000;
 }
 
 export interface IssuedPreAuthCsrf {
@@ -120,7 +120,7 @@ export class PreAuthCsrfService {
           secure: true,
           sameSite: "strict",
           path: "/",
-          maxAge: 900,
+          maxAge: CSRF_TTL_MS,
         }),
       }),
     });
