@@ -495,6 +495,7 @@ test("POST provisions an existing owner and GET returns its database-backed stat
     .expect(200);
   assert.deepEqual(state.body, {
     tenantId: result.tenantId,
+    tenantName: existingOwnerBody.tenantName,
     slug: result.slug,
     status: "provisioning",
     ownerMembershipId: result.ownerMembershipId,

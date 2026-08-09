@@ -36,7 +36,9 @@ export class MembershipAwareSessionSubjectAdapter implements SessionSubjectPort 
       return null;
     }
 
-    const authorizationVersion = await this.activeSubjects.currentAuthorizationVersion(input.userId);
+    const authorizationVersion = await this.activeSubjects.currentAuthorizationVersion(
+      input.userId,
+    );
     if (
       authorizationVersion === null ||
       !Number.isInteger(authorizationVersion) ||

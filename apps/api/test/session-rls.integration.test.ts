@@ -296,6 +296,11 @@ test("tenant, missing-context, cross-tenant, and platform paths are isolated", a
       transaction.$queryRaw<readonly { id: string; tenant_id: string | null }[]>`
       SELECT "id", "tenant_id"
       FROM "auth_sessions"
+      WHERE "id" IN (
+        ${tenantASessionId}::uuid,
+        ${tenantBSessionId}::uuid,
+        ${platformSessionId}::uuid
+      )
       ORDER BY "id"
     `,
   );
@@ -347,6 +352,11 @@ test("tenant, missing-context, cross-tenant, and platform paths are isolated", a
       transaction.$queryRaw<readonly { id: string; tenant_id: string | null }[]>`
       SELECT "id", "tenant_id"
       FROM "auth_sessions"
+      WHERE "id" IN (
+        ${tenantASessionId}::uuid,
+        ${tenantBSessionId}::uuid,
+        ${platformSessionId}::uuid
+      )
       ORDER BY "id"
     `,
   );

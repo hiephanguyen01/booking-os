@@ -37,7 +37,10 @@ test("maps the persisted tenant name into public provisioning status", async () 
     },
   } as unknown as PlatformTenantProvisioningDataSession;
   const context = {
-    async runTenant<T>(tenantId: string, work: (value: PlatformTenantProvisioningDataSession) => Promise<T>) {
+    async runTenant<T>(
+      tenantId: string,
+      work: (value: PlatformTenantProvisioningDataSession) => Promise<T>,
+    ) {
       assert.equal(tenantId, TENANT_ID);
       return work(session);
     },

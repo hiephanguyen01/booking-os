@@ -22,9 +22,9 @@ import {
 } from "@nestjs/swagger";
 
 import { SupportedApi } from "../../../../api-visibility/api-visibility.decorator.js";
+import { effectiveHostname } from "../../../../common/http/effective-hostname.js";
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import { EnvironmentService } from "../../../../config/environment.service.js";
-import { effectiveHostname } from "../../../tenancy/infrastructure/http/effective-hostname.js";
 import {
   type CompleteIdentityPasswordBody,
   IdentityPublicController,

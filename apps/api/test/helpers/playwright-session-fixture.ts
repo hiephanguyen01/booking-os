@@ -4,6 +4,9 @@ import { PrismaClient } from "@prisma/client";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PLAYWRIGHT_SESSION_SECRET = "e2e-only-session-secret-at-least-32-characters";
+const PLAYWRIGHT_DATABASE_URL =
+  process.env.PLAYWRIGHT_DATABASE_URL ??
+  "postgresql://booking:booking@127.0.0.1:5432/booking_os_test";
 const FIXTURE_OWNER_USER_ID = "99999999-9999-4999-8999-999999999999";
 const TENANT_ROLE_IDS = {
   tenant_owner: "00000000-0000-4000-8000-000000000102",
@@ -44,7 +47,11 @@ export async function createPlaywrightSession(input: PlaywrightSessionInput): Pr
   const { createSessionToken, deriveSessionSecretDigest, parseSessionToken } = await import(
     "@booking-os/auth"
   );
-  const prisma = new PrismaClient();
+  const prisma = new PrismaClient({
+    datasources: {
+      db: { url: PLAYWRIGHT_DATABASE_URL },
+    },
+  });
   const now = new Date();
   const authorizationVersion = 1;
   const fixtureEmail = `playwright-${input.userId}@example.test`;

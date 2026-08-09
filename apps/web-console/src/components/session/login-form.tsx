@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 
 interface LoginFormProps {
   readonly onAuthenticated?: (returnPath: string) => void;
@@ -37,10 +37,15 @@ export function resolveSafeReturnPath(value: string | null): string {
 export function LoginForm({
   onAuthenticated = (returnPath) => window.location.assign(returnPath),
 }: LoginFormProps) {
+  const [hydrated, setHydrated] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -86,7 +91,7 @@ export function LoginForm({
         autoComplete="email"
         value={email}
         onChange={(event) => setEmail(event.currentTarget.value)}
-        disabled={submitting}
+        disabled={!hydrated || submitting}
         required
       />
 
@@ -98,13 +103,13 @@ export function LoginForm({
         autoComplete="current-password"
         value={password}
         onChange={(event) => setPassword(event.currentTarget.value)}
-        disabled={submitting}
+        disabled={!hydrated || submitting}
         required
       />
 
       {error === null ? null : <p role="alert">{error}</p>}
 
-      <button type="submit" disabled={submitting}>
+      <button type="submit" disabled={!hydrated || submitting}>
         {submitting ? "Signing in…" : "Sign in"}
       </button>
     </form>

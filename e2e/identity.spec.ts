@@ -4,6 +4,19 @@ const CONSOLE_BASE_URL = "http://localhost:3002";
 const IDENTITY_TOKEN = "browser-selector.browser-verifier";
 const NEW_PASSWORD = "Long-enough-password-123!";
 
+async function stubIdentityCommandBoundary(page: import("@playwright/test").Page): Promise<void> {
+  await page.route(`${CONSOLE_BASE_URL}/api/auth/**`, async (route) => {
+    const forgotPassword = new URL(route.request().url()).pathname.endsWith("/password/forgot");
+    await route.fulfill({
+      status: forgotPassword ? 202 : 502,
+      contentType: "application/json",
+      body: forgotPassword
+        ? '{"accepted":true}'
+        : '{"error":{"code":"IDENTITY_UPSTREAM_UNAVAILABLE"}}',
+    });
+  });
+}
+
 async function expectTokenRemovedFromBrowser(page: import("@playwright/test").Page): Promise<void> {
   await expect.poll(() => new URL(page.url()).hash).toBe("");
   expect(page.url()).not.toContain(IDENTITY_TOKEN);
@@ -13,6 +26,7 @@ async function expectTokenRemovedFromBrowser(page: import("@playwright/test").Pa
 test("activation removes the fragment and submits only the platform command to the BFF", async ({
   page,
 }) => {
+  await stubIdentityCommandBoundary(page);
   await page.goto(`${CONSOLE_BASE_URL}/activate#token=${encodeURIComponent(IDENTITY_TOKEN)}`);
 
   await expect(page.getByRole("heading", { name: "Activate your account" })).toBeVisible();
@@ -34,7 +48,6 @@ test("activation removes the fragment and submits only the platform command to t
 
   const request = await requestPromise;
   expect(request.postDataJSON()).toEqual({
-    scopeType: "platform",
     token: IDENTITY_TOKEN,
     newPassword: NEW_PASSWORD,
   });
@@ -60,6 +73,7 @@ test("invalid activation values do not send a command", async ({ page }) => {
 
 test("forgot-password submits a neutral platform request through the BFF", async ({ page }) => {
   const email = "browser-forgot@example.test";
+  await stubIdentityCommandBoundary(page);
   await page.goto(`${CONSOLE_BASE_URL}/password/forgot`);
 
   await page.getByLabel("Email address").fill(email);
@@ -76,7 +90,7 @@ test("forgot-password submits a neutral platform request through the BFF", async
   await page.getByRole("button", { name: "Send reset link" }).click();
 
   const request = await requestPromise;
-  expect(request.postDataJSON()).toEqual({ scopeType: "platform", email });
+  expect(request.postDataJSON()).toEqual({ email });
   expect((await responsePromise).status()).toBe(202);
   await expect(page.getByRole("status")).toContainText(
     "If an account matches that email, a reset link will be sent.",
@@ -94,6 +108,7 @@ test("identity shell supports keyboard entry", async ({ page }) => {
 test("password reset removes the fragment and submits only the platform command to the BFF", async ({
   page,
 }) => {
+  await stubIdentityCommandBoundary(page);
   await page.goto(`${CONSOLE_BASE_URL}/password/reset#token=${encodeURIComponent(IDENTITY_TOKEN)}`);
 
   await expect(page.getByRole("heading", { name: "Reset your password" })).toBeVisible();
@@ -115,7 +130,6 @@ test("password reset removes the fragment and submits only the platform command 
 
   const request = await requestPromise;
   expect(request.postDataJSON()).toEqual({
-    scopeType: "platform",
     token: IDENTITY_TOKEN,
     newPassword: NEW_PASSWORD,
   });

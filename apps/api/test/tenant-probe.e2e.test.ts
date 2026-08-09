@@ -18,6 +18,8 @@ const originalEnvironment = {
   NODE_ENV: process.env.NODE_ENV,
   HOST: process.env.HOST,
   TRUST_PROXY: process.env.TRUST_PROXY,
+  TENANT_BASE_DOMAIN: process.env.TENANT_BASE_DOMAIN,
+  PLATFORM_HOSTNAME: process.env.PLATFORM_HOSTNAME,
   PORT: process.env.PORT,
   API_PREFIX: process.env.API_PREFIX,
   APP_VERSION: process.env.APP_VERSION,
@@ -52,6 +54,8 @@ before(async () => {
   process.env.NODE_ENV = "test";
   process.env.HOST = "127.0.0.1";
   process.env.TRUST_PROXY = "false";
+  process.env.TENANT_BASE_DOMAIN = "example.com";
+  process.env.PLATFORM_HOSTNAME = "platform.example.com";
   process.env.PORT = "3101";
   process.env.API_PREFIX = "api";
   process.env.APP_VERSION = "0.1.0-e2e";

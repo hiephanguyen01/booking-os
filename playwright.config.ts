@@ -6,10 +6,12 @@ const redisUrl = process.env.REDIS_URL ?? "redis://127.0.0.1:6379/1";
 const apiBaseUrl = "http://127.0.0.1:3001/api";
 const consoleOrigin = "http://127.0.0.1:3002";
 const sessionAllowedOrigins = `${consoleOrigin},http://localhost:3002`;
+
 const reuseExistingServer = process.env.CI !== "true";
 
 export default defineConfig({
   testDir: "./e2e",
+  globalSetup: "./e2e/global-setup.ts",
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
@@ -24,7 +26,7 @@ export default defineConfig({
     {
       name: "api",
       command:
-        "pnpm --filter @booking-os/api prisma:migrate:deploy && pnpm --filter @booking-os/api prisma:seed && pnpm --filter @booking-os/api dev",
+        "pnpm --filter @booking-os/api prisma:migrate:deploy && pnpm --filter @booking-os/api prisma:seed && pnpm --filter @booking-os/api start",
       url: `${apiBaseUrl}/ready`,
       reuseExistingServer,
       timeout: 120_000,
@@ -47,7 +49,7 @@ export default defineConfig({
     },
     {
       name: "storefront",
-      command: "pnpm --filter @booking-os/web-storefront dev",
+      command: "pnpm --filter @booking-os/web-storefront start",
       url: "http://127.0.0.1:3000",
       reuseExistingServer,
       timeout: 120_000,
@@ -61,7 +63,7 @@ export default defineConfig({
     },
     {
       name: "console",
-      command: "pnpm --filter @booking-os/web-console dev",
+      command: "pnpm --filter @booking-os/web-console start",
       url: consoleOrigin,
       reuseExistingServer,
       timeout: 120_000,
