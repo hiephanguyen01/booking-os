@@ -36,6 +36,10 @@
     "infra:logs": "docker compose --env-file .env.docker logs -f",
     "infra:down": "docker compose --env-file .env.docker down",
     "infra:reset": "docker compose --env-file .env.docker down --volumes --remove-orphans",
+    "infra:https:config": "docker compose --env-file .env.docker --profile https config --quiet",
+    "infra:https:up": "docker compose --env-file .env.docker --profile https up -d caddy",
+    "infra:https:logs": "docker compose --env-file .env.docker --profile https logs -f caddy",
+    "infra:https:down": "docker compose --env-file .env.docker --profile https stop caddy",
     "clean": "turbo run clean && rimraf node_modules .turbo"
   },
   "devDependencies": {

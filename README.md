@@ -58,7 +58,7 @@ packages/
 | --- | --- | --- |
 | Storefront | `http://localhost:3000` | Public shell; remains available in degraded mode when the API is unavailable |
 | API | `http://localhost:3001/api` | Health endpoint: `http://localhost:3001/api/health` |
-| Console | `http://localhost:3002` | Demonstration partner session; no real login or cookie storage |
+| Console | `http://localhost:3002` | Operations console with real identity/session, platform provisioning, and tenant membership flows |
 | Critical worker | `booking-critical` | Scaffold `health-check` job only |
 | Batch worker | `booking-batch` | Scaffold `health-check` job only |
 | Redis | `127.0.0.1:6379` | No username or password by default |
@@ -141,7 +141,7 @@ pnpm infra:logs
 pnpm infra:down
 ```
 
-`pnpm infra:down` removes containers but preserves PostgreSQL, Redis, and MinIO named-volume data.
+`pnpm infra:down` removes containers but preserves PostgreSQL, Redis, MinIO, and any Caddy named-volume data.
 
 To remove all local infrastructure data:
 
@@ -150,6 +150,17 @@ pnpm infra:reset
 ```
 
 This command is destructive.
+
+### Full tenant browser testing with local HTTPS
+
+Normal `pnpm infra:up` remains direct-port HTTP development and does not start Caddy. When you need to test Secure cookies, real platform/tenant hostnames, activation/invitation links, and authenticated tenant mutations end to end, use the opt-in HTTPS profile:
+
+```bash
+pnpm infra:https:config
+pnpm infra:https:up
+```
+
+The complete environment, Caddy CA trust, platform-admin bootstrap, Mailpit, tenant invitation, membership, troubleshooting, and test procedure is documented in [`docs/runbooks/local-https-development.md`](docs/runbooks/local-https-development.md).
 
 ### API environment
 
@@ -170,6 +181,8 @@ cp apps/api/.env.example apps/api/.env
 ```
 
 `apps/api/.env` is local-only and must not be committed. The MinIO API is available at `http://localhost:9000`, and Mailpit accepts SMTP on `localhost:1025`.
+
+For the opt-in HTTPS platform/tenant browser topology, follow `docs/runbooks/local-https-development.md`; it uses `TRUST_PROXY=true`, `TENANT_BASE_DOMAIN=booking.localhost`, and exact HTTPS origins without relaxing CSRF validation.
 
 ### API health and readiness
 
@@ -311,6 +324,8 @@ pnpm infra:logs
 
 If a host port is already occupied, change only the corresponding host port in `.env.docker`; container ports remain unchanged.
 
+For local HTTPS failures, use `pnpm infra:https:logs` and the dedicated local HTTPS runbook instead of disabling TLS, CSRF, tenant resolution, RLS, or secure-cookie behavior.
+
 ## Continuous integration
 
 GitHub Actions chạy Foundation CI cùng các Sprint 0 gates cho mọi pull request và mọi push vào `main`.
@@ -354,6 +369,7 @@ pnpm audit --audit-level high
 python -m unittest discover -s tools/tests -p 'test_*.py' -v
 cp .env.docker.example .env.docker
 pnpm infra:config
+pnpm infra:https:config
 ```
 
 ## Cấu trúc
