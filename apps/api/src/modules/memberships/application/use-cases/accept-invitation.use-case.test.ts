@@ -66,7 +66,6 @@ function createHarness() {
     elevateInvitationSession: async (input) => {
       assert.deepEqual(input, {
         sessionId: SESSION_ID,
-        membershipAuthorizationVersion: 2,
         now: NOW,
       });
       return transactional("session.elevate", {

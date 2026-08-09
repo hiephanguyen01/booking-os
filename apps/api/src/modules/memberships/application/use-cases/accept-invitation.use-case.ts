@@ -101,7 +101,7 @@ export class AcceptInvitationUseCase {
           throw new InvitationInvalidOrExpiredError();
         }
 
-        const activatedMembership = await session.memberships.activate(lockedMembership.id, now);
+        await session.memberships.activate(lockedMembership.id, now);
         await session.roles.assign({
           userId: command.userId,
           roleKey: invitation.intendedRoleKey,
@@ -119,7 +119,6 @@ export class AcceptInvitationUseCase {
         await session.invitations.accept(invitation.id, now);
         const elevatedSession = await session.sessions.elevateInvitationSession({
           sessionId: command.sessionId,
-          membershipAuthorizationVersion: activatedMembership.authorizationVersion,
           now,
         });
         await session.audit.append({

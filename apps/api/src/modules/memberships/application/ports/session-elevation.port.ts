@@ -1,6 +1,5 @@
 export interface ElevateInvitationSessionInput {
   readonly sessionId: string;
-  readonly membershipAuthorizationVersion: number;
   readonly now: Date;
 }
 

@@ -223,7 +223,7 @@ after(async () => {
   }
 });
 
-test("two concurrent accepts produce exactly one activation and one rotated live token", async () => {
+test("two concurrent accepts preserve the global session version and produce one rotated live token", async () => {
   const results = await Promise.allSettled([
     acceptInvitation.execute({
       tenantId: TENANT_ID,
@@ -265,6 +265,7 @@ test("two concurrent accepts produce exactly one activation and one rotated live
   const membership = await prisma.tenantMembership.findUniqueOrThrow({
     where: { id: MEMBERSHIP_ID },
   });
+  const invitee = await prisma.user.findUniqueOrThrow({ where: { id: INVITEE_ID } });
   const session = await prisma.authSession.findUniqueOrThrow({ where: { id: sessionId } });
   const sessionTokens = await prisma.authSessionToken.findMany({ where: { sessionId } });
   const assignments = await prisma.roleAssignment.findMany({
@@ -276,8 +277,9 @@ test("two concurrent accepts produce exactly one activation and one rotated live
   assert.notEqual(invitation.acceptedAt, null);
   assert.equal(membership.status, "active");
   assert.equal(membership.authorizationVersion, 2);
+  assert.equal(invitee.authorizationVersion, 1);
   assert.equal(session.state, "active");
-  assert.equal(session.authorizationVersion, 2);
+  assert.equal(session.authorizationVersion, 1);
   assert.equal(
     assignments.filter((assignment) => assignment.role.key === "tenant_admin").length,
     1,

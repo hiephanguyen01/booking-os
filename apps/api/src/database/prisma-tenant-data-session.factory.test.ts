@@ -79,7 +79,6 @@ test("exposes transaction-scoped session elevation that activates and rotates th
 
   const result = await session.sessions.elevateInvitationSession({
     sessionId: SESSION_ID,
-    membershipAuthorizationVersion: 3,
     now: NOW,
   });
 
@@ -92,7 +91,8 @@ test("exposes transaction-scoped session elevation that activates and rotates th
   assert.match(operations[0]?.sql ?? "", /FOR UPDATE/);
   assert.deepEqual(operations[0]?.values, [TENANT_ID, SESSION_ID, NOW]);
   assert.match(operations[1]?.sql ?? "", /UPDATE "auth_sessions"/);
-  assert.deepEqual(operations[1]?.values, [TENANT_ID, SESSION_ID, 3, NOW]);
+  assert.doesNotMatch(operations[1]?.sql ?? "", /"authorization_version"\s*=/);
+  assert.deepEqual(operations[1]?.values, [TENANT_ID, SESSION_ID, NOW]);
   assert.match(operations[2]?.sql ?? "", /UPDATE "auth_session_tokens"/);
   assert.deepEqual(operations[2]?.values, [TENANT_ID, SESSION_ID, NOW]);
   assert.match(operations[3]?.sql ?? "", /INSERT INTO "auth_session_tokens"/);

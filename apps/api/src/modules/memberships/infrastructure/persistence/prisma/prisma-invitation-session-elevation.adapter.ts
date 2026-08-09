@@ -33,10 +33,9 @@ const ACTIVATE_INVITATION_SESSION_SQL = `
   UPDATE "auth_sessions"
   SET
     "state" = 'active',
-    "authorization_version" = $3::integer,
     "version" = "version" + 1,
-    "last_seen_at" = $4::timestamptz,
-    "updated_at" = $4::timestamptz
+    "last_seen_at" = $3::timestamptz,
+    "updated_at" = $3::timestamptz
   WHERE "tenant_id" = $1::uuid
     AND "id" = $2::uuid
     AND "state" = 'invitation_pending'
@@ -143,13 +142,6 @@ export class PrismaInvitationSessionElevationAdapter
     if (!this.options) {
       throw new Error("Invitation session elevation security configuration is unavailable.");
     }
-    if (
-      !Number.isInteger(input.membershipAuthorizationVersion) ||
-      input.membershipAuthorizationVersion <= 0
-    ) {
-      throw new TypeError("Membership authorization version must be a positive integer.");
-    }
-
     const rows = await this.transaction.$queryRawUnsafe<LockedInvitationSessionRow[]>(
       LOCK_INVITATION_SESSION_SQL,
       this.tenantId,
@@ -172,7 +164,6 @@ export class PrismaInvitationSessionElevationAdapter
       ACTIVATE_INVITATION_SESSION_SQL,
       this.tenantId,
       input.sessionId,
-      input.membershipAuthorizationVersion,
       input.now,
     );
     if (sessionUpdateCount !== 1) {
