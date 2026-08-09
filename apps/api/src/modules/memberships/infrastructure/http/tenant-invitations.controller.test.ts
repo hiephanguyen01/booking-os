@@ -48,12 +48,6 @@ function controllerWith(authenticated: AuthenticatedRequestContext = AUTHENTICAT
     { requireAuthenticated: () => authenticated } as never,
     {
       async execute(input: unknown) {
-        calls.push(["authorization", input]);
-        return AUTHORIZATION;
-      },
-    } as never,
-    {
-      async execute(input: unknown) {
         calls.push(["invite", input]);
         return { accepted: true as const };
       },
@@ -87,7 +81,7 @@ function controllerWith(authenticated: AuthenticatedRequestContext = AUTHENTICAT
   return { calls, controller };
 }
 
-test("POST invite and resend use database-built tenant authority and return neutral responses", async () => {
+test("POST invite and resend reuse guard-built tenant authority and return neutral responses", async () => {
   const { calls, controller } = controllerWith();
   const request = {
     headers: {
@@ -97,13 +91,17 @@ test("POST invite and resend use database-built tenant authority and return neut
     },
   };
 
-  assert.deepEqual(await controller.create({ email: "admin@example.com" }, request), {
+  assert.deepEqual(
+    await controller.create({ email: "admin@example.com" }, request, AUTHORIZATION),
+    {
+      accepted: true,
+    },
+  );
+  assert.deepEqual(await controller.resend(INVITATION_ID, request, AUTHORIZATION), {
     accepted: true,
   });
-  assert.deepEqual(await controller.resend(INVITATION_ID, request), { accepted: true });
 
   assert.deepEqual(calls, [
-    ["authorization", AUTHENTICATED],
     [
       "invite",
       {
@@ -113,7 +111,6 @@ test("POST invite and resend use database-built tenant authority and return neut
         requestId: AUTHENTICATED.requestId,
       },
     ],
-    ["authorization", AUTHENTICATED],
     [
       "resend",
       {

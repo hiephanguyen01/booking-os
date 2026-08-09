@@ -86,6 +86,7 @@ test("refreshes both snapshots and rotates when permissions changed", async () =
     {
       sessionId: SESSION_ID,
       userId: USER_ID,
+      scope: AUTHENTICATED.authScope,
       userAuthorizationVersion: 5,
       membershipAuthorizationVersion: 8,
       presentedToken: "presented-token",
@@ -116,6 +117,7 @@ test("revokes the session when the authoritative subject is inactive", async () 
     {
       sessionId: SESSION_ID,
       userId: USER_ID,
+      scope: AUTHENTICATED.authScope,
       requestId: "request-reconcile",
       reason: "authorization_subject_inactive",
     },
@@ -143,6 +145,7 @@ test("reconciles user-only and membership-only changes without confusing the ver
       {
         sessionId: SESSION_ID,
         userId: USER_ID,
+        scope: AUTHENTICATED.authScope,
         userAuthorizationVersion: context.userAuthorizationVersion,
         membershipAuthorizationVersion: context.membershipAuthorizationVersion,
         presentedToken: "presented-token",

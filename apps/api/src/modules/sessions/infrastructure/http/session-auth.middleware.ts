@@ -81,6 +81,9 @@ export class SessionAuthMiddleware implements NestMiddleware {
         authScope: authenticated.authScope,
         sessionState: authenticated.sessionState,
         authorizationVersion: authenticated.authorizationVersion,
+        ...(authenticated.membershipAuthorizationVersion === undefined
+          ? {}
+          : { membershipAuthorizationVersion: authenticated.membershipAuthorizationVersion }),
       };
 
       this.requestContext.run(authenticatedContext, next);

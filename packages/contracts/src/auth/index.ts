@@ -1,4 +1,5 @@
 export {
+  type ActiveTenantAuthorizationContext,
   AUTHORIZATION_PERMISSION_KEYS,
   AUTHORIZATION_ROLE_KEYS,
   type AuthorizationContext,

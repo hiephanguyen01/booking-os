@@ -67,6 +67,10 @@ class FakeSubjects implements SessionSubjectPort {
   async currentAuthorizationVersion(): Promise<number | null> {
     return this.subject?.authorizationVersion ?? null;
   }
+
+  async currentMembershipAuthorizationVersion(): Promise<number | null> {
+    return this.subject?.membershipAuthorizationVersion ?? null;
+  }
 }
 
 class FakeAbuseProtection implements LoginAbuseProtectionPort {
@@ -147,6 +151,7 @@ test("uses the tenant subject hook without accepting tenant authority from crede
   const harness = createHarness();
   harness.subjects.subject = {
     authorizationVersion: 5,
+    membershipAuthorizationVersion: 8,
     state: "invitation_pending",
   };
 
@@ -173,6 +178,7 @@ test("uses the tenant subject hook without accepting tenant authority from crede
       hostname: "alpha.example.com",
       state: "invitation_pending",
       authorizationVersion: 5,
+      membershipAuthorizationVersion: 8,
       requestId: "request-2",
     },
   ]);

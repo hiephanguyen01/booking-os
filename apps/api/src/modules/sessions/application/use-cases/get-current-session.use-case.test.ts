@@ -27,6 +27,7 @@ function storedSession(token: string): StoredSessionWithToken {
       hostname: "alpha.example.com",
       state: "active",
       authorizationVersion: 4,
+      membershipAuthorizationVersion: 3,
       version: 1,
       idleExpiresAt: new Date("2026-08-13T04:00:00.000Z"),
       absoluteExpiresAt: new Date("2026-09-05T04:00:00.000Z"),
@@ -70,7 +71,10 @@ function createHarness() {
     },
     async currentAuthorizationVersion(userId: string) {
       subjectVersions.push(userId);
-      return 4;
+      return 9;
+    },
+    async currentMembershipAuthorizationVersion() {
+      return 1;
     },
   };
   const validations: unknown[] = [];
@@ -88,7 +92,7 @@ function createHarness() {
   return { useCase, token, stored, lookups, subjectVersions, validations, subjects };
 }
 
-test("loads current authorization version before validating the opaque session", async () => {
+test("validates the opaque token against stored snapshots while confirming the user remains active", async () => {
   const harness = createHarness();
 
   const result = await harness.useCase.execute({
@@ -123,6 +127,7 @@ test("loads current authorization version before validating the opaque session",
     authScope: { type: "tenant", tenantId: TENANT_ID },
     sessionState: "active",
     authorizationVersion: 4,
+    membershipAuthorizationVersion: 3,
     tokenDisposition: "active",
     rotationRequired: false,
   });

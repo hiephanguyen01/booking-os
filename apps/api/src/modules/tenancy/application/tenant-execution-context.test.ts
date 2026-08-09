@@ -1,20 +1,36 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { RequestContext } from "@booking-os/contracts";
+import type { AuthorizationContext, RequestContext } from "@booking-os/contracts";
 
 import {
   InvalidTenantContextError,
   TenantContextConflictError,
   TenantContextUnavailableError,
 } from "./tenant-context.errors.js";
-import { requireTenantExecutionContext } from "./tenant-execution-context.js";
+import {
+  requireAuthorizedTenantExecutionContext,
+  requireTenantExecutionContext,
+} from "./tenant-execution-context.js";
 
 const baseContext: RequestContext = {
   requestId: "req-1",
   traceId: "550e8400-e29b-41d4-a716-446655440000",
   source: "internal",
 };
+
+const TENANT_ID = "550e8400-e29b-41d4-a716-446655440000";
+const AUTHORIZATION: AuthorizationContext = Object.freeze({
+  userId: "650e8400-e29b-41d4-a716-446655440000",
+  sessionId: "750e8400-e29b-41d4-a716-446655440000",
+  scope: Object.freeze({ type: "tenant", tenantId: TENANT_ID, tenantSlug: "alpha" }),
+  membershipId: "850e8400-e29b-41d4-a716-446655440000",
+  membershipStatus: "active",
+  roleKeys: Object.freeze(["tenant_admin"] as const),
+  permissionKeys: Object.freeze(["tenant.membership.read"] as const),
+  userAuthorizationVersion: 2,
+  membershipAuthorizationVersion: 3,
+});
 
 test("rejects missing tenant context with a stable error class", () => {
   assert.throws(
@@ -55,4 +71,24 @@ test("tenant conflict error records active and requested tenant IDs", () => {
   assert.equal(error.name, "TenantContextConflictError");
   assert.equal(error.activeTenantId, "tenant-a");
   assert.equal(error.requestedTenantId, "tenant-b");
+});
+
+test("requires actor, session, and exact active tenant authorization binding", () => {
+  const authorized = {
+    ...baseContext,
+    tenantId: TENANT_ID,
+    actorId: AUTHORIZATION.userId,
+    sessionId: AUTHORIZATION.sessionId,
+    authorization: AUTHORIZATION,
+  };
+
+  assert.equal(requireAuthorizedTenantExecutionContext(authorized), authorized);
+  for (const invalid of [
+    { ...authorized, actorId: "950e8400-e29b-41d4-a716-446655440000" },
+    { ...authorized, sessionId: "a50e8400-e29b-41d4-a716-446655440000" },
+    { ...authorized, tenantId: "b50e8400-e29b-41d4-a716-446655440000" },
+    { ...authorized, authorization: { ...AUTHORIZATION, membershipStatus: undefined } },
+  ]) {
+    assert.throws(() => requireAuthorizedTenantExecutionContext(invalid));
+  }
 });

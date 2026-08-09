@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { TenantExecutionContext } from "@booking-os/contracts";
+import type {
+  AuthorizedTenantExecutionContext,
+  TenantExecutionContext,
+} from "@booking-os/contracts";
 
 import type { PrismaService } from "../../../../../database/prisma.service.js";
 import type { TenantDataSession } from "../../../application/ports/tenant-transaction.port.js";
 import {
   InvalidTenantContextError,
+  TenantAuthorizationStaleError,
   TenantContextConflictError,
+  TenantExecutionIdentityConflictError,
 } from "../../../application/tenant-context.errors.js";
 import { PrismaTenantTransactionAdapter } from "./prisma-tenant-transaction.adapter.js";
 
@@ -21,6 +26,22 @@ const tenantB: TenantExecutionContext = {
   ...tenantA,
   tenantId: "550e8400-e29b-41d4-a716-446655440002",
 };
+const authorizedTenantA: AuthorizedTenantExecutionContext = {
+  ...tenantA,
+  actorId: "650e8400-e29b-41d4-a716-446655440000",
+  sessionId: "750e8400-e29b-41d4-a716-446655440000",
+  authorization: {
+    userId: "650e8400-e29b-41d4-a716-446655440000",
+    sessionId: "750e8400-e29b-41d4-a716-446655440000",
+    scope: { type: "tenant", tenantId: tenantA.tenantId, tenantSlug: "alpha" },
+    membershipId: "850e8400-e29b-41d4-a716-446655440000",
+    membershipStatus: "active",
+    roleKeys: ["tenant_admin"],
+    permissionKeys: ["tenant.membership.read"],
+    userAuthorizationVersion: 2,
+    membershipAuthorizationVersion: 3,
+  },
+};
 
 interface FakeTransaction {
   readonly tenantProbe: {
@@ -28,6 +49,7 @@ interface FakeTransaction {
   };
   $executeRawUnsafe(sql: string): Promise<number>;
   $executeRaw(strings: TemplateStringsArray, ...values: unknown[]): Promise<number>;
+  $queryRawUnsafe<T>(sql: string): Promise<T>;
 }
 
 interface SessionFactory {
@@ -42,6 +64,8 @@ type AdapterConstructor = new (
 function createHarness() {
   const operations: string[] = [];
   let transactions = 0;
+  let userAuthorizationVersion = 2;
+  let membershipAuthorizationVersion = 3;
   const transaction: FakeTransaction = {
     tenantProbe: {
       async findMany() {
@@ -56,6 +80,19 @@ function createHarness() {
     async $executeRaw(_strings, ...values) {
       operations.push(`config:${String(values[0])}`);
       return 0;
+    },
+    async $queryRawUnsafe<T>(sql: string) {
+      if (sql.includes('FROM "users"')) {
+        operations.push("lock-user-authority");
+        return [{ status: "active", authorizationVersion: userAuthorizationVersion }] as T;
+      }
+      operations.push("lock-membership-authority");
+      return [
+        {
+          id: authorizedTenantA.authorization.membershipId,
+          authorizationVersion: membershipAuthorizationVersion,
+        },
+      ] as T;
     },
   };
   const prisma = {
@@ -80,6 +117,19 @@ function createHarness() {
         roles: Object.freeze({}),
         tenants: Object.freeze({}),
         audit: Object.freeze({}),
+        authorization: {
+          async loadActiveTenantAuthorization() {
+            operations.push("load-tenant-authority");
+            return {
+              tenantSlug: "alpha",
+              membershipId: authorizedTenantA.authorization.membershipId,
+              membershipStatus: "active" as const,
+              membershipAuthorizationVersion,
+              roleKeys: authorizedTenantA.authorization.roleKeys,
+              permissionKeys: authorizedTenantA.authorization.permissionKeys,
+            };
+          },
+        },
       }) as unknown as TenantDataSession;
     },
   };
@@ -89,6 +139,12 @@ function createHarness() {
     adapter: new Constructor(prisma, sessionFactory),
     operations,
     transactionCount: () => transactions,
+    changeUserVersion: (version: number) => {
+      userAuthorizationVersion = version;
+    },
+    changeMembershipVersion: (version: number) => {
+      membershipAuthorizationVersion = version;
+    },
   };
 }
 
@@ -126,6 +182,7 @@ test("sets role and tenant before exposing the complete tenant data session", as
     "roles",
     "tenants",
     "audit",
+    "authorization",
   ]);
 });
 
@@ -155,4 +212,63 @@ test("propagates callback failures", async () => {
     }),
     expected,
   );
+});
+
+test("locks and revalidates authorized tenant execution before exposing the session", async () => {
+  const harness = createHarness();
+
+  await harness.adapter.run(authorizedTenantA, async () => {
+    harness.operations.push("authorized-work");
+  });
+
+  assert.deepEqual(harness.operations.slice(0, 7), [
+    "transaction",
+    "lock-user-authority",
+    "unsafe:SET LOCAL ROLE booking_app",
+    `config:${tenantA.tenantId}`,
+    "lock-membership-authority",
+    `factory:${tenantA.tenantId}`,
+    "load-tenant-authority",
+  ]);
+  assert.equal(harness.operations.at(-1), "authorized-work");
+});
+
+test("rejects stale global or membership authority before invoking work", async () => {
+  for (const change of ["user", "membership"] as const) {
+    const harness = createHarness();
+    if (change === "user") harness.changeUserVersion(4);
+    else harness.changeMembershipVersion(5);
+    let workCalls = 0;
+
+    await assert.rejects(
+      harness.adapter.run(authorizedTenantA, async () => {
+        workCalls += 1;
+      }),
+      TenantAuthorizationStaleError,
+    );
+    assert.equal(workCalls, 0, change);
+  }
+});
+
+test("nested authorized execution cannot switch actor session or authority snapshot", async () => {
+  const harness = createHarness();
+
+  await harness.adapter.run(authorizedTenantA, async () => {
+    for (const nested of [
+      { ...authorizedTenantA, actorId: "950e8400-e29b-41d4-a716-446655440000" },
+      { ...authorizedTenantA, sessionId: "a50e8400-e29b-41d4-a716-446655440000" },
+      {
+        ...authorizedTenantA,
+        authorization: {
+          ...authorizedTenantA.authorization,
+          membershipAuthorizationVersion: 4,
+        },
+      },
+    ]) {
+      await assert.rejects(
+        harness.adapter.run(nested as AuthorizedTenantExecutionContext, async () => undefined),
+        TenantExecutionIdentityConflictError,
+      );
+    }
+  });
 });

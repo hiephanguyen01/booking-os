@@ -85,6 +85,9 @@ test("SessionsModule composes pending invitation eligibility into the real login
         roleAssignment: {
           findFirst: async () => null,
         },
+        tenantMembership: {
+          findUnique: async () => ({ status: "invited", authorizationVersion: 3 }),
+        },
       })
       .overrideProvider(CREDENTIAL_VERIFIER_PORT)
       .useValue({
@@ -141,6 +144,7 @@ test("SessionsModule composes pending invitation eligibility into the real login
         hostname: HOSTNAME,
         state: "invitation_pending",
         authorizationVersion: 7,
+        membershipAuthorizationVersion: 3,
         requestId: "request-pending-login",
       },
     ]);

@@ -27,3 +27,19 @@ export class TenantContextConflictError extends Error {
     this.requestedTenantId = requestedTenantId;
   }
 }
+
+export class TenantExecutionIdentityConflictError extends Error {
+  override readonly name = "TenantExecutionIdentityConflictError";
+
+  constructor() {
+    super("Cannot switch tenant execution identity within an active transaction.");
+  }
+}
+
+export class TenantAuthorizationStaleError extends Error {
+  override readonly name = "TenantAuthorizationStaleError";
+
+  constructor() {
+    super("Tenant authorization changed before the operation could execute.");
+  }
+}

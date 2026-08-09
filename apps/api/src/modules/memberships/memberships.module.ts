@@ -235,15 +235,19 @@ import {
     },
     {
       provide: InviteTenantAdminUseCase,
-      inject: [TenantAdminInvitationWorkflow],
-      useFactory: (workflow: TenantAdminInvitationWorkflow): InviteTenantAdminUseCase =>
-        new InviteTenantAdminUseCase(workflow),
+      inject: [TenantAdminInvitationWorkflow, TENANT_TRANSACTION_PORT],
+      useFactory: (
+        workflow: TenantAdminInvitationWorkflow,
+        transactions: TenantTransactionPort,
+      ): InviteTenantAdminUseCase => new InviteTenantAdminUseCase(workflow, transactions),
     },
     {
       provide: ResendInvitationUseCase,
-      inject: [TenantAdminInvitationWorkflow],
-      useFactory: (workflow: TenantAdminInvitationWorkflow): ResendInvitationUseCase =>
-        new ResendInvitationUseCase(workflow),
+      inject: [TenantAdminInvitationWorkflow, TENANT_TRANSACTION_PORT],
+      useFactory: (
+        workflow: TenantAdminInvitationWorkflow,
+        transactions: TenantTransactionPort,
+      ): ResendInvitationUseCase => new ResendInvitationUseCase(workflow, transactions),
     },
     {
       provide: GetCurrentInvitationUseCase,

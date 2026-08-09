@@ -39,8 +39,14 @@ export class MembershipAwareSessionSubjectAdapter implements SessionSubjectPort 
     const authorizationVersion = await this.activeSubjects.currentAuthorizationVersion(
       input.userId,
     );
+    const membershipAuthorizationVersion =
+      await this.activeSubjects.currentMembershipAuthorizationVersion(
+        input.userId,
+        input.scope.tenantId,
+      );
     if (
       authorizationVersion === null ||
+      membershipAuthorizationVersion === null ||
       !Number.isInteger(authorizationVersion) ||
       authorizationVersion <= 0
     ) {
@@ -50,10 +56,15 @@ export class MembershipAwareSessionSubjectAdapter implements SessionSubjectPort 
     return Object.freeze({
       state: "invitation_pending" as const,
       authorizationVersion,
+      membershipAuthorizationVersion,
     });
   }
 
   currentAuthorizationVersion(userId: string): Promise<number | null> {
     return this.activeSubjects.currentAuthorizationVersion(userId);
+  }
+
+  currentMembershipAuthorizationVersion(userId: string, tenantId: string): Promise<number | null> {
+    return this.activeSubjects.currentMembershipAuthorizationVersion(userId, tenantId);
   }
 }

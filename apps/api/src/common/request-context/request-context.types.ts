@@ -12,6 +12,7 @@ export interface AuthenticatedRequestContext extends RequestContext {
   readonly authScope: AuthenticatedScope;
   readonly sessionState: "active" | "invitation_pending";
   readonly authorizationVersion: number;
+  readonly membershipAuthorizationVersion?: number;
 }
 
 export type AuthorizationReadyRequestContext =
@@ -42,6 +43,17 @@ export function isAuthenticatedRequestContext(
       (candidate.authScope?.type === "tenant" &&
         typeof candidate.authScope.tenantId === "string" &&
         candidate.authScope.tenantId.length > 0))
+  );
+}
+
+export function isAuthorizationReadyRequestContext(
+  context: AuthenticatedRequestContext,
+): context is AuthorizationReadyRequestContext {
+  return (
+    context.sessionState === "active" &&
+    (context.authScope.type === "platform" ||
+      (Number.isInteger(context.membershipAuthorizationVersion) &&
+        (context.membershipAuthorizationVersion ?? 0) > 0))
   );
 }
 

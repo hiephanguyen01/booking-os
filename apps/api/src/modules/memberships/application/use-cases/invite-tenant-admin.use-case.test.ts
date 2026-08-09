@@ -4,6 +4,7 @@ import test from "node:test";
 import { PERMISSION_KEYS } from "@booking-os/auth";
 import type { AuthorizationContext } from "@booking-os/contracts";
 
+import { TenantAuthorizationStaleError } from "../../../tenancy/application/tenant-context.errors.js";
 import { RoleGrantNotAllowedError } from "../../domain/membership-errors.js";
 import { InviteTenantAdminUseCase } from "./invite-tenant-admin.use-case.js";
 
@@ -30,8 +31,9 @@ function authorization(
   });
 }
 
-function createHarness() {
+function createHarness(transactionError?: Error) {
   const calls: unknown[] = [];
+  const transactionContexts: unknown[] = [];
   const workflow = {
     async inviteTenantAdmin(input: unknown) {
       calls.push(input);
@@ -46,13 +48,24 @@ function createHarness() {
   };
   return {
     calls,
-    useCase: new InviteTenantAdminUseCase(workflow, () => NOW),
+    transactionContexts,
+    useCase: new InviteTenantAdminUseCase(
+      workflow,
+      {
+        async run(context, work) {
+          transactionContexts.push(context);
+          if (transactionError) throw transactionError;
+          return work({} as never);
+        },
+      },
+      () => NOW,
+    ),
   };
 }
 
 for (const role of ["tenant_owner", "tenant_admin"] as const) {
   test(`${role} may invite a tenant administrator when the permission is present`, async () => {
-    const { calls, useCase } = createHarness();
+    const { calls, transactionContexts, useCase } = createHarness();
 
     const result = await useCase.execute({
       authorization: authorization(role),
@@ -75,6 +88,16 @@ for (const role of ["tenant_owner", "tenant_admin"] as const) {
     ]);
     assert.equal(Object.hasOwn(result, "userExists"), false);
     assert.equal(Object.hasOwn(result, "invitationId"), false);
+    assert.equal(transactionContexts.length, 1);
+    assert.deepEqual(transactionContexts[0], {
+      tenantId: TENANT_ID,
+      actorId: ACTOR_ID,
+      sessionId: authorization(role).sessionId,
+      authorization: authorization(role),
+      requestId: "request-1",
+      traceId: "request-1",
+      source: "console",
+    });
   });
 }
 
@@ -108,6 +131,21 @@ test("denies platform scope even when an invite permission is forged", async () 
       requestId: "request-3",
     }),
     (error: unknown) => error instanceof RoleGrantNotAllowedError,
+  );
+  assert.equal(calls.length, 0);
+});
+
+test("does not invoke the invitation workflow when tenant authority became stale", async () => {
+  const { calls, useCase } = createHarness(new TenantAuthorizationStaleError());
+
+  await assert.rejects(
+    useCase.execute({
+      authorization: authorization("tenant_owner"),
+      hostname: "acme.booking.test",
+      email: "admin@example.com",
+      requestId: "request-stale",
+    }),
+    TenantAuthorizationStaleError,
   );
   assert.equal(calls.length, 0);
 });

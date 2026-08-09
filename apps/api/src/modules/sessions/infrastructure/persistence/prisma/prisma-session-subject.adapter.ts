@@ -41,9 +41,22 @@ export class PrismaSessionSubjectAdapter implements SessionSubjectPort {
       return null;
     }
 
+    const membership =
+      input.scope.type === "tenant"
+        ? await this.prisma.tenantMembership.findUnique({
+            where: {
+              tenantId_userId: { tenantId: input.scope.tenantId, userId: input.userId },
+              status: "active",
+            },
+            select: { authorizationVersion: true },
+          })
+        : null;
+    if (input.scope.type === "tenant" && !membership) return null;
+
     return {
       authorizationVersion: user.authorizationVersion,
       state: "active",
+      ...(membership ? { membershipAuthorizationVersion: membership.authorizationVersion } : {}),
     };
   }
 
@@ -53,5 +66,18 @@ export class PrismaSessionSubjectAdapter implements SessionSubjectPort {
       select: { status: true, authorizationVersion: true },
     });
     return user?.status === "active" ? user.authorizationVersion : null;
+  }
+
+  async currentMembershipAuthorizationVersion(
+    userId: string,
+    tenantId: string,
+  ): Promise<number | null> {
+    const membership = await this.prisma.tenantMembership.findUnique({
+      where: { tenantId_userId: { tenantId, userId } },
+      select: { status: true, authorizationVersion: true },
+    });
+    return membership?.status === "active" || membership?.status === "invited"
+      ? membership.authorizationVersion
+      : null;
   }
 }

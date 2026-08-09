@@ -1,3 +1,4 @@
+import type { AuthorizationContext } from "@booking-os/contracts";
 import {
   BadRequestException,
   Body,
@@ -30,11 +31,11 @@ import type { RequestHeaders } from "../../../../common/request-context/request-
 import { SessionCsrfGuard } from "../../../../common/security/session-csrf.guard.js";
 import { SessionRequired } from "../../../../common/security/session-required.decorator.js";
 import { EnvironmentService } from "../../../../config/environment.service.js";
-import { PermissionGuard, RequiresPermission } from "../../../authorization/authorization.http.js";
 import {
-  BuildPlatformAuthorizationContextUseCase,
-  PlatformAuthorizationDeniedError,
-} from "../../application/use-cases/build-platform-authorization-context.use-case.js";
+  CurrentAuthorizationContext,
+  PermissionGuard,
+  RequiresPermission,
+} from "../../../authorization/authorization.http.js";
 import { GetTenantProvisioningUseCase } from "../../application/use-cases/get-tenant-provisioning.use-case.js";
 import {
   PlatformTenantProvisioningError,
@@ -102,8 +103,6 @@ function requireEmail(value: unknown, field: string): string {
 export class PlatformTenantsController {
   constructor(
     @Inject(RequestContextStorage) private readonly requestContext: RequestContextStorage,
-    @Inject(BuildPlatformAuthorizationContextUseCase)
-    private readonly authorization: BuildPlatformAuthorizationContextUseCase,
     @Inject(ProvisionTenantUseCase) private readonly provision: ProvisionTenantUseCase,
     @Inject(GetTenantProvisioningUseCase)
     private readonly getProvisioning: GetTenantProvisioningUseCase,
@@ -124,11 +123,11 @@ export class PlatformTenantsController {
     @Body() body: ProvisionTenantRequestDto,
     @Headers("idempotency-key") idempotencyKey: string | undefined,
     @Req() request: PlatformTenantRequest,
+    @CurrentAuthorizationContext() authorization: AuthorizationContext,
   ) {
     const authenticated = this.requestContext.requireAuthenticated();
     const hostname = effectiveHostname(request.headers, this.environment.trustProxy);
     if (!hostname) throw new BadRequestException("A valid host is required.");
-    const authorization = await this.buildAuthorization(authenticated);
     return this.executeProvisioning(() =>
       this.provision.execute({
         authorization,
@@ -148,13 +147,16 @@ export class PlatformTenantsController {
   @ApiOperation({ operationId: "getPlatformTenantProvisioning" })
   @ApiParam({ name: "tenantId", type: String, format: "uuid" })
   @ApiOkResponse({ type: TenantProvisioningResponseDto })
-  async get(@Param("tenantId") tenantId: string, @Req() request: PlatformTenantRequest) {
-    const authenticated = this.requestContext.requireAuthenticated();
+  async get(
+    @Param("tenantId") tenantId: string,
+    @Req() request: PlatformTenantRequest,
+    @CurrentAuthorizationContext() authorization: AuthorizationContext,
+  ) {
     const hostname = effectiveHostname(request.headers, this.environment.trustProxy);
     if (!hostname) throw new BadRequestException("A valid host is required.");
     return this.executeProvisioning(async () =>
       this.getProvisioning.execute({
-        authorization: await this.buildAuthorization(authenticated),
+        authorization,
         hostname,
         tenantId: requireUuid(tenantId, "tenantId"),
       }),
@@ -171,34 +173,19 @@ export class PlatformTenantsController {
   async resendOwnerInvitation(
     @Param("tenantId") tenantId: string,
     @Req() request: PlatformTenantRequest,
+    @CurrentAuthorizationContext() authorization: AuthorizationContext,
   ) {
     const authenticated = this.requestContext.requireAuthenticated();
     const hostname = effectiveHostname(request.headers, this.environment.trustProxy);
     if (!hostname) throw new BadRequestException("A valid host is required.");
     return this.executeProvisioning(async () =>
       this.resend.execute({
-        authorization: await this.buildAuthorization(authenticated),
+        authorization,
         hostname,
         tenantId: requireUuid(tenantId, "tenantId"),
         requestId: authenticated.requestId,
       }),
     );
-  }
-
-  private async buildAuthorization(
-    authenticated: ReturnType<RequestContextStorage["requireAuthenticated"]>,
-  ) {
-    try {
-      return await this.authorization.execute(authenticated);
-    } catch (error: unknown) {
-      if (error instanceof PlatformAuthorizationDeniedError) {
-        throw new ForbiddenException("Platform authorization is required.");
-      }
-      if (error instanceof PlatformTenantProvisioningError) {
-        throw new ForbiddenException("Platform authorization is required.");
-      }
-      throw error;
-    }
   }
 
   private async executeProvisioning<T>(operation: () => Promise<T>): Promise<T> {

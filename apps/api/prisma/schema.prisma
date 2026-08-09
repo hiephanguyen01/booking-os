@@ -242,6 +242,7 @@ model AuthSession {
   hostname             String
   state                AuthSessionState  @default(active)
   authorizationVersion Int               @map("authorization_version")
+  membershipAuthorizationVersion Int?    @map("membership_authorization_version")
   version              Int               @default(1)
   idleExpiresAt        DateTime           @db.Timestamptz(6) @map("idle_expires_at")
   absoluteExpiresAt    DateTime           @db.Timestamptz(6) @map("absolute_expires_at")

@@ -45,6 +45,7 @@ interface SessionRow {
   readonly hostname: string;
   readonly state: string;
   readonly authorizationVersion: number;
+  readonly membershipAuthorizationVersion: number | null;
   readonly version: number;
   readonly idleExpiresAt: Date;
   readonly absoluteExpiresAt: Date;
@@ -140,6 +141,9 @@ function mapSession(row: SessionRow): StoredSession {
     hostname: row.hostname,
     state: mapState(row.state),
     authorizationVersion: row.authorizationVersion,
+    ...(typeof row.membershipAuthorizationVersion !== "number"
+      ? {}
+      : { membershipAuthorizationVersion: row.membershipAuthorizationVersion }),
     version: row.version,
     idleExpiresAt: row.idleExpiresAt,
     absoluteExpiresAt: row.absoluteExpiresAt,
@@ -184,6 +188,7 @@ export class PrismaSessionRepositoryAdapter implements SessionRepositoryPort {
           hostname: input.session.hostname,
           state: prismaState(input.session.state),
           authorizationVersion: input.session.authorizationVersion,
+          membershipAuthorizationVersion: input.session.membershipAuthorizationVersion ?? null,
           version: input.session.version,
           idleExpiresAt: input.session.idleExpiresAt,
           absoluteExpiresAt: input.session.absoluteExpiresAt,

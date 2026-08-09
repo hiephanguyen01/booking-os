@@ -103,6 +103,9 @@ export class LoginUseCase {
       hostname: input.hostname,
       state: subject.state,
       authorizationVersion: subject.authorizationVersion,
+      ...(subject.membershipAuthorizationVersion === undefined
+        ? {}
+        : { membershipAuthorizationVersion: subject.membershipAuthorizationVersion }),
       requestId: input.requestId,
     });
   }

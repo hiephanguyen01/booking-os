@@ -34,17 +34,10 @@ const AUTHORIZATION: AuthorizationContext = {
   userAuthorizationVersion: 1,
 };
 
-test("uses only database-built platform authority, never request role or permission headers", async () => {
-  let authorizationInput: AuthenticatedRequestContext | undefined;
+test("uses only guard-built platform authority, never request role or permission headers", async () => {
   let provisionInput: unknown;
   const controller = new PlatformTenantsController(
     { requireAuthenticated: () => AUTHENTICATED } as never,
-    {
-      async execute(input: AuthenticatedRequestContext) {
-        authorizationInput = input;
-        return AUTHORIZATION;
-      },
-    } as never,
     {
       async execute(input: unknown) {
         provisionInput = input;
@@ -66,10 +59,10 @@ test("uses only database-built platform authority, never request role or permiss
         "x-permission": "tenant.membership.admin.invite",
       },
     },
+    AUTHORIZATION,
   );
 
   assert.deepEqual(result, { tenantId: "tenant-1" });
-  assert.equal(authorizationInput, AUTHENTICATED);
   assert.deepEqual(provisionInput, {
     authorization: AUTHORIZATION,
     hostname: "platform.example.com",
@@ -90,11 +83,6 @@ function controllerWith(
 ): PlatformTenantsController {
   return new PlatformTenantsController(
     { requireAuthenticated: () => AUTHENTICATED } as never,
-    {
-      async execute() {
-        return AUTHORIZATION;
-      },
-    } as never,
     (overrides.provision ?? {
       async execute() {
         return {};
@@ -125,7 +113,12 @@ test("returns 400 rather than an internal error when a provisioning body field i
   const controller = controllerWith({});
 
   await assert.rejects(
-    controller.create({ ...VALID_BODY, slug: 42 } as never, "create-acme", VALID_REQUEST),
+    controller.create(
+      { ...VALID_BODY, slug: 42 } as never,
+      "create-acme",
+      VALID_REQUEST,
+      AUTHORIZATION,
+    ),
     BadRequestException,
   );
 });
@@ -134,7 +127,12 @@ test("rejects an invalid owner email before provisioning", async () => {
   const controller = controllerWith({});
 
   await assert.rejects(
-    controller.create({ ...VALID_BODY, ownerEmail: "not-an-email" }, "create-acme", VALID_REQUEST),
+    controller.create(
+      { ...VALID_BODY, ownerEmail: "not-an-email" },
+      "create-acme",
+      VALID_REQUEST,
+      AUTHORIZATION,
+    ),
     BadRequestException,
   );
 });
@@ -149,7 +147,7 @@ test("maps an invalid tenant slug from provisioning to HTTP 400", async () => {
   });
 
   await assert.rejects(
-    controller.create(VALID_BODY, "create-acme", VALID_REQUEST),
+    controller.create(VALID_BODY, "create-acme", VALID_REQUEST, AUTHORIZATION),
     BadRequestException,
   );
 });
@@ -169,7 +167,7 @@ test("maps provisioning collisions and idempotency conflicts to HTTP 409", async
     });
 
     await assert.rejects(
-      controller.create(VALID_BODY, "create-acme", VALID_REQUEST),
+      controller.create(VALID_BODY, "create-acme", VALID_REQUEST, AUTHORIZATION),
       ConflictException,
     );
   }
@@ -185,7 +183,7 @@ test("maps an incorrect platform host from provisioning to opaque HTTP 404", asy
   });
 
   await assert.rejects(
-    controller.create(VALID_BODY, "create-acme", VALID_REQUEST),
+    controller.create(VALID_BODY, "create-acme", VALID_REQUEST, AUTHORIZATION),
     NotFoundException,
   );
 });
@@ -193,7 +191,10 @@ test("maps an incorrect platform host from provisioning to opaque HTTP 404", asy
 test("returns 400 rather than querying provisioning state for a malformed tenant ID", async () => {
   const controller = controllerWith({});
 
-  await assert.rejects(controller.get("not-a-uuid", VALID_REQUEST), BadRequestException);
+  await assert.rejects(
+    controller.get("not-a-uuid", VALID_REQUEST, AUTHORIZATION),
+    BadRequestException,
+  );
 });
 
 test("maps unavailable provisioning state from lookup and resend to opaque HTTP 404", async () => {
@@ -211,11 +212,15 @@ test("maps unavailable provisioning state from lookup and resend to opaque HTTP 
   });
 
   await assert.rejects(
-    controller.get("550e8400-e29b-41d4-a716-446655440001", VALID_REQUEST),
+    controller.get("550e8400-e29b-41d4-a716-446655440001", VALID_REQUEST, AUTHORIZATION),
     NotFoundException,
   );
   await assert.rejects(
-    controller.resendOwnerInvitation("550e8400-e29b-41d4-a716-446655440001", VALID_REQUEST),
+    controller.resendOwnerInvitation(
+      "550e8400-e29b-41d4-a716-446655440001",
+      VALID_REQUEST,
+      AUTHORIZATION,
+    ),
     NotFoundException,
   );
 });

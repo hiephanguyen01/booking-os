@@ -11,6 +11,7 @@ export interface StoredSession {
   readonly hostname: string;
   readonly state: SessionState;
   readonly authorizationVersion: number;
+  readonly membershipAuthorizationVersion?: number;
   readonly version: number;
   readonly idleExpiresAt: Date;
   readonly absoluteExpiresAt: Date;

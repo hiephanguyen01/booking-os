@@ -1,3 +1,4 @@
+import type { AuthorizationContext } from "@booking-os/contracts";
 import {
   BadRequestException,
   ConflictException,
@@ -17,11 +18,12 @@ import { SupportedApi } from "../../../../api-visibility/api-visibility.decorato
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import { SessionCsrfGuard } from "../../../../common/security/session-csrf.guard.js";
 import { SessionRequired } from "../../../../common/security/session-required.decorator.js";
-import { PermissionGuard, RequiresPermission } from "../../../authorization/authorization.http.js";
 import {
-  BuildTenantAuthorizationContextUseCase,
-  TenantAuthorizationDeniedError,
-} from "../../application/use-cases/build-tenant-authorization-context.use-case.js";
+  CurrentAuthorizationContext,
+  PermissionGuard,
+  RequiresPermission,
+} from "../../../authorization/authorization.http.js";
+import { TenantAuthorizationDeniedError } from "../../application/use-cases/build-tenant-authorization-context.use-case.js";
 import { DemoteOwnerUseCase } from "../../application/use-cases/demote-owner.use-case.js";
 import { ListMembershipsUseCase } from "../../application/use-cases/list-memberships.use-case.js";
 import { PromoteOwnerUseCase } from "../../application/use-cases/promote-owner.use-case.js";
@@ -56,8 +58,6 @@ function requireUuid(value: unknown): string {
 export class TenantMembershipsController {
   constructor(
     @Inject(RequestContextStorage) private readonly requestContext: RequestContextStorage,
-    @Inject(BuildTenantAuthorizationContextUseCase)
-    private readonly authorization: BuildTenantAuthorizationContextUseCase,
     @Inject(ListMembershipsUseCase) private readonly listMemberships: ListMembershipsUseCase,
     @Inject(SuspendMembershipUseCase)
     private readonly suspendMembership: SuspendMembershipUseCase,
@@ -71,11 +71,11 @@ export class TenantMembershipsController {
   @Get()
   @ApiOperation({ operationId: "listTenantMemberships" })
   @ApiOkResponse({ type: TenantMembershipResponseDto, isArray: true })
-  async list() {
+  async list(@CurrentAuthorizationContext() authorization: AuthorizationContext) {
     try {
       const authenticated = this.requestContext.requireAuthenticated();
       return await this.listMemberships.execute({
-        authorization: await this.authorization.execute(authenticated),
+        authorization,
         requestId: authenticated.requestId,
       });
     } catch (error: unknown) {
@@ -90,8 +90,11 @@ export class TenantMembershipsController {
   @ApiOperation({ operationId: "suspendTenantMembership" })
   @ApiParam({ name: "membershipId", type: String, format: "uuid" })
   @ApiOkResponse({ type: TenantMembershipLifecycleMutationResponseDto })
-  async suspend(@Param("membershipId") membershipId: string) {
-    return this.executeMutation(this.suspendMembership, membershipId);
+  async suspend(
+    @Param("membershipId") membershipId: string,
+    @CurrentAuthorizationContext() authorization: AuthorizationContext,
+  ) {
+    return this.executeMutation(this.suspendMembership, membershipId, authorization);
   }
 
   @SessionRequired()
@@ -101,8 +104,11 @@ export class TenantMembershipsController {
   @ApiOperation({ operationId: "revokeTenantMembership" })
   @ApiParam({ name: "membershipId", type: String, format: "uuid" })
   @ApiOkResponse({ type: TenantMembershipLifecycleMutationResponseDto })
-  async revoke(@Param("membershipId") membershipId: string) {
-    return this.executeMutation(this.revokeMembership, membershipId);
+  async revoke(
+    @Param("membershipId") membershipId: string,
+    @CurrentAuthorizationContext() authorization: AuthorizationContext,
+  ) {
+    return this.executeMutation(this.revokeMembership, membershipId, authorization);
   }
 
   @SessionRequired()
@@ -112,8 +118,11 @@ export class TenantMembershipsController {
   @ApiOperation({ operationId: "promoteTenantMembershipOwner" })
   @ApiParam({ name: "membershipId", type: String, format: "uuid" })
   @ApiOkResponse({ type: TenantMembershipRoleMutationResponseDto })
-  async promoteOwner(@Param("membershipId") membershipId: string) {
-    return this.executeMutation(this.promoteOwnerMembership, membershipId);
+  async promoteOwner(
+    @Param("membershipId") membershipId: string,
+    @CurrentAuthorizationContext() authorization: AuthorizationContext,
+  ) {
+    return this.executeMutation(this.promoteOwnerMembership, membershipId, authorization);
   }
 
   @SessionRequired()
@@ -123,27 +132,29 @@ export class TenantMembershipsController {
   @ApiOperation({ operationId: "demoteTenantMembershipOwner" })
   @ApiParam({ name: "membershipId", type: String, format: "uuid" })
   @ApiOkResponse({ type: TenantMembershipRoleMutationResponseDto })
-  async demoteOwner(@Param("membershipId") membershipId: string) {
-    return this.executeMutation(this.demoteOwnerMembership, membershipId);
+  async demoteOwner(
+    @Param("membershipId") membershipId: string,
+    @CurrentAuthorizationContext() authorization: AuthorizationContext,
+  ) {
+    return this.executeMutation(this.demoteOwnerMembership, membershipId, authorization);
   }
 
   private async executeMutation<TResult>(
     useCase: {
       execute(command: {
-        readonly authorization: Awaited<
-          ReturnType<BuildTenantAuthorizationContextUseCase["execute"]>
-        >;
+        readonly authorization: AuthorizationContext;
         readonly membershipId: string;
         readonly requestId: string;
       }): Promise<TResult>;
     },
     membershipId: string,
+    authorization: AuthorizationContext,
   ): Promise<TResult> {
     const normalizedMembershipId = requireUuid(membershipId);
     try {
       const authenticated = this.requestContext.requireAuthenticated();
       return await useCase.execute({
-        authorization: await this.authorization.execute(authenticated),
+        authorization,
         membershipId: normalizedMembershipId,
         requestId: authenticated.requestId,
       });

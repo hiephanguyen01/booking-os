@@ -44,6 +44,7 @@ test("creates a host-bound tenant session while persisting only the token digest
     hostname: HOSTNAME,
     state: "active",
     authorizationVersion: 4,
+    membershipAuthorizationVersion: 6,
     requestId: "request-create-session",
   });
 
@@ -54,6 +55,7 @@ test("creates a host-bound tenant session while persisting only the token digest
   assert.equal(created.length, 1);
   assert.equal(created[0]?.session.hostname, HOSTNAME);
   assert.deepEqual(created[0]?.session.scope, { type: "tenant", tenantId: TENANT_ID });
+  assert.equal(created[0]?.session.membershipAuthorizationVersion, 6);
   assert.equal(created[0]?.session.idleExpiresAt.toISOString(), "2026-08-13T02:00:00.000Z");
   assert.equal(created[0]?.session.absoluteExpiresAt.toISOString(), "2026-09-05T02:00:00.000Z");
   assert.equal(created[0]?.token.selector, parsed?.selector);

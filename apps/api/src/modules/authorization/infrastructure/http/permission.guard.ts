@@ -1,4 +1,4 @@
-import type { PermissionKey } from "@booking-os/auth";
+import { type PermissionKey, readSessionToken, serializeSessionCookie } from "@booking-os/auth";
 import type { AuthorizationContext } from "@booking-os/contracts";
 import {
   type CanActivate,
@@ -12,6 +12,7 @@ import { Reflector } from "@nestjs/core";
 
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import type { AuthenticatedRequestContext } from "../../../../common/request-context/request-context.types.js";
+import { isAuthorizationReadyRequestContext } from "../../../../common/request-context/request-context.types.js";
 import type { ProtectedRequestAuthorizationPort } from "../../application/ports/protected-request-authorization.port.js";
 import { PROTECTED_REQUEST_AUTHORIZATION_PORT } from "../../authorization.tokens.js";
 import {
@@ -29,6 +30,18 @@ const AUTHORIZATION_CONTEXT_REQUEST_KEY = Symbol("AUTHORIZATION_CONTEXT_REQUEST_
 
 type AuthorizedRequest = Record<PropertyKey, unknown>;
 
+interface PermissionRequest extends AuthorizedRequest {
+  readonly headers?: { readonly cookie?: string | readonly string[] };
+}
+
+interface PermissionResponse {
+  setHeader(name: string, value: string): void;
+}
+
+function firstHeaderValue(value: string | readonly string[] | undefined): string | undefined {
+  return typeof value === "string" ? value : value?.[0];
+}
+
 function sameScope(
   authenticated: AuthenticatedRequestContext,
   authorization: AuthorizationContext,
@@ -45,11 +58,16 @@ function isAllowed(
   authenticated: AuthenticatedRequestContext,
   authorization: AuthorizationContext,
   permission: PermissionKey,
+  reconciled: boolean,
 ): boolean {
   return (
     authorization.userId === authenticated.actorId &&
     authorization.sessionId === authenticated.sessionId &&
-    authorization.userAuthorizationVersion === authenticated.authorizationVersion &&
+    (reconciled ||
+      (authorization.userAuthorizationVersion === authenticated.authorizationVersion &&
+        (authorization.scope.type === "platform" ||
+          authorization.membershipAuthorizationVersion ===
+            authenticated.membershipAuthorizationVersion))) &&
     sameScope(authenticated, authorization) &&
     (authorization.scope.type === "platform" ||
       (authorization.membershipStatus === "active" && Boolean(authorization.membershipId))) &&
@@ -93,10 +111,25 @@ export class PermissionGuard implements CanActivate {
     if (authenticated.sessionState !== "active") {
       throw new ForbiddenException("An active session is required.");
     }
+    if (!isAuthorizationReadyRequestContext(authenticated)) {
+      throw new ForbiddenException("Authorization snapshots are required.");
+    }
+    const request = context.switchToHttp().getRequest<PermissionRequest>();
+    const presentedToken = readSessionToken(firstHeaderValue(request.headers?.cookie) ?? null);
+    if (!presentedToken) throw new UnauthorizedException("Authentication is required.");
 
     let authorization: AuthorizationContext;
+    let reconciled = false;
     try {
-      authorization = await this.authorization.execute(authenticated);
+      const result = await this.authorization.execute({ authenticated, presentedToken });
+      authorization = result.context;
+      if (result.status === "refreshed") {
+        reconciled = true;
+        context
+          .switchToHttp()
+          .getResponse<PermissionResponse>()
+          .setHeader("Set-Cookie", serializeSessionCookie(result.successorToken));
+      }
     } catch (error: unknown) {
       if (
         error instanceof AuthorizationAuthorityInvalidError ||
@@ -107,20 +140,16 @@ export class PermissionGuard implements CanActivate {
       }
       throw error;
     }
-    if (!isAllowed(authenticated, authorization, permission)) {
+    if (!isAllowed(authenticated, authorization, permission, reconciled)) {
       throw new ForbiddenException("Authoritative permission is required.");
     }
 
-    Object.defineProperty(
-      context.switchToHttp().getRequest<object>(),
-      AUTHORIZATION_CONTEXT_REQUEST_KEY,
-      {
-        value: authorization,
-        enumerable: false,
-        configurable: false,
-        writable: false,
-      },
-    );
+    Object.defineProperty(request, AUTHORIZATION_CONTEXT_REQUEST_KEY, {
+      value: authorization,
+      enumerable: false,
+      configurable: false,
+      writable: false,
+    });
     return true;
   }
 }

@@ -1,6 +1,6 @@
 import { PERMISSION_KEYS } from "@booking-os/auth";
 import type { AuthorizationContext } from "@booking-os/contracts";
-
+import { isActiveTenantAuthorizationContext } from "../../../authorization/domain/active-tenant-authorization.js";
 import { membershipTargetAllowed } from "../../../authorization/domain/membership-target.policy.js";
 import type { TenantTransactionPort } from "../../../tenancy/application/ports/tenant-transaction.port.js";
 import {
@@ -31,8 +31,7 @@ export class RevokeMembershipUseCase {
   async execute(command: RevokeMembershipCommand): Promise<RevokeMembershipResult> {
     const authorization = command.authorization;
     if (
-      authorization.scope.type !== "tenant" ||
-      authorization.membershipStatus !== "active" ||
+      !isActiveTenantAuthorizationContext(authorization) ||
       !authorization.permissionKeys.includes(PERMISSION_KEYS.tenantMembershipAdminRevoke) ||
       authorization.membershipId === command.membershipId
     ) {
@@ -44,6 +43,8 @@ export class RevokeMembershipUseCase {
       {
         tenantId: authorization.scope.tenantId,
         actorId: authorization.userId,
+        sessionId: authorization.sessionId,
+        authorization,
         requestId: command.requestId,
         traceId: command.requestId,
         source: "console",

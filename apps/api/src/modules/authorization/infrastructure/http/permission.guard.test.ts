@@ -3,6 +3,11 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import {
+  BOOKING_SESSION_COOKIE,
+  createSessionToken,
+  serializeSessionCookie,
+} from "@booking-os/auth";
 import type { AuthorizationContext } from "@booking-os/contracts";
 import { type ExecutionContext, ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
@@ -18,6 +23,7 @@ import {
 const USER_ID = "10000000-0000-4000-8000-000000000001";
 const SESSION_ID = "20000000-0000-4000-8000-000000000001";
 const TENANT_ID = "30000000-0000-4000-8000-000000000001";
+const PRESENTED_TOKEN = createSessionToken();
 const AUTHENTICATED: AuthenticatedRequestContext = Object.freeze({
   requestId: "request-permission",
   traceId: "trace-permission",
@@ -27,6 +33,7 @@ const AUTHENTICATED: AuthenticatedRequestContext = Object.freeze({
   authScope: Object.freeze({ type: "tenant", tenantId: TENANT_ID }),
   sessionState: "active",
   authorizationVersion: 4,
+  membershipAuthorizationVersion: 7,
 });
 const AUTHORIZATION: AuthorizationContext = Object.freeze({
   userId: USER_ID,
@@ -43,6 +50,7 @@ const AUTHORIZATION: AuthorizationContext = Object.freeze({
 function execution(classification: "permission" | "exempt" | "missing" = "permission"): {
   readonly context: ExecutionContext;
   readonly request: object;
+  readonly responseHeaders: ReadonlyMap<string, string>;
 } {
   const handler = () => undefined;
   if (classification === "permission") {
@@ -50,13 +58,22 @@ function execution(classification: "permission" | "exempt" | "missing" = "permis
   } else if (classification === "exempt") {
     Reflect.defineMetadata(PERMISSION_GUARD_EXEMPT_METADATA, "invitation_pending", handler);
   }
-  const request = {};
+  const request = {
+    headers: { cookie: `${BOOKING_SESSION_COOKIE}=${encodeURIComponent(PRESENTED_TOKEN)}` },
+  };
+  const responseHeaders = new Map<string, string>();
   return {
     request,
+    responseHeaders,
     context: {
       getHandler: () => handler,
       getClass: () => class TestController {},
-      switchToHttp: () => ({ getRequest: () => request }),
+      switchToHttp: () => ({
+        getRequest: () => request,
+        getResponse: () => ({
+          setHeader: (name: string, value: string) => responseHeaders.set(name, value),
+        }),
+      }),
     } as unknown as ExecutionContext,
   };
 }
@@ -65,6 +82,7 @@ function guard(input?: {
   readonly authenticated?: AuthenticatedRequestContext | undefined;
   readonly authorization?: AuthorizationContext | undefined;
   readonly error?: Error | undefined;
+  readonly successorToken?: string | undefined;
 }) {
   let resolves = 0;
   const instance = new PermissionGuard(
@@ -76,7 +94,10 @@ function guard(input?: {
       async execute() {
         resolves += 1;
         if (input?.error) throw input.error;
-        return input?.authorization ?? AUTHORIZATION;
+        const context = input?.authorization ?? AUTHORIZATION;
+        return input?.successorToken
+          ? { status: "refreshed" as const, context, successorToken: input.successorToken }
+          : { status: "current" as const, context };
       },
     },
   );
@@ -167,4 +188,21 @@ test("allows matching permission and exposes immutable authority to the controll
   assert.equal(await fixture.instance.canActivate(target.context), true);
   assert.equal(fixture.resolves(), 1);
   assert.equal(authorizationContextFromRequest(target.request), AUTHORIZATION);
+});
+
+test("writes a rotated opaque session only through Set-Cookie", async () => {
+  const successorToken = createSessionToken();
+  const fixture = guard({
+    authenticated: AUTHENTICATED,
+    authorization: {
+      ...AUTHORIZATION,
+      userAuthorizationVersion: 5,
+      membershipAuthorizationVersion: 8,
+    },
+    successorToken,
+  });
+  const target = execution();
+
+  assert.equal(await fixture.instance.canActivate(target.context), true);
+  assert.equal(target.responseHeaders.get("Set-Cookie"), serializeSessionCookie(successorToken));
 });

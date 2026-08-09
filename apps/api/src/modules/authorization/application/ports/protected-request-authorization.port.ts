@@ -1,7 +1,8 @@
-import type { AuthorizationContext } from "@booking-os/contracts";
-
-import type { AuthenticatedRequestContext } from "../../../../common/request-context/request-context.types.js";
+import type {
+  AuthorizationReconciliationResult,
+  ReconcileAuthorizationVersionInput,
+} from "../use-cases/reconcile-authorization-version.use-case.js";
 
 export interface ProtectedRequestAuthorizationPort {
-  execute(authenticated: AuthenticatedRequestContext): Promise<AuthorizationContext>;
+  execute(input: ReconcileAuthorizationVersionInput): Promise<AuthorizationReconciliationResult>;
 }

@@ -87,7 +87,7 @@ test("preserves a valid incoming trace ID separately from request ID", () => {
   assert.equal(observedContext?.traceId, traceId);
 });
 
-test("does not trust source tenant or actor headers", () => {
+test("does not trust source tenant identity session role permission or version headers", () => {
   const storage = new RequestContextStorage();
   const middleware = new RequestContextMiddleware(storage);
   const response = createResponse();
@@ -99,6 +99,11 @@ test("does not trust source tenant or actor headers", () => {
         "x-source": "worker",
         "x-tenant-id": "550e8400-e29b-41d4-a716-446655440000",
         "x-actor-id": "attacker",
+        "x-user-id": "attacker-user",
+        "x-session-id": "attacker-session",
+        "x-role": "platform_admin",
+        "x-permission": "platform.tenants.provision",
+        "x-authorization-version": "999",
       },
     } as FakeRequest,
     response,
@@ -110,4 +115,8 @@ test("does not trust source tenant or actor headers", () => {
   assert.equal(observedContext?.source, "internal");
   assert.equal(observedContext?.tenantId, undefined);
   assert.equal(observedContext?.actorId, undefined);
+  assert.equal("sessionId" in (observedContext ?? {}), false);
+  assert.equal("roleKeys" in (observedContext ?? {}), false);
+  assert.equal("permissionKeys" in (observedContext ?? {}), false);
+  assert.equal("authorizationVersion" in (observedContext ?? {}), false);
 });

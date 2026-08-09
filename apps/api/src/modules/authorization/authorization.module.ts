@@ -4,13 +4,17 @@ import { RequestContextModule } from "../../common/request-context/request-conte
 import { DatabaseModule } from "../../database/database.module.js";
 import { TenancyModule } from "../tenancy/tenancy.module.js";
 import type { AuthorizationRepositoryPort } from "./application/ports/authorization-repository.port.js";
+import type { SessionAuthorizationRefreshPort } from "./application/ports/session-authorization-refresh.port.js";
 import { BuildAuthorizationContextUseCase } from "./application/use-cases/build-authorization-context.use-case.js";
+import { ReconcileAuthorizationVersionUseCase } from "./application/use-cases/reconcile-authorization-version.use-case.js";
 import {
   AUTHORIZATION_REPOSITORY_PORT,
   PROTECTED_REQUEST_AUTHORIZATION_PORT,
+  SESSION_AUTHORIZATION_REFRESH_PORT,
 } from "./authorization.tokens.js";
 import { PermissionGuard } from "./infrastructure/http/permission.guard.js";
 import { PrismaAuthorizationRepositoryAdapter } from "./infrastructure/persistence/prisma/prisma-authorization-repository.adapter.js";
+import { PrismaSessionAuthorizationRefreshAdapter } from "./infrastructure/persistence/prisma/prisma-session-authorization-refresh.adapter.js";
 
 @Module({
   imports: [DatabaseModule, RequestContextModule, TenancyModule],
@@ -26,8 +30,21 @@ import { PrismaAuthorizationRepositoryAdapter } from "./infrastructure/persisten
         new BuildAuthorizationContextUseCase(repository),
     },
     {
+      provide: SESSION_AUTHORIZATION_REFRESH_PORT,
+      useClass: PrismaSessionAuthorizationRefreshAdapter,
+    },
+    {
+      provide: ReconcileAuthorizationVersionUseCase,
+      inject: [BuildAuthorizationContextUseCase, SESSION_AUTHORIZATION_REFRESH_PORT],
+      useFactory: (
+        build: BuildAuthorizationContextUseCase,
+        sessions: SessionAuthorizationRefreshPort,
+      ): ReconcileAuthorizationVersionUseCase =>
+        new ReconcileAuthorizationVersionUseCase(build, sessions),
+    },
+    {
       provide: PROTECTED_REQUEST_AUTHORIZATION_PORT,
-      useExisting: BuildAuthorizationContextUseCase,
+      useExisting: ReconcileAuthorizationVersionUseCase,
     },
     PermissionGuard,
   ],
@@ -35,6 +52,7 @@ import { PrismaAuthorizationRepositoryAdapter } from "./infrastructure/persisten
     AUTHORIZATION_REPOSITORY_PORT,
     PROTECTED_REQUEST_AUTHORIZATION_PORT,
     BuildAuthorizationContextUseCase,
+    ReconcileAuthorizationVersionUseCase,
     PermissionGuard,
   ],
 })

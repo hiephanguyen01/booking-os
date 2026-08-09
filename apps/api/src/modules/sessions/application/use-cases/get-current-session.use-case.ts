@@ -22,6 +22,7 @@ export interface CurrentSession {
   readonly authScope: SessionScope;
   readonly sessionState: Extract<StoredSession["state"], "active" | "invitation_pending">;
   readonly authorizationVersion: number;
+  readonly membershipAuthorizationVersion?: number;
   readonly tokenDisposition: "active" | "overlap";
   readonly rotationRequired: boolean;
 }
@@ -56,10 +57,16 @@ export class GetCurrentSessionUseCase {
       throw new SessionUnavailableError();
     }
 
-    const authorizationVersion = await this.subjects.currentAuthorizationVersion(
+    const currentAuthorizationVersion = await this.subjects.currentAuthorizationVersion(
       stored.session.userId,
     );
-    if (authorizationVersion === null) {
+    if (currentAuthorizationVersion === null) {
+      throw new SessionUnavailableError();
+    }
+    if (
+      stored.session.scope.type === "tenant" &&
+      stored.session.membershipAuthorizationVersion === undefined
+    ) {
       throw new SessionUnavailableError();
     }
 
@@ -67,7 +74,7 @@ export class GetCurrentSessionUseCase {
       token: input.token,
       hostname: input.hostname,
       scope: input.scope,
-      authorizationVersion,
+      authorizationVersion: stored.session.authorizationVersion,
       requestId: input.requestId,
     });
     if (validated.session.state !== "active" && validated.session.state !== "invitation_pending") {
@@ -79,7 +86,10 @@ export class GetCurrentSessionUseCase {
       sessionId: validated.session.id,
       authScope: validated.session.scope,
       sessionState: validated.session.state,
-      authorizationVersion,
+      authorizationVersion: stored.session.authorizationVersion,
+      ...(validated.session.membershipAuthorizationVersion === undefined
+        ? {}
+        : { membershipAuthorizationVersion: validated.session.membershipAuthorizationVersion }),
       tokenDisposition: validated.tokenDisposition,
       rotationRequired: validated.rotationRequired,
     };

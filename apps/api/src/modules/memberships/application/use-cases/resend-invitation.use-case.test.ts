@@ -4,6 +4,7 @@ import test from "node:test";
 import { PERMISSION_KEYS } from "@booking-os/auth";
 import type { AuthorizationContext } from "@booking-os/contracts";
 
+import { TenantAuthorizationStaleError } from "../../../tenancy/application/tenant-context.errors.js";
 import { RoleGrantNotAllowedError } from "../../domain/membership-errors.js";
 import { ResendInvitationUseCase } from "./resend-invitation.use-case.js";
 
@@ -31,8 +32,9 @@ function authorization(
   });
 }
 
-function createHarness() {
+function createHarness(transactionError?: Error) {
   const calls: unknown[] = [];
+  const transactionContexts: unknown[] = [];
   const workflow = {
     async inviteTenantAdmin() {
       throw new Error("not used");
@@ -45,12 +47,26 @@ function createHarness() {
       throw new Error("not used");
     },
   };
-  return { calls, useCase: new ResendInvitationUseCase(workflow, () => NOW) };
+  return {
+    calls,
+    transactionContexts,
+    useCase: new ResendInvitationUseCase(
+      workflow,
+      {
+        async run(context, work) {
+          transactionContexts.push(context);
+          if (transactionError) throw transactionError;
+          return work({} as never);
+        },
+      },
+      () => NOW,
+    ),
+  };
 }
 
 for (const role of ["tenant_owner", "tenant_admin"] as const) {
   test(`${role} may resend a tenant-admin invitation`, async () => {
-    const { calls, useCase } = createHarness();
+    const { calls, transactionContexts, useCase } = createHarness();
 
     const result = await useCase.execute({
       authorization: authorization(role),
@@ -70,6 +86,7 @@ for (const role of ["tenant_owner", "tenant_admin"] as const) {
         now: NOW,
       },
     ]);
+    assert.equal(transactionContexts.length, 1);
   });
 }
 
@@ -84,6 +101,21 @@ test("resend is denied without tenant admin invite permission", async () => {
       requestId: "request-denied",
     }),
     (error: unknown) => error instanceof RoleGrantNotAllowedError,
+  );
+  assert.equal(calls.length, 0);
+});
+
+test("does not invoke the resend workflow when tenant authority became stale", async () => {
+  const { calls, useCase } = createHarness(new TenantAuthorizationStaleError());
+
+  await assert.rejects(
+    useCase.execute({
+      authorization: authorization("tenant_owner"),
+      hostname: "acme.booking.test",
+      invitationId: INVITATION_ID,
+      requestId: "request-stale",
+    }),
+    TenantAuthorizationStaleError,
   );
   assert.equal(calls.length, 0);
 });

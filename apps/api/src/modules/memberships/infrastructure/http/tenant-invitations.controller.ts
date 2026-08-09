@@ -1,4 +1,5 @@
 import { serializeSessionCookie } from "@booking-os/auth";
+import type { AuthorizationContext } from "@booking-os/contracts";
 import {
   BadRequestException,
   Body,
@@ -30,15 +31,13 @@ import { SessionCsrfGuard } from "../../../../common/security/session-csrf.guard
 import { SessionRequired } from "../../../../common/security/session-required.decorator.js";
 import { EnvironmentService } from "../../../../config/environment.service.js";
 import {
+  CurrentAuthorizationContext,
   PermissionGuard,
   PermissionGuardExempt,
   RequiresPermission,
 } from "../../../authorization/authorization.http.js";
 import { AcceptInvitationUseCase } from "../../application/use-cases/accept-invitation.use-case.js";
-import {
-  BuildTenantAuthorizationContextUseCase,
-  TenantAuthorizationDeniedError,
-} from "../../application/use-cases/build-tenant-authorization-context.use-case.js";
+import { TenantAuthorizationDeniedError } from "../../application/use-cases/build-tenant-authorization-context.use-case.js";
 import { GetCurrentInvitationUseCase } from "../../application/use-cases/get-current-invitation.use-case.js";
 import { InviteTenantAdminUseCase } from "../../application/use-cases/invite-tenant-admin.use-case.js";
 import { ResendInvitationUseCase } from "../../application/use-cases/resend-invitation.use-case.js";
@@ -106,8 +105,6 @@ function requireToken(value: unknown): string {
 export class TenantInvitationsController {
   constructor(
     @Inject(RequestContextStorage) private readonly requestContext: RequestContextStorage,
-    @Inject(BuildTenantAuthorizationContextUseCase)
-    private readonly authorization: BuildTenantAuthorizationContextUseCase,
     @Inject(InviteTenantAdminUseCase) private readonly invite: InviteTenantAdminUseCase,
     @Inject(ResendInvitationUseCase) private readonly resendInvitation: ResendInvitationUseCase,
     @Inject(GetCurrentInvitationUseCase)
@@ -190,13 +187,14 @@ export class TenantInvitationsController {
   async create(
     @Body() body: CreateTenantAdminInvitationRequestDto,
     @Req() request: TenantInvitationRequest,
+    @CurrentAuthorizationContext() authorization: AuthorizationContext,
   ) {
     const authenticated = this.requestContext.requireAuthenticated();
     const hostname = effectiveHostname(request.headers, this.environment.trustProxy);
     if (!hostname) throw new BadRequestException("A valid host is required.");
     try {
       return await this.invite.execute({
-        authorization: await this.authorization.execute(authenticated),
+        authorization,
         hostname,
         email: requireEmail(body?.email),
         requestId: authenticated.requestId,
@@ -216,13 +214,14 @@ export class TenantInvitationsController {
   async resend(
     @Param("invitationId") invitationId: string,
     @Req() request: TenantInvitationRequest,
+    @CurrentAuthorizationContext() authorization: AuthorizationContext,
   ) {
     const authenticated = this.requestContext.requireAuthenticated();
     const hostname = effectiveHostname(request.headers, this.environment.trustProxy);
     if (!hostname) throw new BadRequestException("A valid host is required.");
     try {
       return await this.resendInvitation.execute({
-        authorization: await this.authorization.execute(authenticated),
+        authorization,
         hostname,
         invitationId: requireUuid(invitationId),
         requestId: authenticated.requestId,

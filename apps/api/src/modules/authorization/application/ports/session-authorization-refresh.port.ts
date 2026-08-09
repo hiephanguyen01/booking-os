@@ -1,6 +1,11 @@
+export type SessionAuthorizationScope =
+  | { readonly type: "platform" }
+  | { readonly type: "tenant"; readonly tenantId: string };
+
 export interface RefreshSessionAuthorizationInput {
   readonly sessionId: string;
   readonly userId: string;
+  readonly scope: SessionAuthorizationScope;
   readonly userAuthorizationVersion: number;
   readonly membershipAuthorizationVersion?: number;
   readonly presentedToken: string;
@@ -15,6 +20,7 @@ export interface SessionAuthorizationRotationResult {
 export interface RevokeStaleAuthorizationSessionInput {
   readonly sessionId: string;
   readonly userId: string;
+  readonly scope: SessionAuthorizationScope;
   readonly requestId: string;
   readonly reason: "authorization_subject_inactive";
 }

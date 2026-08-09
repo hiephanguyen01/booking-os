@@ -120,6 +120,7 @@ async function createTestApplication(): Promise<{
           authScope: { type: "tenant" as const, tenantId: TENANT_ID },
           sessionState: "active" as const,
           authorizationVersion: 3,
+          membershipAuthorizationVersion: 2,
           tokenDisposition: "active" as const,
           rotationRequired: false,
         };
@@ -222,27 +223,8 @@ test("AppModule resolves tenant authentication before listing memberships", asyn
       observations.guardAuthorizationInputs[0]?.requestId,
       observations.sessionInputs[0]?.requestId,
     );
-    assert.equal(observations.authorizationInputs.length, 1);
-    assert.deepEqual(
-      {
-        requestId: observations.authorizationInputs[0]?.requestId,
-        tenantId: observations.authorizationInputs[0]?.tenantId,
-        actorId: observations.authorizationInputs[0]?.actorId,
-        sessionId: observations.authorizationInputs[0]?.sessionId,
-        authScope: observations.authorizationInputs[0]?.authScope,
-        sessionState: observations.authorizationInputs[0]?.sessionState,
-        authorizationVersion: observations.authorizationInputs[0]?.authorizationVersion,
-      },
-      {
-        requestId: observations.sessionInputs[0]?.requestId,
-        tenantId: TENANT_ID,
-        actorId: ACTOR_ID,
-        sessionId: SESSION_ID,
-        authScope: { type: "tenant", tenantId: TENANT_ID },
-        sessionState: "active",
-        authorizationVersion: 3,
-      },
-    );
+    assert.equal(observations.authorizationInputs.length, 0);
+    assert.equal(observations.guardAuthorizationInputs[0]?.membershipAuthorizationVersion, 2);
     assert.deepEqual(observations.listCommands, [
       { authorization: AUTHORIZATION, requestId: observations.sessionInputs[0]?.requestId },
     ]);

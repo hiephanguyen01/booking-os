@@ -8,6 +8,7 @@ export {
 } from "./health/index.js";
 export * from "./identity/index.js";
 export type {
+  AuthorizedTenantExecutionContext,
   ExecutionSource,
   RequestContext,
   TenantExecutionContext,

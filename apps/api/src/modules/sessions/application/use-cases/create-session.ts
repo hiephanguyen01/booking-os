@@ -16,6 +16,7 @@ export interface CreateSessionInput {
   readonly hostname: string;
   readonly state: Extract<SessionState, "active" | "invitation_pending">;
   readonly authorizationVersion: number;
+  readonly membershipAuthorizationVersion?: number;
   readonly requestId: string;
 }
 
@@ -58,6 +59,9 @@ export class CreateSessionUseCase {
         hostname: input.hostname,
         state: input.state,
         authorizationVersion: input.authorizationVersion,
+        ...(input.membershipAuthorizationVersion === undefined
+          ? {}
+          : { membershipAuthorizationVersion: input.membershipAuthorizationVersion }),
         version: 1,
         idleExpiresAt: new Date(now.getTime() + 7 * DAY_MS),
         absoluteExpiresAt: new Date(now.getTime() + 30 * DAY_MS),

@@ -49,12 +49,6 @@ function controllerWith(options?: { readonly demoteError?: Error }) {
     { requireAuthenticated: () => AUTHENTICATED } as never,
     {
       async execute(input: unknown) {
-        calls.push(["authorization", input]);
-        return AUTHORIZATION;
-      },
-    } as never,
-    {
-      async execute(input: unknown) {
         calls.push(["list", input]);
         return [
           {
@@ -116,25 +110,23 @@ function controllerWith(options?: { readonly demoteError?: Error }) {
   return { calls, controller };
 }
 
-test("membership routes use database-built tenant authority and target membership ids", async () => {
+test("membership routes reuse guard-built tenant authority and target membership ids", async () => {
   const { calls, controller } = controllerWith();
 
-  assert.equal((await controller.list())[0]?.id, TARGET_MEMBERSHIP_ID);
-  assert.equal((await controller.suspend(TARGET_MEMBERSHIP_ID)).status, "suspended");
-  assert.equal((await controller.revoke(TARGET_MEMBERSHIP_ID)).status, "revoked");
+  assert.equal((await controller.list(AUTHORIZATION))[0]?.id, TARGET_MEMBERSHIP_ID);
+  assert.equal((await controller.suspend(TARGET_MEMBERSHIP_ID, AUTHORIZATION)).status, "suspended");
+  assert.equal((await controller.revoke(TARGET_MEMBERSHIP_ID, AUTHORIZATION)).status, "revoked");
   assert.equal(
-    (await controller.promoteOwner(TARGET_MEMBERSHIP_ID)).roleKey,
+    (await controller.promoteOwner(TARGET_MEMBERSHIP_ID, AUTHORIZATION)).roleKey,
     SYSTEM_ROLES.tenantOwner,
   );
   assert.equal(
-    (await controller.demoteOwner(TARGET_MEMBERSHIP_ID)).roleKey,
+    (await controller.demoteOwner(TARGET_MEMBERSHIP_ID, AUTHORIZATION)).roleKey,
     SYSTEM_ROLES.tenantAdmin,
   );
 
   assert.deepEqual(calls, [
-    ["authorization", AUTHENTICATED],
     ["list", { authorization: AUTHORIZATION, requestId: AUTHENTICATED.requestId }],
-    ["authorization", AUTHENTICATED],
     [
       "suspend",
       {
@@ -143,7 +135,6 @@ test("membership routes use database-built tenant authority and target membershi
         requestId: AUTHENTICATED.requestId,
       },
     ],
-    ["authorization", AUTHENTICATED],
     [
       "revoke",
       {
@@ -152,7 +143,6 @@ test("membership routes use database-built tenant authority and target membershi
         requestId: AUTHENTICATED.requestId,
       },
     ],
-    ["authorization", AUTHENTICATED],
     [
       "promote",
       {
@@ -161,7 +151,6 @@ test("membership routes use database-built tenant authority and target membershi
         requestId: AUTHENTICATED.requestId,
       },
     ],
-    ["authorization", AUTHENTICATED],
     [
       "demote",
       {
@@ -176,5 +165,8 @@ test("membership routes use database-built tenant authority and target membershi
 test("final-owner demotion is exposed as conflict", async () => {
   const { controller } = controllerWith({ demoteError: new LastTenantOwnerError() });
 
-  await assert.rejects(() => controller.demoteOwner(TARGET_MEMBERSHIP_ID), ConflictException);
+  await assert.rejects(
+    () => controller.demoteOwner(TARGET_MEMBERSHIP_ID, AUTHORIZATION),
+    ConflictException,
+  );
 });

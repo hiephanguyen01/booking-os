@@ -26,6 +26,10 @@ class FakeActiveSubjects implements SessionSubjectPort {
     this.versionCalls.push(userId);
     return this.authorizationVersion;
   }
+
+  async currentMembershipAuthorizationVersion(): Promise<number | null> {
+    return this.authorizationVersion;
+  }
 }
 
 class FakePendingInvitationLogin {
@@ -69,7 +73,11 @@ test("creates an invitation-pending subject for a tenant with no active subject 
     scope: { type: "tenant", tenantId: TENANT_ID },
   });
 
-  assert.deepEqual(result, { state: "invitation_pending", authorizationVersion: 7 });
+  assert.deepEqual(result, {
+    state: "invitation_pending",
+    authorizationVersion: 7,
+    membershipAuthorizationVersion: 7,
+  });
   assert.deepEqual(harness.pending.calls, [
     { tenantId: TENANT_ID, userId: USER_ID, hostname: "acme.booking.test" },
   ]);

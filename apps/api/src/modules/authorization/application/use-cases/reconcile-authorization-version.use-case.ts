@@ -41,6 +41,7 @@ export class ReconcileAuthorizationVersionUseCase {
         await this.sessions.revoke({
           sessionId: input.authenticated.sessionId,
           userId: input.authenticated.actorId,
+          scope: input.authenticated.authScope,
           requestId: input.authenticated.requestId,
           reason: "authorization_subject_inactive",
         });
@@ -60,6 +61,7 @@ export class ReconcileAuthorizationVersionUseCase {
     const rotation = await this.sessions.refreshAndRotate({
       sessionId: input.authenticated.sessionId,
       userId: input.authenticated.actorId,
+      scope: input.authenticated.authScope,
       userAuthorizationVersion: context.userAuthorizationVersion,
       ...(context.membershipAuthorizationVersion === undefined
         ? {}

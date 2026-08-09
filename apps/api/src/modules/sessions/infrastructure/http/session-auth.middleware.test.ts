@@ -33,6 +33,7 @@ test("hydrates authentication only from the opaque cookie and trusted tenant con
         authScope: { type: "tenant" as const, tenantId: TENANT_ID },
         sessionState: "active" as const,
         authorizationVersion: 7,
+        membershipAuthorizationVersion: 5,
         tokenDisposition: "active" as const,
         rotationRequired: false,
       };
@@ -47,6 +48,11 @@ test("hydrates authentication only from the opaque cookie and trusted tenant con
       host: "alpha.example.com:443",
       cookie: `${BOOKING_SESSION_COOKIE}=${encodeURIComponent(token)}`,
       "x-actor-id": "attacker-user",
+      "x-user-id": "attacker-user",
+      "x-session-id": "attacker-session",
+      "x-role": "platform_admin",
+      "x-permission": "platform.tenants.provision",
+      "x-authorization-version": "999",
       "x-auth-scope": "platform",
       "x-tenant-id": "99999999-9999-4999-8999-999999999999",
     },
@@ -75,6 +81,7 @@ test("hydrates authentication only from the opaque cookie and trusted tenant con
     authScope: { type: "tenant", tenantId: TENANT_ID },
     sessionState: "active",
     authorizationVersion: 7,
+    membershipAuthorizationVersion: 5,
   });
 });
 

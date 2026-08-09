@@ -1,6 +1,6 @@
 import { PERMISSION_KEYS, type SystemRole } from "@booking-os/auth";
 import type { AuthorizationContext } from "@booking-os/contracts";
-
+import { isActiveTenantAuthorizationContext } from "../../../authorization/domain/active-tenant-authorization.js";
 import type { TenantTransactionPort } from "../../../tenancy/application/ports/tenant-transaction.port.js";
 import { RoleGrantNotAllowedError } from "../../domain/membership-errors.js";
 import type { TenantMembershipStatus } from "../../domain/tenant-membership.js";
@@ -24,8 +24,7 @@ export class ListMembershipsUseCase {
   async execute(command: ListMembershipsCommand): Promise<readonly ListedTenantMembership[]> {
     const authorization = command.authorization;
     if (
-      authorization.scope.type !== "tenant" ||
-      authorization.membershipStatus !== "active" ||
+      !isActiveTenantAuthorizationContext(authorization) ||
       !authorization.permissionKeys.includes(PERMISSION_KEYS.tenantMembershipRead)
     ) {
       throw new RoleGrantNotAllowedError();
@@ -35,6 +34,8 @@ export class ListMembershipsUseCase {
       {
         tenantId: authorization.scope.tenantId,
         actorId: authorization.userId,
+        sessionId: authorization.sessionId,
+        authorization,
         requestId: command.requestId,
         traceId: command.requestId,
         source: "console",

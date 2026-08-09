@@ -35,3 +35,14 @@ export interface AuthorizationContext {
   readonly userAuthorizationVersion: number;
   readonly membershipAuthorizationVersion?: number;
 }
+
+export type ActiveTenantAuthorizationContext = AuthorizationContext & {
+  readonly scope: {
+    readonly type: "tenant";
+    readonly tenantId: string;
+    readonly tenantSlug: string;
+  };
+  readonly membershipId: string;
+  readonly membershipStatus: "active";
+  readonly membershipAuthorizationVersion: number;
+};
