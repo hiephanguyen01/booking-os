@@ -54,8 +54,28 @@ the browser flow: create `acme-studio`, inspect provisioning status and the
 owner email. Continue only as far as a separately confirmed password-change
 submission permits.
 
+## Live-flow follow-up
+
+The first live run exposed two additional blockers that must be corrected
+before invitation testing can continue:
+
+1. Platform provisioning emits `membership.owner_invitation.requested.v1`,
+   while the critical worker only treats the tenant-admin invitation event as
+   an identity-email job. The owner event payload must carry the user and role
+   fields required by its authenticated envelope, and the worker must parse,
+   retry, decrypt, and send that event as a membership invitation.
+2. Tenant provisioning stores the display name but omits it from the status
+   response and UI. The query/DTO/client contract will expose it as
+   `tenantName`, and the status component will render both tenant name and
+   slug.
+
+Both corrections require test-first regressions at their API, worker, and UI
+boundaries. Existing cross-origin, token-envelope, and retry protections stay
+unchanged.
+
 ## Scope
 
 No changes to Caddy configuration, API allowed origins, session cookie policy,
-or identity token handling are included. This work modifies only public-origin
-derivation in the membership BFF and adds regression coverage.
+or token cryptography are included. In addition to public-origin derivation,
+the live-flow follow-up extends the already-defined owner invitation event
+contract and the provisioning status response/UI.

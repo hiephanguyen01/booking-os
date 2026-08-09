@@ -173,3 +173,139 @@ Expected: `/platform/status?tenantId=...` shows `Acme Studio`, `acme-studio`, an
 Open Mailpit and locate the message to `owner@example.test`.
 
 Expected: activation and/or invitation URL uses `https://acme-studio.booking.localhost` and contains a fragment token.
+
+### Task 4: Dispatch platform owner invitation email
+
+**Files:**
+
+- Modify: `apps/api/src/modules/memberships/application/use-cases/platform-tenant-provisioning.workflow.ts`
+- Modify: `apps/api/src/modules/memberships/application/use-cases/platform-tenant-provisioning.pending-activation.workflow.test.ts`
+- Modify: `apps/api/src/modules/memberships/application/use-cases/platform-tenant-provisioning.workflow.test.ts`
+- Modify: `apps/worker-critical/src/identity-email/identity-email-event.ts`
+- Modify: `apps/worker-critical/src/identity-email/sensitive-envelope.ts`
+- Modify: `apps/worker-critical/src/identity-email/membership-invitation-email.test.ts`
+- Modify: `apps/worker-critical/src/outbox/outbox-dispatcher.ts`
+- Modify: `apps/worker-critical/src/outbox/outbox-dispatcher.test.ts`
+
+**Interfaces:**
+
+- Consumes: `membership.owner_invitation.requested.v1` with membership envelope AAD bound to tenant, invitation, user, host, recipient, and `tenant_owner`.
+- Produces: retryable BullMQ identity-email job and fragment-only tenant invitation email.
+
+- [ ] **Step 1: Write failing worker and API event-contract tests**
+
+Add an owner variant to `membership-invitation-email.test.ts` whose event type is
+`membership.owner_invitation.requested.v1`, payload role is `tenant_owner`, and
+whose encrypted AAD uses those exact values. Assert dispatch sends
+`https://acme.example.com/invite/accept#token=...`.
+
+Extend `outbox-dispatcher.test.ts` so an owner invitation event receives five
+attempts, exponential 1,000 ms backoff, and `removeOnComplete: true`.
+
+Extend initial and resend workflow assertions so the owner event payload contains:
+
+```ts
+userId: ownerIdentity.userId,
+intendedRoleKey: "tenant_owner",
+```
+
+- [ ] **Step 2: Run tests to verify RED**
+
+```bash
+pnpm --filter @booking-os/worker-critical test -- membership-invitation-email.test.ts outbox-dispatcher.test.ts
+pnpm --filter @booking-os/api test -- platform-tenant-provisioning.pending-activation.workflow.test.ts platform-tenant-provisioning.workflow.test.ts
+```
+
+Expected: owner email parsing/dispatch and payload assertions fail before implementation.
+
+- [ ] **Step 3: Implement the owner event contract**
+
+Add `MEMBERSHIP_OWNER_INVITATION_EVENT` to the worker email event union. Parse
+both membership invitation event types as `membership_invitation`, require the
+role matching the event (`tenant_admin` or `tenant_owner`), and authenticate
+the envelope using the existing membership-email AAD layout. Treat both event
+types as retryable identity email jobs in the outbox dispatcher.
+
+Add `userId` and `intendedRoleKey: "tenant_owner"` to both owner invitation
+payload creation paths in the platform provisioning workflow. Do not change
+the encrypted envelope format.
+
+- [ ] **Step 4: Verify GREEN and full relevant suites**
+
+```bash
+pnpm --filter @booking-os/worker-critical test
+pnpm --filter @booking-os/api test -- platform-tenant-provisioning.pending-activation.workflow.test.ts platform-tenant-provisioning.workflow.test.ts
+```
+
+Expected: both commands exit 0 with pristine output.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/api/src/modules/memberships/application/use-cases/platform-tenant-provisioning.workflow.ts apps/api/src/modules/memberships/application/use-cases/platform-tenant-provisioning.pending-activation.workflow.test.ts apps/api/src/modules/memberships/application/use-cases/platform-tenant-provisioning.workflow.test.ts apps/worker-critical/src/identity-email/identity-email-event.ts apps/worker-critical/src/identity-email/sensitive-envelope.ts apps/worker-critical/src/identity-email/membership-invitation-email.test.ts apps/worker-critical/src/outbox/outbox-dispatcher.ts apps/worker-critical/src/outbox/outbox-dispatcher.test.ts
+git commit -m "fix(identity): deliver platform owner invitations"
+```
+
+### Task 5: Show tenant name in provisioning status
+
+**Files:**
+
+- Modify: `apps/api/src/modules/memberships/application/ports/platform-tenant-provisioning-workflow.port.ts`
+- Modify: `apps/api/src/modules/memberships/infrastructure/persistence/prisma/prisma-platform-tenant-provisioning-query.adapter.ts`
+- Modify: `apps/api/src/modules/memberships/infrastructure/http/platform-tenants.dto.ts`
+- Modify: `apps/api/src/modules/memberships/application/use-cases/get-tenant-provisioning.use-case.test.ts`
+- Modify: `apps/web-console/components/tenant-provisioning-status.tsx`
+- Create: `apps/web-console/components/tenant-provisioning-status.test.tsx`
+
+**Interfaces:**
+
+- Produces: provisioning JSON field `tenantName: string` and visible tenant name plus slug.
+
+- [ ] **Step 1: Write failing API and UI tests**
+
+Change the get-provisioning expectation to include `tenantName: "Acme Studio"`.
+Add a component test that mocks a successful status response containing
+`tenantName: "Acme Studio"` and asserts both `Acme Studio` and `acme-studio`
+are rendered.
+
+- [ ] **Step 2: Run tests to verify RED**
+
+```bash
+pnpm --filter @booking-os/api test -- get-tenant-provisioning.use-case.test.ts
+pnpm --filter @booking-os/web-console test -- tenant-provisioning-status.test.tsx
+```
+
+Expected: API result and UI name assertions fail before implementation.
+
+- [ ] **Step 3: Implement the response/UI field**
+
+Add `tenantName` to the provisioning result type and Swagger DTO, map it from
+`tenant.name` in the Prisma query, add it to the client status interface, and
+render the name as the primary Tenant value with the slug shown separately.
+
+- [ ] **Step 4: Verify GREEN and typecheck**
+
+```bash
+pnpm --filter @booking-os/api test -- get-tenant-provisioning.use-case.test.ts
+pnpm --filter @booking-os/web-console test -- tenant-provisioning-status.test.tsx
+pnpm --filter @booking-os/api typecheck
+pnpm --filter @booking-os/web-console typecheck
+```
+
+Expected: all commands exit 0.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/api/src/modules/memberships/application/ports/platform-tenant-provisioning-workflow.port.ts apps/api/src/modules/memberships/infrastructure/persistence/prisma/prisma-platform-tenant-provisioning-query.adapter.ts apps/api/src/modules/memberships/infrastructure/http/platform-tenants.dto.ts apps/api/src/modules/memberships/application/use-cases/get-tenant-provisioning.use-case.test.ts apps/web-console/components/tenant-provisioning-status.tsx apps/web-console/components/tenant-provisioning-status.test.tsx
+git commit -m "fix(console): show tenant provisioning name"
+```
+
+### Task 6: Resume live business verification
+
+**Files:** Verify only.
+
+- [ ] **Step 1:** Restart or allow watch-mode reload of API, console, and critical worker, then verify health/readiness.
+- [ ] **Step 2:** Reissue the pending owner invitation through the platform API or create a fresh verification tenant; do not expose token values.
+- [ ] **Step 3:** Verify Mailpit has both the owner activation (when needed) and tenant-host invitation email.
+- [ ] **Step 4:** Continue activation, invitation acceptance, member management, authorization boundaries, and final-owner invariant, pausing before each new password submission unless the user has confirmed it.
