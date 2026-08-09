@@ -58,8 +58,18 @@ function apiEndpoint(baseUrl: string, path: string): string {
 }
 
 function browserTarget(request: Request): { readonly origin: string; readonly host: string } {
-  const url = new URL(request.url);
-  return { origin: url.origin, host: url.host };
+  const requestUrl = new URL(request.url);
+  const host = request.headers.get("host")?.trim() || requestUrl.host;
+  const forwardedProtocol = request.headers
+    .get("x-forwarded-proto")
+    ?.split(",", 1)[0]
+    ?.trim()
+    .toLowerCase();
+  const protocol =
+    forwardedProtocol === "http" || forwardedProtocol === "https"
+      ? `${forwardedProtocol}:`
+      : requestUrl.protocol;
+  return { origin: new URL(`${protocol}//${host}`).origin, host };
 }
 
 function exactSessionCookie(cookieHeader: string | null): string | null {

@@ -111,6 +111,48 @@ test("platform tenant bootstrap forwards idempotency key and fresh CSRF", async 
   assert.equal(headers.get("x-csrf-token"), "fresh-proof");
 });
 
+test("platform tenant bootstrap honors the forwarded HTTPS browser origin", async () => {
+  const calls: CapturedRequest[] = [];
+  const handlers = createMembershipBffHandlers({
+    apiBaseUrl: API_BASE_URL,
+    fetch: async (input, init) => {
+      calls.push({ url: input.toString(), init });
+      if (calls.length === 1) return Response.json({ csrfToken: "fresh-proof" });
+      return Response.json({
+        tenantId: "11111111-1111-4111-8111-111111111111",
+        slug: "acme-studio",
+        status: "provisioning",
+        ownerMembershipId: "22222222-2222-4222-8222-222222222222",
+        ownerInvitationId: "33333333-3333-4333-8333-333333333333",
+      });
+    },
+  });
+
+  const response = await handlers.createPlatformTenant(
+    new Request("http://127.0.0.1:3002/api/platform/tenants", {
+      method: "POST",
+      headers: {
+        cookie: `__Host-booking_session=${encodeURIComponent(createSessionToken())}`,
+        "content-type": "application/json",
+        host: "platform.booking.localhost",
+        origin: "https://platform.booking.localhost",
+        "x-forwarded-proto": "https",
+        "idempotency-key": "bootstrap-acme-studio-1",
+      },
+      body: JSON.stringify({
+        slug: "acme-studio",
+        tenantName: "Acme Studio",
+        ownerEmail: "owner@example.test",
+      }),
+    }),
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(calls.length, 2);
+  const mutationHeaders = new Headers(calls[1]?.init?.headers);
+  assert.equal(mutationHeaders.get("x-forwarded-host"), "platform.booking.localhost");
+});
+
 test("privileged membership mutation is rejected before upstream fetch without a session", async () => {
   let fetchCalls = 0;
   const handlers = createMembershipBffHandlers({
