@@ -73,6 +73,13 @@ Both corrections require test-first regressions at their API, worker, and UI
 boundaries. Existing cross-origin, token-envelope, and retry protections stay
 unchanged.
 
+The resumed login flow exposed the same TLS-termination mismatch in the
+session BFF: its trusted browser target still comes from the internal HTTP
+request URL. Session login, refresh, logout, and authenticated mutations will
+derive the public host and protocol with the same validated forwarded-protocol
+strategy used by identity and membership BFFs. Existing cross-origin rejection
+and secure-cookie sanitization remain unchanged.
+
 ## Scope
 
 No changes to Caddy configuration, API allowed origins, session cookie policy,

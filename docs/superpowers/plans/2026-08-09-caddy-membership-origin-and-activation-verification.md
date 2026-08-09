@@ -309,3 +309,64 @@ git commit -m "fix(console): show tenant provisioning name"
 - [ ] **Step 2:** Reissue the pending owner invitation through the platform API or create a fresh verification tenant; do not expose token values.
 - [ ] **Step 3:** Verify Mailpit has both the owner activation (when needed) and tenant-host invitation email.
 - [ ] **Step 4:** Continue activation, invitation acceptance, member management, authorization boundaries, and final-owner invariant, pausing before each new password submission unless the user has confirmed it.
+
+### Task 7: Honor public HTTPS origin in session BFF
+
+**Files:**
+
+- Modify: `apps/web-console/src/lib/session/session-bff.ts`
+- Modify: `apps/web-console/src/lib/session/session-bff-forwarded-host.test.ts`
+
+**Interfaces:**
+
+- Consumes: an internal HTTP Next request with public `Host`, browser HTTPS `Origin`, and `X-Forwarded-Proto: https`.
+- Produces: trusted browser `{ origin, host }` used by login, CSRF, refresh, logout, and session mutations.
+
+- [ ] **Step 1: Write the failing Caddy login regression**
+
+Add a test that sends `http://127.0.0.1:3002/api/auth/login` with headers
+`host: platform.booking.localhost`, `origin: https://platform.booking.localhost`,
+and `x-forwarded-proto: https`. Assert HTTP 200, two upstream calls,
+`x-forwarded-host: platform.booking.localhost`, and upstream login
+`origin: https://platform.booking.localhost`.
+
+- [ ] **Step 2: Verify RED**
+
+```bash
+pnpm --filter @booking-os/web-console test -- session-bff-forwarded-host.test.ts
+```
+
+Expected: new test returns 403 before implementation.
+
+- [ ] **Step 3: Implement minimal trusted target derivation**
+
+Use the request `Host` (falling back to URL host), accept only the first
+forwarded protocol value when it is exactly `http` or `https`, otherwise fall
+back to URL protocol, then canonicalize with `new URL`. Do not trust
+`x-forwarded-host` from the browser.
+
+- [ ] **Step 4: Verify GREEN and session suite**
+
+```bash
+pnpm --filter @booking-os/web-console test -- session-bff-forwarded-host.test.ts session-bff.test.ts
+pnpm --filter @booking-os/web-console typecheck
+```
+
+Expected: commands exit 0 and existing cross-origin tests remain green.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/web-console/src/lib/session/session-bff.ts apps/web-console/src/lib/session/session-bff-forwarded-host.test.ts
+git commit -m "fix(console): honor forwarded HTTPS origin for sessions"
+```
+
+### Task 8: Continue owner/admin/security live flow
+
+**Files:** Verify only.
+
+- [ ] **Step 1:** Login platform admin through Caddy, verify the existing `acme-studio` status page shows name, slug, and provisioning.
+- [ ] **Step 2:** Reissue the pending owner invitation through the authorized application endpoint and verify Mailpit contains tenant-host activation/invitation links with fragment-only tokens.
+- [ ] **Step 3:** Pause for confirmation immediately before submitting `OwnerDev123!`; after confirmation, activate/login owner and accept the invitation once, then verify single-use.
+- [ ] **Step 4:** Invite and activate `admin2@example.test`, pausing for confirmation before submitting `Admin2Dev123!`.
+- [ ] **Step 5:** Verify member roles, authorization boundaries, owner controls, last-owner invariant, logout/reset/session behavior, and automated test checkpoints from the attached checklist. Do not inspect browser cookie storage; infer session correctness from application behavior and API contracts.
