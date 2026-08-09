@@ -129,6 +129,25 @@ hydrates the actor, and `GET /api/memberships` reaches the use case. The fix
 does not weaken `SessionRequired`, CSRF, authorization-context construction,
 tenant isolation, or final-owner invariants.
 
+## Invitation-session version reconciliation follow-up
+
+Admin invitation acceptance exposes a version-domain collision that the owner
+flow masked. Pending sessions correctly snapshot the active global user's
+`authorizationVersion`. Membership activation independently increments the
+tenant membership's authorization version. The elevation adapter currently
+overwrites `auth_sessions.authorization_version` with that membership version;
+when the two numbers differ, the successor session immediately fails validation
+against the global user version and the browser is redirected to login.
+
+Invitation-session elevation will preserve the already-validated global user
+authorization snapshot stored on the locked pending session. Membership
+authorization version remains on the membership record and is rebuilt through
+the authoritative tenant authorization context; it is not a session-global
+version. The atomic state transition and token rotation remain unchanged. The
+concurrency regression must activate membership version 1 to 2 while proving
+the session stays at global user version 1 and retains exactly one live rotated
+token.
+
 ## Scope
 
 No changes to Caddy configuration, API allowed origins, the authenticated
@@ -139,4 +158,6 @@ pending-session authorization snapshots with the database invariant, derives
 public identity scope from authoritative host context, and corrects the
 pre-auth CSRF cookie lifetime unit. Protected tenant-membership routes also
 receive the already-required authoritative tenant and authenticated-session
-middleware composition.
+middleware composition. Invitation-session elevation preserves the global user
+authorization snapshot instead of replacing it with a tenant membership
+version.

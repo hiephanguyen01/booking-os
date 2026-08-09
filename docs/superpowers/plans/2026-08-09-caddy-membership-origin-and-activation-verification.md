@@ -673,3 +673,77 @@ Expected: focused HTTP regression passes and API typecheck exits 0.
 git add apps/api/src/app.module.ts apps/api/test/membership-routing.e2e.test.ts
 git commit -m "fix(api): authenticate tenant membership routes"
 ```
+
+### Task 14: Preserve global authorization version during invitation elevation
+
+**Files:**
+
+- Modify: `apps/api/src/modules/memberships/application/ports/session-elevation.port.ts`
+- Modify: `apps/api/src/modules/memberships/application/use-cases/accept-invitation.use-case.ts`
+- Modify: `apps/api/src/modules/memberships/application/use-cases/accept-invitation.use-case.test.ts`
+- Modify: `apps/api/src/modules/memberships/infrastructure/persistence/prisma/prisma-invitation-session-elevation.adapter.ts`
+- Modify: `apps/api/src/database/prisma-tenant-data-session.factory.test.ts`
+- Modify: `apps/api/test/invitation-acceptance-concurrency.e2e.test.ts`
+
+**Interfaces:**
+
+- `auth_sessions.authorization_version` snapshots the global
+  `users.authorization_version`.
+- `tenant_memberships.authorization_version` is independent tenant
+  authorization state and must never overwrite the session-global snapshot.
+- Elevation locks the validated `invitation_pending` session, changes only its
+  state/timestamps/version counter, revokes its old tokens, and inserts one
+  rotated live token atomically.
+
+- [ ] **Step 1: Write failing version-domain regressions**
+
+In the acceptance use-case test, assert session elevation receives only
+`sessionId` and `now`; membership activation may still return authorization
+version 2, but that value is not passed to the session port.
+
+In the Prisma tenant-data-session test, assert the session activation SQL does
+not assign `authorization_version` and receives only tenant ID, session ID,
+and `now`.
+
+In `invitation-acceptance-concurrency.e2e.test.ts`, keep the invitee global
+user version and pending session version at 1, activate the membership from
+version 1 to 2, then assert the active session authorization version remains 1
+with exactly one live rotated token.
+
+- [ ] **Step 2: Verify RED**
+
+```bash
+cd apps/api
+node --test --test-concurrency=1 --import tsx src/modules/memberships/application/use-cases/accept-invitation.use-case.test.ts src/database/prisma-tenant-data-session.factory.test.ts test/invitation-acceptance-concurrency.e2e.test.ts
+```
+
+Expected: the current use case still passes membership version 2, the adapter
+still writes it into the session, and the e2e assertion sees session version 2.
+
+- [ ] **Step 3: Preserve the pending global snapshot**
+
+Remove `membershipAuthorizationVersion` from
+`ElevateInvitationSessionInput` and its use-case call. In the adapter, remove
+the membership-version validation and remove the
+`authorization_version = ...` assignment from the session activation SQL.
+Keep the pending session's stored authorization version unchanged; adjust SQL
+parameter numbering only as required.
+
+- [ ] **Step 4: Verify GREEN and typecheck**
+
+```bash
+cd apps/api
+node --test --test-concurrency=1 --import tsx src/modules/memberships/application/use-cases/accept-invitation.use-case.test.ts src/database/prisma-tenant-data-session.factory.test.ts test/invitation-acceptance-concurrency.e2e.test.ts
+cd ../..
+pnpm --filter @booking-os/api typecheck
+```
+
+Expected: focused tests pass, membership authorization version is 2, session
+authorization version is 1, and one rotated session token remains live.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/api/src/modules/memberships/application/ports/session-elevation.port.ts apps/api/src/modules/memberships/application/use-cases/accept-invitation.use-case.ts apps/api/src/modules/memberships/application/use-cases/accept-invitation.use-case.test.ts apps/api/src/modules/memberships/infrastructure/persistence/prisma/prisma-invitation-session-elevation.adapter.ts apps/api/src/database/prisma-tenant-data-session.factory.test.ts apps/api/test/invitation-acceptance-concurrency.e2e.test.ts
+git commit -m "fix(api): preserve invitation session auth version"
+```
