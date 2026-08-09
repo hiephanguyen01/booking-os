@@ -446,6 +446,8 @@ git commit -m "fix(api): persist valid pending session versions"
 - Modify: `apps/api/src/modules/identity/infrastructure/http/identity-public.controller.test.ts`
 - Modify: `apps/api/src/modules/identity/infrastructure/http/identity-public.nest.controller.ts`
 - Modify: `apps/api/src/modules/identity/infrastructure/http/identity-public.nest.controller.test.ts`
+- Modify: `apps/api/src/app.module.ts`
+- Modify: `apps/api/test/identity-routing.e2e.test.ts`
 - Modify: `apps/web-console/src/components/identity/forgot-password-form.tsx`
 - Modify: `apps/web-console/src/components/identity/password-command-form.tsx`
 - Modify: `apps/web-console/src/components/identity/identity-forms.test.tsx`
@@ -463,7 +465,7 @@ readonly scope:
   | { readonly type: "tenant"; readonly tenantId: string };
 ```
 
-- Consumes: exact effective hostname, `EnvironmentService.platformHostname`, and optional `RequestContext.tenantId` populated by tenant resolution middleware.
+- Consumes: exact effective hostname, `EnvironmentService.platformHostname`, and optional `RequestContext.tenantId` populated by `TenantResolutionMiddleware` on the public identity controller. These routes remain public and do not receive `SessionAuthMiddleware`.
 - Browser request bodies contain `{ email }` or `{ token, newPassword }`; scope fields cannot select the command scope.
 
 - [ ] **Step 1: Write failing API and form regressions**
@@ -481,6 +483,11 @@ even when an extra browser body field claims `scopeType: "platform"`.
 In the Nest controller test, assert exact platform host resolves platform scope,
 a request context with `tenantId` resolves tenant scope, and an unknown host with
 no tenant context throws before reaching the core controller.
+
+In `identity-routing.e2e.test.ts`, send a public identity command through a
+tenant hostname and assert the command receives tenant scope with the tenant ID
+resolved by middleware. This is the composition regression proving the real
+route supplies authoritative tenant context; it must not require a session.
 
 In `identity-forms.test.tsx`, assert activation, forgot-password, and reset
 payloads omit both `scopeType` and `tenantId`.
@@ -503,11 +510,14 @@ platform scope only when the normalized effective hostname equals
 `EnvironmentService.platformHostname`. Reject every unresolved non-platform
 hostname. Build all three identity use-case commands from `request.scope` and
 remove scope properties from the public body DTOs and browser form payloads.
+Apply `TenantResolutionMiddleware` to `NestIdentityPublicController` in
+`AppModule` without applying `SessionAuthMiddleware` to that controller.
 
 - [ ] **Step 4: Verify GREEN, generated contracts, and typechecks**
 
 ```bash
 pnpm --filter @booking-os/api test -- identity-public.controller.test.ts identity-public.nest.controller.test.ts
+pnpm --filter @booking-os/api test:e2e -- identity-routing.e2e.test.ts
 pnpm --filter @booking-os/web-console test -- identity-forms.test.tsx identity-bff.test.ts
 pnpm api:generate
 pnpm api:check-generated
@@ -521,7 +531,7 @@ browser-supplied identity scope.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add apps/api/src/modules/identity/infrastructure/http/identity-public.controller.ts apps/api/src/modules/identity/infrastructure/http/identity-public.controller.test.ts apps/api/src/modules/identity/infrastructure/http/identity-public.nest.controller.ts apps/api/src/modules/identity/infrastructure/http/identity-public.nest.controller.test.ts apps/web-console/src/components/identity/forgot-password-form.tsx apps/web-console/src/components/identity/password-command-form.tsx apps/web-console/src/components/identity/identity-forms.test.tsx packages/contracts/openapi/openapi.json packages/api-client/src/generated/schema.ts packages/api-client/src/generated/client.ts
+git add apps/api/src/modules/identity/infrastructure/http/identity-public.controller.ts apps/api/src/modules/identity/infrastructure/http/identity-public.controller.test.ts apps/api/src/modules/identity/infrastructure/http/identity-public.nest.controller.ts apps/api/src/modules/identity/infrastructure/http/identity-public.nest.controller.test.ts apps/api/src/app.module.ts apps/api/test/identity-routing.e2e.test.ts apps/web-console/src/components/identity/forgot-password-form.tsx apps/web-console/src/components/identity/password-command-form.tsx apps/web-console/src/components/identity/identity-forms.test.tsx packages/contracts/openapi/openapi.json packages/api-client/src/generated/schema.ts packages/api-client/src/generated/client.ts
 git commit -m "fix(identity): derive public scope from hostname"
 ```
 

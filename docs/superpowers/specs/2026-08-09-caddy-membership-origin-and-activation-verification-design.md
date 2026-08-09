@@ -97,8 +97,11 @@ The next live checkpoint exposed three additional contract mismatches:
    instead derive identity scope from the already-resolved request context: an
    exact platform hostname produces platform scope, and a resolved tenant host
    produces tenant scope with its authoritative tenant ID. Unknown hosts fail
-   closed. Browser command bodies contain only email, or token and password;
-   client-supplied scope fields do not select authorization scope.
+   closed. `TenantResolutionMiddleware` is applied to the public identity
+   controller so tenant hosts populate that request context, without adding
+   `SessionAuthMiddleware` to these public endpoints. Browser command bodies
+   contain only email, or token and password; client-supplied scope fields do
+   not select authorization scope.
 3. The pre-auth CSRF service verifies tokens for 15 minutes but passes
    `maxAge: 900` to Express, which interprets the value as milliseconds and
    serializes `Max-Age=0`. The cookie option will use `900_000` milliseconds so
