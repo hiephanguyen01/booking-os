@@ -56,7 +56,7 @@ services:
       dockerfile: infra/minio/Dockerfile
       args:
         GO_IMAGE_VERSION: ${MINIO_GO_IMAGE_VERSION:?MINIO_GO_IMAGE_VERSION is required}
-        ALPINE_VERSION: ${MINIO_ALPINE_VERSION:?ALPINE_VERSION is required}
+        ALPINE_VERSION: ${MINIO_ALPINE_VERSION:?MINIO_ALPINE_VERSION is required}
         MINIO_SERVER_VERSION: ${MINIO_SERVER_VERSION:?MINIO_SERVER_VERSION is required}
         MINIO_CLIENT_VERSION: ${MINIO_CLIENT_VERSION:?MINIO_CLIENT_VERSION is required}
     restart: unless-stopped
