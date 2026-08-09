@@ -51,6 +51,9 @@ it("submits only activation command fields and removes the fragment", async () =
     }),
   );
   expect(window.location.hash).toBe("");
+  expect((await screen.findByRole("status")).textContent).toContain(
+    "Your account has been activated.",
+  );
 });
 
 it("uses the reset endpoint and preserves reset failure copy", async () => {
