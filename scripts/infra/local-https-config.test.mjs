@@ -62,3 +62,26 @@ test("repository scripts expose HTTPS lifecycle without changing normal infra:up
     "docker compose --env-file .env.docker --profile https stop caddy",
   );
 });
+
+test("local HTTPS runbook documents the real secure browser workflow", async () => {
+  const runbook = await readFile("docs/runbooks/local-https-development.md", "utf8");
+  const readme = await readFile("README.md", "utf8");
+
+  for (const required of [
+    "https://platform.booking.localhost",
+    "https://acme-studio.booking.localhost",
+    "TRUST_PROXY=true",
+    "TENANT_BASE_DOMAIN=booking.localhost",
+    "PLATFORM_HOSTNAME=platform.booking.localhost",
+    "SESSION_ALLOWED_ORIGINS=",
+    "identity:bootstrap-platform-admin",
+    "http://localhost:8025",
+    "pnpm infra:https:up",
+    "pnpm test:e2e",
+  ]) {
+    assert.ok(runbook.includes(required), `runbook must include ${required}`);
+  }
+
+  assert.ok(readme.includes("local-https-development.md"));
+  assert.equal(readme.includes("no real login or cookie storage"), false);
+});
