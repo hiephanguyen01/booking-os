@@ -48,7 +48,10 @@ function jobPayload(event: DispatchableOutboxEvent): OutboxJobPayload {
 
 function isIdentityEmailEvent(type: string): boolean {
   return (
-    type === "identity.activation.requested.v1" || type === "identity.password_reset.requested.v1"
+    type === "identity.activation.requested.v1" ||
+    type === "identity.password_reset.requested.v1" ||
+    type === "membership.admin_invitation.requested.v1" ||
+    type === "membership.owner_invitation.requested.v1"
   );
 }
 

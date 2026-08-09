@@ -145,6 +145,8 @@ export class PlatformTenantProvisioningWorkflow {
             recipient: input.normalizedOwnerEmail,
             hostname: input.tenantHostname,
             purpose: "membership_invitation",
+            userId: ownerIdentity.userId,
+            intendedRoleKey: "tenant_owner",
             envelope: invitationEnvelope,
           },
           occurredAt: input.now,
@@ -303,6 +305,8 @@ export class PlatformTenantProvisioningWorkflow {
             recipient: invitation.normalizedEmail,
             hostname: invitation.hostname,
             purpose: "membership_invitation",
+            userId: ownerIdentity.userId,
+            intendedRoleKey: "tenant_owner",
             envelope: this.invitationEnvelope.seal({
               eventId: invitationEventId,
               tenantId: input.tenantId,

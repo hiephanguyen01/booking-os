@@ -15,9 +15,12 @@ const TOKEN = `${"a".repeat(22)}.${"b".repeat(43)}`;
 const KEY_ID = "identity-v1";
 const KEY = Buffer.alloc(32, 7);
 
-function createMembershipInvitationJob() {
-  const eventType = "membership.admin_invitation.requested.v1";
-  const intendedRoleKey = "tenant_admin";
+function createMembershipInvitationJob(
+  eventType:
+    | "membership.admin_invitation.requested.v1"
+    | "membership.owner_invitation.requested.v1" = "membership.admin_invitation.requested.v1",
+  intendedRoleKey: "tenant_admin" | "tenant_owner" = "tenant_admin",
+) {
   const iv = Buffer.alloc(12, 5);
   const cipher = createCipheriv("aes-256-gcm", KEY, iv, { authTagLength: 16 });
   cipher.setAAD(
@@ -87,4 +90,27 @@ test("decrypts membership invitation before building a fragment-only acceptance 
   );
   assert.doesNotMatch(messages[0]?.text ?? "", /\?token=/u);
   assert.equal(JSON.stringify(job.data).includes(TOKEN), false);
+});
+
+test("dispatches a platform owner invitation with its owner-bound envelope", async () => {
+  const messages: IdentityEmailMessage[] = [];
+  const sender: IdentityEmailSender = {
+    async send(message) {
+      messages.push(message);
+    },
+  };
+  const dispatcher = new IdentityEmailDispatcher(sender, { [KEY_ID]: KEY });
+  const job = createMembershipInvitationJob(
+    "membership.owner_invitation.requested.v1",
+    "tenant_owner",
+  );
+
+  await dispatcher.dispatch(job.name, job.data);
+
+  assert.equal(messages.length, 1);
+  assert.match(
+    messages[0]?.text ?? "",
+    new RegExp(`https://acme\\.example\\.com/invite/accept#token=${TOKEN}`, "u"),
+  );
+  assert.doesNotMatch(messages[0]?.text ?? "", /\?token=/u);
 });

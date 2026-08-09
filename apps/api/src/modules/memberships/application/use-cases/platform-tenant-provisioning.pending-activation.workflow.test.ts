@@ -168,6 +168,8 @@ test("uses a distinct activation token and encrypted activation outbox for a pen
               recipient: INPUT.normalizedOwnerEmail,
               hostname: INPUT.tenantHostname,
               purpose: "membership_invitation",
+              userId: OWNER_USER_ID,
+              intendedRoleKey: "tenant_owner",
               envelope: SEALED_INVITATION,
             },
             occurredAt: NOW,

@@ -227,6 +227,8 @@ test("provisions an existing owner inside one target-tenant scope before complet
             recipient: INPUT.normalizedOwnerEmail,
             hostname: INPUT.tenantHostname,
             purpose: "membership_invitation",
+            userId: OWNER_USER_ID,
+            intendedRoleKey: "tenant_owner",
             envelope: SEALED_INVITATION,
           },
           occurredAt: NOW,
@@ -434,8 +436,26 @@ test("replaces a pending owner invitation and persists the same activation token
                 },
               },
               outbox: {
-                async append() {
+                async append(input: Record<string, unknown>) {
                   calls.push("outbox:append");
+                  if (input.type === "membership.owner_invitation.requested.v1") {
+                    assert.deepEqual(input, {
+                      id: OUTBOX_EVENT_ID,
+                      type: "membership.owner_invitation.requested.v1",
+                      aggregateType: "membership_invitation",
+                      aggregateId: replacementId,
+                      payload: {
+                        version: 1,
+                        recipient: INPUT.normalizedOwnerEmail,
+                        hostname: INPUT.tenantHostname,
+                        purpose: "membership_invitation",
+                        userId: OWNER_USER_ID,
+                        intendedRoleKey: "tenant_owner",
+                        envelope: SEALED_INVITATION,
+                      },
+                      occurredAt: NOW,
+                    });
+                  }
                 },
               },
               audit: {

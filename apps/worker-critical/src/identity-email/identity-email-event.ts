@@ -5,11 +5,14 @@ export const IDENTITY_ACTIVATION_EVENT = "identity.activation.requested.v1" as c
 export const IDENTITY_PASSWORD_RESET_EVENT = "identity.password_reset.requested.v1" as const;
 export const MEMBERSHIP_ADMIN_INVITATION_EVENT =
   "membership.admin_invitation.requested.v1" as const;
+export const MEMBERSHIP_OWNER_INVITATION_EVENT =
+  "membership.owner_invitation.requested.v1" as const;
 
 export type IdentityEmailEventType =
   | typeof IDENTITY_ACTIVATION_EVENT
   | typeof IDENTITY_PASSWORD_RESET_EVENT
-  | typeof MEMBERSHIP_ADMIN_INVITATION_EVENT;
+  | typeof MEMBERSHIP_ADMIN_INVITATION_EVENT
+  | typeof MEMBERSHIP_OWNER_INVITATION_EVENT;
 export type IdentityEmailTemplate =
   | "account_activation"
   | "password_reset"
@@ -33,7 +36,7 @@ export interface ParsedIdentityEmailEvent {
   readonly envelope: IdentityEmailEnvelope;
   readonly tenantId?: string;
   readonly invitationId?: string;
-  readonly intendedRoleKey?: "tenant_admin";
+  readonly intendedRoleKey?: "tenant_admin" | "tenant_owner";
 }
 
 const SAFE_HOSTNAME_PATTERN = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::\d{1,5})?$/;
@@ -56,7 +59,8 @@ export function isIdentityEmailEventType(value: string): value is IdentityEmailE
   return (
     value === IDENTITY_ACTIVATION_EVENT ||
     value === IDENTITY_PASSWORD_RESET_EVENT ||
-    value === MEMBERSHIP_ADMIN_INVITATION_EVENT
+    value === MEMBERSHIP_ADMIN_INVITATION_EVENT ||
+    value === MEMBERSHIP_OWNER_INVITATION_EVENT
   );
 }
 
@@ -98,14 +102,16 @@ export function parseIdentityEmailEvent(
   }
   const envelope = parseEnvelope(data.payload.envelope);
 
-  if (name === MEMBERSHIP_ADMIN_INVITATION_EVENT) {
+  if (name === MEMBERSHIP_ADMIN_INVITATION_EVENT || name === MEMBERSHIP_OWNER_INVITATION_EVENT) {
     if (data.aggregateType !== "membership_invitation") return invalidEvent();
     const tenantId = nonEmptyString(data.tenantId);
     const invitationId = nonEmptyString(data.aggregateId);
     const userId = nonEmptyString(data.payload.userId);
+    const intendedRoleKey =
+      name === MEMBERSHIP_ADMIN_INVITATION_EVENT ? "tenant_admin" : "tenant_owner";
     if (
       data.payload.purpose !== "membership_invitation" ||
-      data.payload.intendedRoleKey !== "tenant_admin"
+      data.payload.intendedRoleKey !== intendedRoleKey
     ) {
       return invalidEvent();
     }
@@ -119,7 +125,7 @@ export function parseIdentityEmailEvent(
       envelope,
       tenantId,
       invitationId,
-      intendedRoleKey: "tenant_admin",
+      intendedRoleKey,
     });
   }
 

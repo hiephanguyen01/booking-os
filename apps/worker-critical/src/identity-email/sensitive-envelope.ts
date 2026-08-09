@@ -3,6 +3,7 @@ import { createDecipheriv } from "node:crypto";
 import { IdentityEmailDeliveryError } from "./identity-email-error.js";
 import {
   MEMBERSHIP_ADMIN_INVITATION_EVENT,
+  MEMBERSHIP_OWNER_INVITATION_EVENT,
   type ParsedIdentityEmailEvent,
 } from "./identity-email-event.js";
 
@@ -29,8 +30,13 @@ function decodeBase64Url(value: string, expectedBytes?: number): Buffer {
 }
 
 function associatedData(event: ParsedIdentityEmailEvent): Buffer {
-  if (event.eventType === MEMBERSHIP_ADMIN_INVITATION_EVENT) {
-    if (!event.tenantId || !event.invitationId || event.intendedRoleKey !== "tenant_admin") {
+  if (
+    event.eventType === MEMBERSHIP_ADMIN_INVITATION_EVENT ||
+    event.eventType === MEMBERSHIP_OWNER_INVITATION_EVENT
+  ) {
+    const intendedRoleKey =
+      event.eventType === MEMBERSHIP_ADMIN_INVITATION_EVENT ? "tenant_admin" : "tenant_owner";
+    if (!event.tenantId || !event.invitationId || event.intendedRoleKey !== intendedRoleKey) {
       return invalidEnvelope();
     }
     return Buffer.from(
@@ -43,7 +49,7 @@ function associatedData(event: ParsedIdentityEmailEvent): Buffer {
         event.userId,
         event.hostname,
         event.recipient,
-        event.intendedRoleKey,
+        intendedRoleKey,
       ].join("\0"),
       "utf8",
     );
