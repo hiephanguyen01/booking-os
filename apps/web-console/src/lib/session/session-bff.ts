@@ -75,7 +75,13 @@ function normalizeSessionApiTarget(value: string): SessionApiTarget {
 }
 
 function trustedBrowserTarget(request: Request): TrustedBrowserTarget {
-  const url = new URL(request.url);
+  const requestUrl = new URL(request.url);
+  const forwardedProtocol = request.headers.get("x-forwarded-proto")?.split(",", 1)[0];
+  const protocol =
+    forwardedProtocol === "http" || forwardedProtocol === "https"
+      ? `${forwardedProtocol}:`
+      : requestUrl.protocol;
+  const url = new URL(`${protocol}//${request.headers.get("host") ?? requestUrl.host}`);
   return Object.freeze({
     origin: url.origin,
     host: url.host,

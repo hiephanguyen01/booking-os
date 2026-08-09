@@ -20,7 +20,7 @@ test("session CSRF forwards only the validated opaque session cookie", async () 
     new Request("https://console.example.test/api/auth/session/csrf", {
       headers: {
         cookie: `tracking=value; __Host-booking_session=${encodeURIComponent(token)}; theme=dark`,
-        host: "attacker.example.test",
+        host: "console.example.test",
         origin: "https://attacker.example.test",
         "x-forwarded-host": "attacker.example.test",
       },
