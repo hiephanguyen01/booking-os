@@ -7,6 +7,7 @@ import { DatabaseModule } from "./database/database.module.js";
 import { DependenciesModule } from "./dependencies/dependencies.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { IdentityModule } from "./modules/identity/identity.module.js";
+import { NestIdentityPublicController } from "./modules/identity/infrastructure/http/identity-public.nest.controller.js";
 import { PlatformTenantsController } from "./modules/memberships/infrastructure/http/platform-tenants.controller.js";
 import { TenantInvitationsController } from "./modules/memberships/infrastructure/http/tenant-invitations.controller.js";
 import { MembershipsModule } from "./modules/memberships/memberships.module.js";
@@ -38,6 +39,7 @@ import { ReliabilityModule } from "./reliability/reliability.module.js";
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer.apply(SessionAuthMiddleware).forRoutes(PlatformTenantsController);
+    consumer.apply(TenantResolutionMiddleware).forRoutes(NestIdentityPublicController);
     consumer
       .apply(TenantResolutionMiddleware, SessionAuthMiddleware)
       .forRoutes(TenantInvitationsController, SessionHttpController, SessionCsrfHttpController);

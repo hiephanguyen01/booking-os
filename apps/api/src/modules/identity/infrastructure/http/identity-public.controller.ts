@@ -7,11 +7,13 @@ import type {
   CompletePasswordResetResult,
 } from "../../application/use-cases/complete-password-reset.js";
 import type { RequestPasswordResetCommand } from "../../application/use-cases/request-password-reset.js";
-import type { IdentityScopeType } from "../../domain/user.js";
 import type { IssuedPreAuthCsrf, PreAuthCsrfPurpose } from "./pre-auth-csrf.js";
 
 export interface IdentityPublicHttpRequest {
   readonly hostname: string;
+  readonly scope:
+    | { readonly type: "platform" }
+    | { readonly type: "tenant"; readonly tenantId: string };
   readonly expectedOrigin: string;
   readonly origin: string | null;
   readonly csrfCookie: string | null;
@@ -52,17 +54,12 @@ export interface IdentityPublicControllerDependencies {
   completePasswordReset: CompletePasswordResetExecutor;
 }
 
-export interface IdentityScopeBody {
-  readonly scopeType: IdentityScopeType;
-  readonly tenantId?: string;
-}
-
-export interface CompleteIdentityPasswordBody extends IdentityScopeBody {
+export interface CompleteIdentityPasswordBody {
   readonly token: string;
   readonly newPassword: string;
 }
 
-export interface RequestIdentityPasswordResetBody extends IdentityScopeBody {
+export interface RequestIdentityPasswordResetBody {
   readonly email: string;
 }
 
@@ -72,13 +69,13 @@ function applySensitiveResponseHeaders(response: IdentityPublicHttpResponse): vo
 }
 
 function commandScope(
-  body: IdentityScopeBody,
+  scope: IdentityPublicHttpRequest["scope"],
 ):
-  | { readonly scopeType: IdentityScopeType }
-  | { readonly scopeType: IdentityScopeType; readonly tenantId: string } {
-  return body.tenantId === undefined
-    ? { scopeType: body.scopeType }
-    : { scopeType: body.scopeType, tenantId: body.tenantId };
+  | { readonly scopeType: "platform" }
+  | { readonly scopeType: "tenant"; readonly tenantId: string } {
+  return scope.type === "platform"
+    ? { scopeType: "platform" }
+    : { scopeType: "tenant", tenantId: scope.tenantId };
 }
 
 export class IdentityPublicController {
@@ -109,7 +106,7 @@ export class IdentityPublicController {
     await this.dependencies.requestPasswordReset.execute({
       email: body.email,
       hostname: request.hostname,
-      ...commandScope(body),
+      ...commandScope(request.scope),
       requestId: request.requestId,
     });
     response.status(202);
@@ -127,7 +124,7 @@ export class IdentityPublicController {
       token: body.token,
       newPassword: body.newPassword,
       hostname: request.hostname,
-      ...commandScope(body),
+      ...commandScope(request.scope),
       requestId: request.requestId,
     });
     return Object.freeze({ completed: true });
@@ -144,7 +141,7 @@ export class IdentityPublicController {
       token: body.token,
       newPassword: body.newPassword,
       hostname: request.hostname,
-      ...commandScope(body),
+      ...commandScope(request.scope),
       requestId: request.requestId,
     });
     return Object.freeze({ completed: true });

@@ -32,6 +32,7 @@ class RecordingResponse implements IdentityPublicHttpResponse {
 function request(overrides: Partial<IdentityPublicHttpRequest> = {}): IdentityPublicHttpRequest {
   return {
     hostname: "console.example.test",
+    scope: { type: "platform" },
     expectedOrigin: "https://console.example.test",
     origin: "https://console.example.test",
     csrfCookie: "opaque-nonce",
@@ -116,7 +117,7 @@ test("password-forgot validates purpose and returns the same neutral response", 
   const response = new RecordingResponse();
 
   const body = await controller.requestPasswordReset(
-    { email: "pilot@example.com", scopeType: "platform" },
+    { email: "pilot@example.com" },
     request(),
     response,
   );
@@ -145,7 +146,6 @@ test("activation completes without creating a session or returning the user ID",
     {
       token: "selector.secret",
       newPassword: "correct horse battery staple",
-      scopeType: "platform",
     },
     request(),
     response,
@@ -169,6 +169,66 @@ test("activation completes without creating a session or returning the user ID",
   );
 });
 
+test("trusted tenant request scope overrides browser scope fields for every identity command", async () => {
+  const { dependencies, commands } = createDependencies();
+  const controller = new IdentityPublicController(dependencies);
+  const tenantRequest = request({
+    hostname: "studio.example.test",
+    scope: { type: "tenant", tenantId: "11111111-1111-4111-8111-111111111111" },
+  });
+  const browserScopeClaim = { scopeType: "platform" as const };
+
+  await controller.completeActivation(
+    {
+      token: "activation-selector.secret",
+      newPassword: "correct horse battery staple",
+      ...browserScopeClaim,
+    },
+    tenantRequest,
+    new RecordingResponse(),
+  );
+  await controller.requestPasswordReset(
+    { email: "pilot@example.com", ...browserScopeClaim },
+    tenantRequest,
+    new RecordingResponse(),
+  );
+  await controller.completePasswordReset(
+    {
+      token: "reset-selector.secret",
+      newPassword: "correct horse battery staple",
+      ...browserScopeClaim,
+    },
+    tenantRequest,
+    new RecordingResponse(),
+  );
+
+  assert.deepEqual(commands, [
+    {
+      token: "activation-selector.secret",
+      newPassword: "correct horse battery staple",
+      hostname: "studio.example.test",
+      scopeType: "tenant",
+      tenantId: "11111111-1111-4111-8111-111111111111",
+      requestId: "request-1",
+    },
+    {
+      email: "pilot@example.com",
+      hostname: "studio.example.test",
+      scopeType: "tenant",
+      tenantId: "11111111-1111-4111-8111-111111111111",
+      requestId: "request-1",
+    },
+    {
+      token: "reset-selector.secret",
+      newPassword: "correct horse battery staple",
+      hostname: "studio.example.test",
+      scopeType: "tenant",
+      tenantId: "11111111-1111-4111-8111-111111111111",
+      requestId: "request-1",
+    },
+  ]);
+});
+
 test("CSRF rejection occurs before an identity use case is invoked", async () => {
   const { dependencies, commands } = createDependencies();
   dependencies.csrf.assertRequest = () => {
@@ -181,7 +241,6 @@ test("CSRF rejection occurs before an identity use case is invoked", async () =>
       {
         token: "selector.secret",
         newPassword: "correct horse battery staple",
-        scopeType: "platform",
       },
       request({ origin: "https://attacker.example.test" }),
       new RecordingResponse(),

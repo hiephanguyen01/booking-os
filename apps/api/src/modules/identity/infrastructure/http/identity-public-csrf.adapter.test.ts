@@ -30,6 +30,7 @@ test("accepts only an exact same-origin request with the issued nonce and proof"
     adapter.assertRequest(
       {
         hostname: "console.example.test",
+        scope: { type: "platform" },
         expectedOrigin: "https://console.example.test",
         origin: "https://console.example.test",
         csrfCookie: issued.cookie.value,
@@ -51,6 +52,7 @@ test("rejects foreign origins, missing material, and invalid purpose bindings un
   const invalidRequests = [
     {
       hostname: "console.example.test",
+      scope: { type: "platform" },
       expectedOrigin: "https://console.example.test",
       origin: "https://attacker.example.test",
       csrfCookie: issued.cookie.value,
@@ -59,6 +61,7 @@ test("rejects foreign origins, missing material, and invalid purpose bindings un
     },
     {
       hostname: "console.example.test",
+      scope: { type: "platform" },
       expectedOrigin: "https://console.example.test",
       origin: "https://console.example.test",
       csrfCookie: null,
@@ -67,6 +70,7 @@ test("rejects foreign origins, missing material, and invalid purpose bindings un
     },
     {
       hostname: "console.example.test",
+      scope: { type: "platform" },
       expectedOrigin: "https://console.example.test",
       origin: "https://console.example.test",
       csrfCookie: issued.cookie.value,

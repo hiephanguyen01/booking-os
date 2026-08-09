@@ -44,7 +44,6 @@ it("submits only activation command fields and removes the fragment", async () =
     expect.objectContaining({
       method: "POST",
       body: JSON.stringify({
-        scopeType: "platform",
         token: IDENTITY_TOKEN,
         newPassword: NEW_PASSWORD,
       }),
@@ -70,7 +69,13 @@ it("uses the reset endpoint and preserves reset failure copy", async () => {
 
   expect(globalThis.fetch).toHaveBeenCalledWith(
     "/api/auth/password/reset",
-    expect.objectContaining({ method: "POST" }),
+    expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({
+        token: IDENTITY_TOKEN,
+        newPassword: NEW_PASSWORD,
+      }),
+    }),
   );
   expect((await screen.findByRole("alert")).textContent).toContain(
     "We couldn't reset your password",
@@ -103,7 +108,6 @@ it("normalizes email and preserves neutral success copy", async () => {
     "/api/auth/password/forgot",
     expect.objectContaining({
       body: JSON.stringify({
-        scopeType: "platform",
         email: "user@example.test",
       }),
     }),

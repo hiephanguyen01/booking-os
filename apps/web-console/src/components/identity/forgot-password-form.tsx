@@ -14,7 +14,6 @@ import { useForm } from "react-hook-form";
 import { postIdentityCommand } from "../../lib/identity/post-identity-command";
 import { SubmissionMessage, type SubmissionState } from "./submission-message";
 
-const PLATFORM_SCOPE = "platform" as const;
 const SUCCESS_MESSAGE = "If an account matches that email, a reset link will be sent.";
 const FAILURE_MESSAGE = "We couldn't process your request. Try again shortly.";
 
@@ -38,7 +37,6 @@ export function ForgotPasswordForm() {
 
     try {
       const response = await postIdentityCommand("/api/auth/password/forgot", {
-        scopeType: PLATFORM_SCOPE,
         email: values.email,
       });
 

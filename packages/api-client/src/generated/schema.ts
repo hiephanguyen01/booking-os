@@ -441,10 +441,6 @@ export interface components {
         };
         readonly CompleteIdentityPasswordDto: {
             readonly newPassword: string;
-            /** @enum {string} */
-            readonly scopeType: "platform" | "tenant";
-            /** Format: uuid */
-            readonly tenantId?: string;
             readonly token: string;
         };
         readonly CreateTenantAdminInvitationRequestDto: {
@@ -523,10 +519,6 @@ export interface components {
         readonly RequestIdentityPasswordResetDto: {
             /** Format: email */
             readonly email: string;
-            /** @enum {string} */
-            readonly scopeType: "platform" | "tenant";
-            /** Format: uuid */
-            readonly tenantId?: string;
         };
         readonly RevokeDeviceResponseDto: {
             readonly revoked: boolean;
@@ -607,6 +599,7 @@ export interface components {
             readonly status: "provisioning";
             /** Format: uuid */
             readonly tenantId: string;
+            readonly tenantName: string;
         };
     };
     responses: never;

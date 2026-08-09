@@ -54,23 +54,11 @@
             "minLength": 12,
             "type": "string"
           },
-          "scopeType": {
-            "enum": [
-              "platform",
-              "tenant"
-            ],
-            "type": "string"
-          },
-          "tenantId": {
-            "format": "uuid",
-            "type": "string"
-          },
           "token": {
             "type": "string"
           }
         },
         "required": [
-          "scopeType",
           "token",
           "newPassword"
         ],
@@ -314,21 +302,9 @@
           "email": {
             "format": "email",
             "type": "string"
-          },
-          "scopeType": {
-            "enum": [
-              "platform",
-              "tenant"
-            ],
-            "type": "string"
-          },
-          "tenantId": {
-            "format": "uuid",
-            "type": "string"
           }
         },
         "required": [
-          "scopeType",
           "email"
         ],
         "type": "object"
@@ -607,10 +583,14 @@
           "tenantId": {
             "format": "uuid",
             "type": "string"
+          },
+          "tenantName": {
+            "type": "string"
           }
         },
         "required": [
           "tenantId",
+          "tenantName",
           "slug",
           "status",
           "ownerMembershipId",

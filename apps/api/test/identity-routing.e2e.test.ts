@@ -10,10 +10,21 @@ import {
   POSTGRES_READINESS_PROBE_TOKEN,
   REDIS_READINESS_PROBE_TOKEN,
 } from "../src/dependencies/tokens.js";
+import type { CompleteActivationCommand } from "../src/modules/identity/application/use-cases/complete-activation.js";
+import { CompleteActivationUseCase } from "../src/modules/identity/application/use-cases/complete-activation.js";
+import { ResolveTenantUseCase } from "../src/modules/tenancy/application/use-cases/resolve-tenant.use-case.js";
+
+const TENANT_ID = "11111111-1111-4111-8111-111111111111";
+const TENANT_SLUG = "studio";
+const TENANT_HOSTNAME = `${TENANT_SLUG}.example.test`;
+const PLATFORM_HOSTNAME = "platform.example.test";
 
 const originalEnvironment = {
   NODE_ENV: process.env.NODE_ENV,
   HOST: process.env.HOST,
+  TRUST_PROXY: process.env.TRUST_PROXY,
+  TENANT_BASE_DOMAIN: process.env.TENANT_BASE_DOMAIN,
+  PLATFORM_HOSTNAME: process.env.PLATFORM_HOSTNAME,
   PORT: process.env.PORT,
   API_PREFIX: process.env.API_PREFIX,
   APP_VERSION: process.env.APP_VERSION,
@@ -34,12 +45,26 @@ function restoreEnvironmentValue(key: keyof typeof originalEnvironment): void {
   process.env[key] = originalValue;
 }
 
-async function createTestApplication(): Promise<INestApplication> {
+async function createTestApplication(
+  activationCommands: CompleteActivationCommand[] = [],
+): Promise<INestApplication> {
   const testingModule = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(POSTGRES_READINESS_PROBE_TOKEN)
     .useValue({ dependency: "postgresql", check: async () => ({ status: "ok", latencyMs: 1 }) })
     .overrideProvider(REDIS_READINESS_PROBE_TOKEN)
     .useValue({ dependency: "redis", check: async () => ({ status: "ok", latencyMs: 1 }) })
+    .overrideProvider(ResolveTenantUseCase)
+    .useValue({
+      execute: async (hostname: string) =>
+        hostname === TENANT_HOSTNAME ? { id: TENANT_ID, slug: TENANT_SLUG } : null,
+    })
+    .overrideProvider(CompleteActivationUseCase)
+    .useValue({
+      execute: async (command: CompleteActivationCommand) => {
+        activationCommands.push(command);
+        return { userId: "22222222-2222-4222-8222-222222222222" };
+      },
+    })
     .compile();
 
   const app = testingModule.createNestApplication();
@@ -51,6 +76,9 @@ async function createTestApplication(): Promise<INestApplication> {
 before(() => {
   process.env.NODE_ENV = "test";
   process.env.HOST = "127.0.0.1";
+  process.env.TRUST_PROXY = "false";
+  process.env.TENANT_BASE_DOMAIN = "example.test";
+  process.env.PLATFORM_HOSTNAME = PLATFORM_HOSTNAME;
   process.env.PORT = "3101";
   process.env.API_PREFIX = "api";
   process.env.APP_VERSION = "0.1.0-e2e";
@@ -74,7 +102,7 @@ test("GET /api/auth/csrf is registered by AppModule and returns a host-only pre-
   try {
     const response = await request(app.getHttpServer())
       .get("/api/auth/csrf?purpose=activation")
-      .set("host", "console.example.test")
+      .set("host", PLATFORM_HOSTNAME)
       .expect(200);
 
     assert.equal(response.headers["cache-control"], "no-store");
@@ -82,6 +110,48 @@ test("GET /api/auth/csrf is registered by AppModule and returns a host-only pre-
     assert.match(response.headers["set-cookie"]?.[0] ?? "", /^__Host-booking_pre_auth_csrf=/u);
     assert.equal(typeof response.body.csrfToken, "string");
     assert.match(response.body.expiresAt, /^202[0-9]-/u);
+  } finally {
+    await app.close();
+  }
+});
+
+test("tenant public identity commands receive middleware-resolved scope without a session", async () => {
+  const activationCommands: CompleteActivationCommand[] = [];
+  const app = await createTestApplication(activationCommands);
+
+  try {
+    const csrf = await request(app.getHttpServer())
+      .get("/api/auth/csrf?purpose=activation")
+      .set("host", TENANT_HOSTNAME)
+      .expect(200);
+    const csrfCookie = csrf.headers["set-cookie"]?.[0]?.split(";", 1)[0];
+    assert.equal(typeof csrfCookie, "string");
+
+    await request(app.getHttpServer())
+      .post("/api/auth/activation/complete")
+      .set("host", TENANT_HOSTNAME)
+      .set("origin", `http://${TENANT_HOSTNAME}`)
+      .set("cookie", csrfCookie ?? "")
+      .set("x-csrf-token", csrf.body.csrfToken)
+      .send({
+        token: "selector.secret",
+        newPassword: "correct horse battery staple",
+        scopeType: "platform",
+      })
+      .expect(200);
+
+    assert.equal(activationCommands.length, 1);
+    const activationCommand = activationCommands[0];
+    assert.ok(activationCommand);
+    const { requestId, ...command } = activationCommand;
+    assert.equal(typeof requestId, "string");
+    assert.deepEqual(command, {
+      token: "selector.secret",
+      newPassword: "correct horse battery staple",
+      hostname: TENANT_HOSTNAME,
+      scopeType: "tenant",
+      tenantId: TENANT_ID,
+    });
   } finally {
     await app.close();
   }

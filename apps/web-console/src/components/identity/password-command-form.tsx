@@ -16,7 +16,6 @@ import { consumeIdentityTokenFragment } from "../../lib/identity/fragment-token"
 import { postIdentityCommand } from "../../lib/identity/post-identity-command";
 import { SubmissionMessage, type SubmissionState } from "./submission-message";
 
-const PLATFORM_SCOPE = "platform" as const;
 const INVALID_LINK_MESSAGE =
   "This link is invalid or incomplete. Request a new link and try again.";
 
@@ -81,7 +80,6 @@ export function PasswordCommandForm({
 
     try {
       const response = await postIdentityCommand(action, {
-        scopeType: PLATFORM_SCOPE,
         token: tokenState.token,
         newPassword: values.newPassword,
       });

@@ -22,9 +22,9 @@ import {
 } from "@nestjs/swagger";
 
 import { SupportedApi } from "../../../../api-visibility/api-visibility.decorator.js";
+import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import { EnvironmentService } from "../../../../config/environment.service.js";
 import { effectiveHostname } from "../../../tenancy/infrastructure/http/effective-hostname.js";
-import type { IdentityScopeType } from "../../domain/user.js";
 import {
   type CompleteIdentityPasswordBody,
   IdentityPublicController,
@@ -37,7 +37,6 @@ import type { PreAuthCsrfPurpose } from "./pre-auth-csrf.js";
 const PRE_AUTH_CSRF_COOKIE_NAME = "__Host-booking_pre_auth_csrf";
 const SECURITY_HEADER_ERROR = "Ambiguous identity security header.";
 const PURPOSES = ["activation", "password_forgot", "password_reset"] as const;
-const SCOPES = ["platform", "tenant"] as const;
 
 type HeaderValue = string | readonly string[] | undefined;
 
@@ -66,15 +65,7 @@ class CompletedResponseDto {
   completed!: true;
 }
 
-class IdentityScopeDto {
-  @ApiProperty({ type: String, enum: SCOPES })
-  scopeType!: IdentityScopeType;
-
-  @ApiProperty({ type: String, required: false, format: "uuid" })
-  tenantId?: string;
-}
-
-class CompleteIdentityPasswordDto extends IdentityScopeDto {
+class CompleteIdentityPasswordDto {
   @ApiProperty({ type: String })
   token!: string;
 
@@ -82,7 +73,7 @@ class CompleteIdentityPasswordDto extends IdentityScopeDto {
   newPassword!: string;
 }
 
-class RequestIdentityPasswordResetDto extends IdentityScopeDto {
+class RequestIdentityPasswordResetDto {
   @ApiProperty({ type: String, format: "email" })
   email!: string;
 }
@@ -155,7 +146,8 @@ function preAuthCookie(value: string | null): string | null {
 
 export function toIdentityPublicHttpRequest(
   request: NestIdentityRequest,
-  trustProxy = false,
+  trustProxy: boolean,
+  scope: IdentityPublicHttpRequest["scope"],
 ): IdentityPublicHttpRequest {
   const hostname = effectiveHostname(request.headers, trustProxy);
   if (!hostname) {
@@ -163,6 +155,7 @@ export function toIdentityPublicHttpRequest(
   }
   return Object.freeze({
     hostname: normalizeHostname(hostname),
+    scope,
     expectedOrigin: trustedRequestOrigin(request),
     origin: singleHeader(request.headers.origin),
     csrfCookie: preAuthCookie(singleHeader(request.headers.cookie)),
@@ -173,10 +166,27 @@ export function toIdentityPublicHttpRequest(
 
 function requestContext(
   request: NestIdentityRequest,
-  trustProxy: boolean,
+  environment: Pick<EnvironmentService, "platformHostname" | "trustProxy">,
+  storage: RequestContextStorage,
 ): IdentityPublicHttpRequest {
   try {
-    return toIdentityPublicHttpRequest(request, trustProxy);
+    const hostname = effectiveHostname(request.headers, environment.trustProxy);
+    if (!hostname) {
+      throw new TypeError("Identity request hostname cannot be empty.");
+    }
+
+    const tenantId = storage.require().tenantId;
+    const normalizedHostname = normalizeHostname(hostname);
+    let scope: IdentityPublicHttpRequest["scope"];
+    if (tenantId !== undefined) {
+      scope = { type: "tenant", tenantId };
+    } else if (normalizedHostname === normalizeHostname(environment.platformHostname)) {
+      scope = { type: "platform" };
+    } else {
+      throw new TypeError("Identity request hostname is unresolved.");
+    }
+
+    return toIdentityPublicHttpRequest(request, environment.trustProxy, scope);
   } catch (error: unknown) {
     throw new BadRequestException(error instanceof Error ? error.message : SECURITY_HEADER_ERROR);
   }
@@ -190,7 +200,9 @@ export class NestIdentityPublicController {
     @Inject(IdentityPublicController)
     private readonly core: IdentityPublicController,
     @Inject(EnvironmentService)
-    private readonly environment: Pick<EnvironmentService, "trustProxy">,
+    private readonly environment: Pick<EnvironmentService, "platformHostname" | "trustProxy">,
+    @Inject(RequestContextStorage)
+    private readonly requestContextStorage: RequestContextStorage,
   ) {}
 
   @Get("csrf")
@@ -208,7 +220,7 @@ export class NestIdentityPublicController {
     }
     return this.core.getCsrf(
       purpose,
-      requestContext(request, this.environment.trustProxy),
+      requestContext(request, this.environment, this.requestContextStorage),
       response,
     );
   }
@@ -226,7 +238,7 @@ export class NestIdentityPublicController {
   ): Promise<{ readonly completed: true }> {
     return this.core.completeActivation(
       body,
-      requestContext(request, this.environment.trustProxy),
+      requestContext(request, this.environment, this.requestContextStorage),
       response,
     );
   }
@@ -244,7 +256,7 @@ export class NestIdentityPublicController {
   ): Promise<{ readonly accepted: true }> {
     return this.core.requestPasswordReset(
       body,
-      requestContext(request, this.environment.trustProxy),
+      requestContext(request, this.environment, this.requestContextStorage),
       response,
     );
   }
@@ -262,7 +274,7 @@ export class NestIdentityPublicController {
   ): Promise<{ readonly completed: true }> {
     return this.core.completePasswordReset(
       body,
-      requestContext(request, this.environment.trustProxy),
+      requestContext(request, this.environment, this.requestContextStorage),
       response,
     );
   }
