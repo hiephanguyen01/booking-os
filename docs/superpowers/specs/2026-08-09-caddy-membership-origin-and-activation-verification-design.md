@@ -112,6 +112,23 @@ Each correction receives a test-first regression at the boundary that failed:
 pending-subject resolution, authoritative identity command construction, and
 the actual Nest/Express `Set-Cookie` header.
 
+## Tenant-membership route composition follow-up
+
+The owner invitation transaction and session elevation complete successfully,
+but the live members screen receives HTTP 401. The same active tenant session
+passes the web-console page middleware; the API failure occurs because
+`TenantMembershipsController` is not included in AppModule's tenant-resolution
+and session-auth middleware binding. The controller requires authenticated
+tenant request context for listing and every lifecycle/owner mutation.
+
+`TenantResolutionMiddleware` followed by `SessionAuthMiddleware` will apply
+to `TenantMembershipsController`, matching the protected tenant-invitation and
+session route composition. A real AppModule HTTP regression must prove a tenant
+hostname resolves to the authoritative tenant scope, the session middleware
+hydrates the actor, and `GET /api/memberships` reaches the use case. The fix
+does not weaken `SessionRequired`, CSRF, authorization-context construction,
+tenant isolation, or final-owner invariants.
+
 ## Scope
 
 No changes to Caddy configuration, API allowed origins, the authenticated
@@ -120,4 +137,6 @@ public-origin derivation, the live-flow follow-up extends the already-defined
 owner invitation event contract and provisioning status response/UI, aligns
 pending-session authorization snapshots with the database invariant, derives
 public identity scope from authoritative host context, and corrects the
-pre-auth CSRF cookie lifetime unit.
+pre-auth CSRF cookie lifetime unit. Protected tenant-membership routes also
+receive the already-required authoritative tenant and authenticated-session
+middleware composition.

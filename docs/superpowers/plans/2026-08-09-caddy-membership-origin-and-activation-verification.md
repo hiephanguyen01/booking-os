@@ -604,3 +604,72 @@ git commit -m "fix(identity): align pre-auth csrf lifetime"
 - [ ] **Step 2:** Accept the still-pending owner invitation once, verify the second use fails, and confirm membership/role/tenant activation.
 - [ ] **Step 3:** Invite `admin2@example.test`, verify tenant-host activation and invitation emails, and pause immediately before submitting `Admin2Dev123!` for fresh confirmation.
 - [ ] **Step 4:** Complete the remaining authorization, final-owner, logout/reset/session, cross-tenant, hostname, TLS, automated-suite, and working-tree checkpoints from the attached checklist.
+
+### Task 13: Compose protected tenant-membership routes
+
+**Files:**
+
+- Modify: `apps/api/src/app.module.ts`
+- Create: `apps/api/test/membership-routing.e2e.test.ts`
+
+**Interfaces:**
+
+- `TenantMembershipsController` consumes `RequestContext.tenantId` from
+  `TenantResolutionMiddleware`, then authenticated actor/session context from
+  `SessionAuthMiddleware`.
+- Middleware order is tenant resolution first, session authentication second,
+  matching the existing protected tenant-invitation and session routes.
+- `SessionRequired`, `SessionCsrfGuard`, authorization context, tenant
+  isolation, membership policies, and final-owner rules remain unchanged.
+
+- [ ] **Step 1: Write the failing AppModule HTTP regression**
+
+Create `membership-routing.e2e.test.ts` around the real `AppModule`. Override
+only external/readiness dependencies and the focused use cases needed to
+observe composition. Send:
+
+```http
+GET /api/memberships
+Host: studio.example.test
+Cookie: __Host-booking_session=<valid opaque token>
+```
+
+Assert the tenant resolver supplies
+`11111111-1111-4111-8111-111111111111`, the session resolver receives that
+tenant scope and hostname, the authorization builder receives an active tenant
+session context, and the list use case returns HTTP 200. Do not bypass the
+production middleware or controller.
+
+- [ ] **Step 2: Verify RED**
+
+```bash
+cd apps/api
+node --test --test-concurrency=1 --import tsx test/membership-routing.e2e.test.ts
+```
+
+Expected: HTTP 401 because `TenantMembershipsController` has no tenant/session
+middleware binding and the controller's `SessionRequired` guard fails closed.
+
+- [ ] **Step 3: Implement the composition fix**
+
+Import `TenantMembershipsController` in `AppModule` and add it to the existing
+`TenantResolutionMiddleware, SessionAuthMiddleware` `forRoutes` binding.
+Do not create a second middleware chain or change controller guards.
+
+- [ ] **Step 4: Verify GREEN and typecheck**
+
+```bash
+cd apps/api
+node --test --test-concurrency=1 --import tsx test/membership-routing.e2e.test.ts
+cd ../..
+pnpm --filter @booking-os/api typecheck
+```
+
+Expected: focused HTTP regression passes and API typecheck exits 0.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/api/src/app.module.ts apps/api/test/membership-routing.e2e.test.ts
+git commit -m "fix(api): authenticate tenant membership routes"
+```
