@@ -20,10 +20,13 @@ const compose = YAML.parse(composeSource);
 test("local HTTPS is opt-in and pins Caddy", () => {
   assert.match(dockerEnv, /^CADDY_VERSION=2\.11\.3$/m);
   assert.deepEqual(compose.services.caddy.profiles, ["https"]);
-  assert.equal(compose.services.caddy.image, "caddy:${CADDY_VERSION:?CADDY_VERSION is required}");
+  assert.equal(
+    compose.services.caddy.image,
+    String.raw`caddy:\${CADDY_VERSION:?CADDY_VERSION is required}`,
+  );
   assert.deepEqual(compose.services.caddy.ports, [
-    "${CADDY_HTTP_PORT:?CADDY_HTTP_PORT is required}:80",
-    "${CADDY_HTTPS_PORT:?CADDY_HTTPS_PORT is required}:443",
+    String.raw`\${CADDY_HTTP_PORT:?CADDY_HTTP_PORT is required}:80`,
+    String.raw`\${CADDY_HTTPS_PORT:?CADDY_HTTPS_PORT is required}:443`,
   ]);
 });
 
@@ -37,7 +40,10 @@ test("Caddy preserves the browser hostname and proxies only to the host console"
 });
 
 test("repository scripts expose HTTPS lifecycle without changing normal infra:up", () => {
-  assert.equal(packageJson.scripts["infra:up"], "docker compose --env-file .env.docker up -d --build");
+  assert.equal(
+    packageJson.scripts["infra:up"],
+    "docker compose --env-file .env.docker up -d --build",
+  );
   assert.equal(
     packageJson.scripts["infra:https:config"],
     "docker compose --env-file .env.docker --profile https config --quiet",
