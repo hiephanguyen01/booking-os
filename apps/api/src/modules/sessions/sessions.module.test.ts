@@ -140,7 +140,7 @@ test("SessionsModule composes pending invitation eligibility into the real login
         scope: { type: "tenant", tenantId: TENANT_ID },
         hostname: HOSTNAME,
         state: "invitation_pending",
-        authorizationVersion: 0,
+        authorizationVersion: 7,
         requestId: "request-pending-login",
       },
     ]);

@@ -36,9 +36,18 @@ export class MembershipAwareSessionSubjectAdapter implements SessionSubjectPort 
       return null;
     }
 
+    const authorizationVersion = await this.activeSubjects.currentAuthorizationVersion(input.userId);
+    if (
+      authorizationVersion === null ||
+      !Number.isInteger(authorizationVersion) ||
+      authorizationVersion <= 0
+    ) {
+      return null;
+    }
+
     return Object.freeze({
       state: "invitation_pending" as const,
-      authorizationVersion: 0,
+      authorizationVersion,
     });
   }
 

@@ -69,11 +69,44 @@ test("creates an invitation-pending subject for a tenant with no active subject 
     scope: { type: "tenant", tenantId: TENANT_ID },
   });
 
-  assert.deepEqual(result, { state: "invitation_pending", authorizationVersion: 0 });
+  assert.deepEqual(result, { state: "invitation_pending", authorizationVersion: 7 });
   assert.deepEqual(harness.pending.calls, [
     { tenantId: TENANT_ID, userId: USER_ID, hostname: "acme.booking.test" },
   ]);
+  assert.deepEqual(harness.active.versionCalls, [USER_ID]);
 });
+
+test("fails closed when a valid pending invitation has no current user authorization version", async () => {
+  const harness = createHarness();
+  harness.pending.eligible = true;
+  harness.active.authorizationVersion = null;
+
+  const result = await harness.adapter.resolveForLogin({
+    userId: USER_ID,
+    hostname: "acme.booking.test",
+    scope: { type: "tenant", tenantId: TENANT_ID },
+  });
+
+  assert.equal(result, null);
+  assert.deepEqual(harness.active.versionCalls, [USER_ID]);
+});
+
+for (const authorizationVersion of [0, -1, 1.5]) {
+  test(`fails closed when a valid pending invitation has invalid authorization version ${authorizationVersion}`, async () => {
+    const harness = createHarness();
+    harness.pending.eligible = true;
+    harness.active.authorizationVersion = authorizationVersion;
+
+    const result = await harness.adapter.resolveForLogin({
+      userId: USER_ID,
+      hostname: "acme.booking.test",
+      scope: { type: "tenant", tenantId: TENANT_ID },
+    });
+
+    assert.equal(result, null);
+    assert.deepEqual(harness.active.versionCalls, [USER_ID]);
+  });
+}
 
 test("returns null when a tenant has neither an active subject nor a valid pending invitation", async () => {
   const harness = createHarness();
