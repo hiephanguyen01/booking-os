@@ -117,6 +117,42 @@ test("activation consumes the token only on the server-side API call", async () 
   });
 });
 
+test("activation accepts the public HTTPS origin forwarded by the local TLS proxy", async () => {
+  const calls: FetchCall[] = [];
+  const handlers = createIdentityBffHandlers({
+    apiBaseUrl: "https://api.example.test/api",
+    fetch: createIdentityFetch(calls, 200),
+  });
+
+  const response = await handlers.activationComplete(
+    new Request("http://127.0.0.1:3002/api/auth/activation/complete", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        host: "platform.booking.localhost",
+        origin: "https://platform.booking.localhost",
+        "x-forwarded-proto": "https",
+      },
+      body: JSON.stringify({
+        token: "selector.secret",
+        newPassword: "correct horse battery staple",
+        scopeType: "platform",
+      }),
+    }),
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(calls.length, 2);
+  assert.equal(
+    new Headers(calls[0]?.init?.headers).get("x-forwarded-host"),
+    "platform.booking.localhost",
+  );
+  assert.equal(
+    new Headers(calls[1]?.init?.headers).get("x-forwarded-host"),
+    "platform.booking.localhost",
+  );
+});
+
 test("password reset uses its own CSRF purpose and neutral completion response", async () => {
   const calls: FetchCall[] = [];
   const handlers = createIdentityBffHandlers({

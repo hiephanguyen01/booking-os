@@ -39,17 +39,43 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
+function publicRequestHost(request: Request): string {
+  const requestUrl = new URL(request.url);
+  return request.headers.get("host")?.trim() || requestUrl.host;
+}
+
+function publicRequestOrigin(request: Request): string | null {
+  const requestUrl = new URL(request.url);
+  const host = publicRequestHost(request);
+  const forwardedProtocol = request.headers
+    .get("x-forwarded-proto")
+    ?.split(",", 1)[0]
+    ?.trim()
+    .toLowerCase();
+  // Caddy replaces this header with the browser-facing TLS scheme before it
+  // reaches the host-running Next server. Without it, Next reports the
+  // loopback HTTP scheme and rejects a valid HTTPS browser Origin.
+  const protocol =
+    forwardedProtocol === "http" || forwardedProtocol === "https"
+      ? `${forwardedProtocol}:`
+      : requestUrl.protocol;
+
+  try {
+    return new URL(`${protocol}//${host}`).origin;
+  } catch {
+    return null;
+  }
+}
+
 function hasMatchingOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
-  if (!origin) {
+  const expectedOrigin = publicRequestOrigin(request);
+  if (!origin || !expectedOrigin) {
     return false;
   }
 
   try {
-    return (
-      new URL(origin).origin === new URL(request.url).origin &&
-      origin === new URL(request.url).origin
-    );
+    return new URL(origin).origin === expectedOrigin && origin === expectedOrigin;
   } catch {
     return false;
   }
@@ -140,7 +166,7 @@ export function createIdentityBffHandlers(options: IdentityBffOptions): Identity
       return originMismatchResponse();
     }
 
-    const browserTarget = new URL(request.url);
+    const browserHost = publicRequestHost(request);
     const payload = await parseJsonBody(request);
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
       return invalidRequestResponse();
@@ -153,7 +179,7 @@ export function createIdentityBffHandlers(options: IdentityBffOptions): Identity
           method: "GET",
           headers: {
             accept: "application/json",
-            "x-forwarded-host": browserTarget.host,
+            "x-forwarded-host": browserHost,
           },
           cache: "no-store",
         },
@@ -172,7 +198,7 @@ export function createIdentityBffHandlers(options: IdentityBffOptions): Identity
           cookie,
           origin: apiBaseUrl.origin,
           "x-csrf-token": csrfBody.csrfToken,
-          "x-forwarded-host": browserTarget.host,
+          "x-forwarded-host": browserHost,
         },
         body: JSON.stringify(payload),
         cache: "no-store",
