@@ -1,5 +1,9 @@
 export const modules = [
   {
+    name: "authorization",
+    root: "apps/api/src/modules/authorization",
+  },
+  {
     name: "identity",
     root: "apps/api/src/modules/identity",
   },

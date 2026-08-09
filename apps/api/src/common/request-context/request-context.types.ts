@@ -14,6 +14,18 @@ export interface AuthenticatedRequestContext extends RequestContext {
   readonly authorizationVersion: number;
 }
 
+export type AuthorizationReadyRequestContext =
+  | (AuthenticatedRequestContext & {
+      readonly authScope: { readonly type: "platform" };
+      readonly sessionState: "active";
+      readonly membershipAuthorizationVersion?: never;
+    })
+  | (AuthenticatedRequestContext & {
+      readonly authScope: { readonly type: "tenant"; readonly tenantId: string };
+      readonly sessionState: "active";
+      readonly membershipAuthorizationVersion: number;
+    });
+
 export function isAuthenticatedRequestContext(
   context: RequestContext,
 ): context is AuthenticatedRequestContext {

@@ -6,6 +6,7 @@ import { EnvironmentModule } from "./config/environment.module.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { DependenciesModule } from "./dependencies/dependencies.module.js";
 import { HealthModule } from "./health/health.module.js";
+import { AuthorizationModule } from "./modules/authorization/authorization.module.js";
 import { IdentityModule } from "./modules/identity/identity.module.js";
 import { NestIdentityPublicController } from "./modules/identity/infrastructure/http/identity-public.nest.controller.js";
 import { PlatformTenantsController } from "./modules/memberships/infrastructure/http/platform-tenants.controller.js";
@@ -30,6 +31,7 @@ import { ReliabilityModule } from "./reliability/reliability.module.js";
     DependenciesModule,
     DatabaseModule,
     HealthModule,
+    AuthorizationModule,
     IdentityModule,
     MembershipsModule,
     TenancyModule,
