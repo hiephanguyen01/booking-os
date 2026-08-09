@@ -8,6 +8,10 @@ async function readJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
 }
 
+function requiredComposeVariable(name) {
+  return "$" + `{${name}:?${name} is required}`;
+}
+
 const [composeSource, dockerEnv, caddyfile, packageJson] = await Promise.all([
   readFile("compose.yaml", "utf8"),
   readFile(".env.docker.example", "utf8"),
@@ -20,13 +24,10 @@ const compose = YAML.parse(composeSource);
 test("local HTTPS is opt-in and pins Caddy", () => {
   assert.match(dockerEnv, /^CADDY_VERSION=2\.11\.3$/m);
   assert.deepEqual(compose.services.caddy.profiles, ["https"]);
-  assert.equal(
-    compose.services.caddy.image,
-    String.raw`caddy:\${CADDY_VERSION:?CADDY_VERSION is required}`,
-  );
+  assert.equal(compose.services.caddy.image, `caddy:${requiredComposeVariable("CADDY_VERSION")}`);
   assert.deepEqual(compose.services.caddy.ports, [
-    String.raw`\${CADDY_HTTP_PORT:?CADDY_HTTP_PORT is required}:80`,
-    String.raw`\${CADDY_HTTPS_PORT:?CADDY_HTTPS_PORT is required}:443`,
+    `${requiredComposeVariable("CADDY_HTTP_PORT")}:80`,
+    `${requiredComposeVariable("CADDY_HTTPS_PORT")}:443`,
   ]);
 });
 
