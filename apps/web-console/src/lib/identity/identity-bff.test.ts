@@ -81,11 +81,11 @@ test("activation consumes the token only on the server-side API call", async () 
     fetch: createIdentityFetch(calls, 200),
   });
   const response = await handlers.activationComplete(
-    new Request("https://console.example.test/api/auth/activation/complete", {
+    new Request("https://platform.booking.localhost/api/auth/activation/complete", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        origin: "https://console.example.test",
+        origin: "https://platform.booking.localhost",
       },
       body: JSON.stringify({
         token: "selector.secret",
@@ -101,6 +101,14 @@ test("activation consumes the token only on the server-side API call", async () 
   assert.doesNotMatch(responseText, /selector|secret|opaque-proof|opaque-nonce/iu);
   assert.equal(calls[0]?.url, "https://api.example.test/api/auth/csrf?purpose=activation");
   assert.equal(calls[1]?.url, "https://api.example.test/api/auth/activation/complete");
+  assert.equal(
+    new Headers(calls[0]?.init?.headers).get("x-forwarded-host"),
+    "platform.booking.localhost",
+  );
+  assert.equal(
+    new Headers(calls[1]?.init?.headers).get("x-forwarded-host"),
+    "platform.booking.localhost",
+  );
   assert.deepEqual(JSON.parse(String(calls[1]?.init?.body)), {
     token: "selector.secret",
     newPassword: "correct horse battery staple",

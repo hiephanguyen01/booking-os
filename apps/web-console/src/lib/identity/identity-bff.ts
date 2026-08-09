@@ -140,6 +140,7 @@ export function createIdentityBffHandlers(options: IdentityBffOptions): Identity
       return originMismatchResponse();
     }
 
+    const browserTarget = new URL(request.url);
     const payload = await parseJsonBody(request);
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
       return invalidRequestResponse();
@@ -150,7 +151,10 @@ export function createIdentityBffHandlers(options: IdentityBffOptions): Identity
         `${endpoint(apiBaseUrl, "/auth/csrf")}?purpose=${command.purpose}`,
         {
           method: "GET",
-          headers: { accept: "application/json" },
+          headers: {
+            accept: "application/json",
+            "x-forwarded-host": browserTarget.host,
+          },
           cache: "no-store",
         },
       );
@@ -168,6 +172,7 @@ export function createIdentityBffHandlers(options: IdentityBffOptions): Identity
           cookie,
           origin: apiBaseUrl.origin,
           "x-csrf-token": csrfBody.csrfToken,
+          "x-forwarded-host": browserTarget.host,
         },
         body: JSON.stringify(payload),
         cache: "no-store",
