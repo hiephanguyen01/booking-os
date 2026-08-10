@@ -261,11 +261,20 @@ after(async () => {
   }
 });
 
-test("GET /auth/me/authorization requires an authenticated session", async () => {
-  await request(app.getHttpServer())
+test("GET /auth/me/authorization protects unauthenticated responses from browser caching", async () => {
+  const response = await request(app.getHttpServer())
     .get("/api/auth/me/authorization")
     .set("host", PLATFORM_HOSTNAME)
     .expect(401);
+
+  assert.equal(response.headers["cache-control"], "private, no-store");
+  assert.equal(
+    response.headers["content-security-policy"],
+    "default-src 'none'; frame-ancestors 'none'",
+  );
+  assert.equal(response.headers["x-frame-options"], "DENY");
+  assert.equal(response.headers["x-content-type-options"], "nosniff");
+  assert.equal(response.headers["referrer-policy"], "no-referrer");
 });
 
 test("GET /auth/me/authorization returns only current platform authority with private cache headers", async () => {
