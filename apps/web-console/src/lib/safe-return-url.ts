@@ -4,7 +4,17 @@ export interface SafeReturnUrlPolicy {
 }
 
 const SAFE_RETURN_ORIGIN = "https://booking.invalid";
-const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
+
+function hasControlCharacters(value: string): boolean {
+  for (const character of value) {
+    const codePoint = character.codePointAt(0) ?? 0;
+    if (codePoint <= 31 || codePoint === 127) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 function decodePathname(pathname: string): string | null {
   try {
@@ -34,7 +44,7 @@ export function resolveSafeReturnUrl(
     !value.startsWith("/") ||
     value.startsWith("//") ||
     value.includes("\\") ||
-    CONTROL_CHARACTERS.test(value)
+    hasControlCharacters(value)
   ) {
     return policy.fallback;
   }
@@ -54,7 +64,7 @@ export function resolveSafeReturnUrl(
   if (
     !decodedPathname ||
     decodedPathname.includes("\\") ||
-    CONTROL_CHARACTERS.test(decodedPathname) ||
+    hasControlCharacters(decodedPathname) ||
     !policy.allowedPathPrefixes.some((prefix) => matchesAllowedPrefix(decodedPathname, prefix))
   ) {
     return policy.fallback;
