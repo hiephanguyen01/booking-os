@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { BOOKING_SESSION_COOKIE } from "@booking-os/auth";
+import { BOOKING_SESSION_COOKIE, createSessionToken } from "@booking-os/auth";
 import type { AuthorizationContext } from "@booking-os/contracts";
 
 import type { AuthorizationReadyRequestContext } from "../../../../common/request-context/request-context.types.js";
@@ -28,6 +28,9 @@ const authorization: AuthorizationContext = {
 };
 
 test("writes current authorization as private JSON without delegating serialization to shared caches", async () => {
+  const presentedToken = createSessionToken({
+    randomBytes: (size) => Uint8Array.from({ length: size }, (_, index) => (index + 1) % 256),
+  });
   const calls: unknown[] = [];
   const controller = new AuthorizationController(
     {
@@ -46,7 +49,7 @@ test("writes current authorization as private JSON without delegating serializat
   let body = "";
 
   await controller.current(
-    { headers: { cookie: `${BOOKING_SESSION_COOKIE}=presented-token` } },
+    { headers: { cookie: `${BOOKING_SESSION_COOKIE}=${presentedToken}` } },
     {
       setHeader(name, value) {
         headers.set(name.toLowerCase(), value);
@@ -58,7 +61,7 @@ test("writes current authorization as private JSON without delegating serializat
   );
 
   assert.equal(calls.length, 1);
-  assert.deepEqual(calls[0], { authenticated, presentedToken: "presented-token" });
+  assert.deepEqual(calls[0], { authenticated, presentedToken });
   assert.equal(headers.get("cache-control"), "private, no-store");
   assert.equal(headers.get("vary"), "Cookie, Origin");
   assert.equal(headers.get("content-type"), "application/json; charset=utf-8");
