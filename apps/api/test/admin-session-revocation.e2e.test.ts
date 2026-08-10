@@ -126,7 +126,7 @@ async function sessionFixture(
   };
 }
 
-function revokeRequest(session: SessionFixture, userId = TARGET_USER_ID) {
+function revokeRequest(session: SessionFixture, userId: string = TARGET_USER_ID) {
   return request(app.getHttpServer())
     .post(`/api/platform/security/users/${userId}/sessions/revoke`)
     .set("host", session.hostname)
