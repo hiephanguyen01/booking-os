@@ -270,9 +270,7 @@ test("platform incident revocation revokes every target session and token withou
   assert.ok(targetSessions.every((session) => session.state === "revoked"));
   assert.ok(targetSessions.every((session) => session.revokedAt !== null));
   assert.ok(
-    targetSessions.every(
-      (session) => session.revocationReason === `platform_incident:${REASON}`,
-    ),
+    targetSessions.every((session) => session.revocationReason === `platform_incident:${REASON}`),
   );
 
   const targetTokens = await prisma.authSessionToken.findMany({
