@@ -54,7 +54,9 @@ function effectiveHostname(headers: RequestHeaders, trustProxy: boolean): string
 
 function requireUuid(value: unknown, field: string): string {
   const normalized = typeof value === "string" ? value.trim() : "";
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(normalized)) {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(normalized)
+  ) {
     throw new BadRequestException(`${field} must be a UUID.`);
   }
   return normalized;
