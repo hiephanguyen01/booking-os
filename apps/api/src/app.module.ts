@@ -1,6 +1,7 @@
 import { type MiddlewareConsumer, Module, type NestModule } from "@nestjs/common";
-import { DiscoveryModule } from "@nestjs/core";
+import { APP_INTERCEPTOR, DiscoveryModule } from "@nestjs/core";
 
+import { HttpSecurityInterceptor } from "./common/http/http-security.interceptor.js";
 import { RequestContextModule } from "./common/request-context/request-context.module.js";
 import { EnvironmentModule } from "./config/environment.module.js";
 import { DatabaseModule } from "./database/database.module.js";
@@ -42,6 +43,7 @@ import { ReliabilityModule } from "./reliability/reliability.module.js";
     PlatformSecurityModule,
     ReliabilityModule,
   ],
+  providers: [{ provide: APP_INTERCEPTOR, useClass: HttpSecurityInterceptor }],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
