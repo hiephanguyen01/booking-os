@@ -135,7 +135,12 @@ async function seed(): Promise<void> {
     ],
   });
   await prisma.tenant.create({
-    data: { id: TENANT_ID, slug: TENANT_SLUG, name: "Authorization Endpoint", status: "active" },
+    data: {
+      id: TENANT_ID,
+      slug: TENANT_SLUG,
+      name: "Authorization Endpoint",
+      status: "provisioning",
+    },
   });
   await prisma.tenantDomain.create({
     data: { id: randomUUID(), tenantId: TENANT_ID, hostname: TENANT_HOSTNAME, isPrimary: true },
@@ -168,6 +173,7 @@ async function seed(): Promise<void> {
       },
     ],
   });
+  await prisma.tenant.update({ where: { id: TENANT_ID }, data: { status: "active" } });
 
   const platform = await createSession.execute({
     userId: PLATFORM_USER_ID,
