@@ -35,7 +35,7 @@
     "infra:up": "docker compose --env-file .env.docker up -d --build",
     "infra:ps": "docker compose --env-file .env.docker ps",
     "infra:logs": "docker compose --env-file .env.docker logs -f",
-    "infra:down": "docker compose --env-file .env.docker down --volumes --remove-orphans",
+    "infra:down": "docker compose --env-file .env.docker down",
     "infra:reset": "docker compose --env-file .env.docker down --volumes --remove-orphans",
     "infra:https:config": "docker compose --env-file .env.docker --profile https config --quiet",
     "infra:https:up": "docker compose --env-file .env.docker --profile https up -d caddy",
