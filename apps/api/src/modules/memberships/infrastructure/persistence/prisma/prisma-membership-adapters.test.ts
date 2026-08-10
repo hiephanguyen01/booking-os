@@ -117,6 +117,9 @@ test("row locks and authorization changes stay inside one tenant", async () => {
     assert.equal(query.values[0], tenantId);
   }
   assert.equal(transaction.queries.filter((query) => /FOR UPDATE/i.test(query.sql)).length, 3);
+  const ownerLockQuery = transaction.queries[2]?.sql ?? "";
+  assert.match(ownerLockQuery, /FOR UPDATE OF assignment/i);
+  assert.doesNotMatch(ownerLockQuery, /FOR UPDATE OF assignment\s*,\s*membership/i);
 });
 
 test("role assignment, tenant activation, and audit append never accept a foreign tenant", async () => {
