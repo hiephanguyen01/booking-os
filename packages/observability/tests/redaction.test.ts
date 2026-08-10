@@ -64,7 +64,7 @@ test("redacts transport headers and message envelopes as bounded sensitive conta
       envelope: {
         to: "customer@example.com",
         subject: "Activate your account",
-        html: "<a href=\"https://example.test/activate?token=raw-secret\">Activate</a>",
+        html: '<a href="https://example.test/activate?token=raw-secret">Activate</a>',
       },
       retryCount: 3,
     },
