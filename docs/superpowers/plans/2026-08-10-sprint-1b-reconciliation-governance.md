@@ -8,6 +8,22 @@
 
 **Tech Stack:** Markdown governance/docs, Node.js 22 test runner, existing pnpm `test:scripts`, GitHub Actions, existing Genesis validation.
 
+## Execution Status — completed 2026-08-10
+
+Status: COMPLETED  
+Completed via: PR #28 → `edffe46a7d66cbd973af7e86cd554f44c6497eac`  
+Runtime prerequisite fix: PR #29 → `673090b501c077a981a36c5113f25045fd8bde34`  
+Fresh verification before merge: CI #1480, Sprint 0 gates #1035, API architecture boundaries #969, Identity email integration #748 — all successful.
+
+Completion summary:
+
+- Task 1 — delivery-reconciliation governance: ✅ completed.
+- Task 2 — Master Spec V4 identity/authorization amendment: ✅ completed.
+- Task 3 — Sprint 1B design and Plan 1B.4 state reconciliation: ✅ completed as a documentation/governance task. This does **not** mark Sprint 1B.4 Task 3 implementation complete.
+- Task 4 — 90-day roadmap transition reconciliation: ✅ completed.
+
+The detailed step checkboxes below are retained as the original execution recipe and historical TDD sequence; they are not the canonical current-status tracker after closeout. The `Completion Gate` is the canonical closeout marker for this completed plan.
+
 ## Global Constraints
 
 - Do not rewrite historical product intent silently; superseding decisions must be recorded as an explicit dated amendment.
@@ -150,11 +166,11 @@ Expected: PASS.
 
 ## Completion Gate
 
-- [ ] Root `AGENTS.md` prevents conflict misclassification and scope jumping.
-- [ ] Delivery reconciliation policy and validator exist and pass their tests.
-- [ ] Master Spec amendment records Permission Catalog V2 direction, email OTP decision, auth-scope bridge, and dynamic RBAC bridge.
-- [ ] Sprint 1B design metadata/current-state language is no longer stale.
-- [ ] Plan 1B.4 reports Task 1-2 implemented, Task 3 in progress, and Tasks 4-8 pending without misclassifying them as conflicts.
-- [ ] 90-day roadmap explicitly connects Sprint 1B to tenant dynamic RBAC and later Customer/Partner auth delivery.
-- [ ] Reconciliation checkpoint passes the machine-checkable policy.
-- [ ] Fresh branch verification evidence is recorded before any completion claim.
+- [x] Root `AGENTS.md` prevents conflict misclassification and scope jumping.
+- [x] Delivery reconciliation policy and validator exist and pass their tests.
+- [x] Master Spec amendment records Permission Catalog V2 direction, email OTP decision, auth-scope bridge, and dynamic RBAC bridge.
+- [x] Sprint 1B design metadata/current-state language is no longer stale.
+- [x] Plan 1B.4 reports Task 1-2 implemented, Task 3 in progress, and Tasks 4-8 pending without misclassifying them as conflicts.
+- [x] 90-day roadmap explicitly connects Sprint 1B to tenant dynamic RBAC and later Customer/Partner auth delivery.
+- [x] Reconciliation checkpoint passes the machine-checkable policy.
+- [x] Fresh branch verification evidence is recorded before any completion claim.
