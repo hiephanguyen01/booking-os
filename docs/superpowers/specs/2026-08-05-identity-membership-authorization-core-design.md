@@ -1,9 +1,10 @@
 # Sprint 1B Identity, Membership, and Authorization Core Design
 
 Date: 2026-08-05
-Status: Approved design, pending implementation plan
+Status: Approved design — implementation in progress
 Owner: identity-access
 Depends on: `2026-08-05-tenant-isolation-core-design.md`
+Amendment: `../../spec-amendments/2026-08-10-master-spec-v4-identity-authorization-amendment.md`
 
 ## Summary
 
@@ -11,14 +12,14 @@ Sprint 1B adds the first production-grade identity and access-control vertical s
 
 The design uses one global user per normalized email, admin-provisioned accounts, one-time activation and invitation links, Argon2id password credentials, opaque server-side sessions, host-only cookies, and separate sessions for every hostname and device. Tenant requests remain anchored to the trusted hostname resolver from Sprint 1A and execute tenant-owned work through the existing RLS transaction boundary.
 
-Sprint 1B supports only platform and tenant scopes. It seeds `platform_admin`, `tenant_owner`, and `tenant_admin` as immutable system roles. Partner and affiliate scopes, custom roles, subscription entitlements, self-registration, social login, SSO, and complete MFA are deferred.
+Sprint 1B supports only platform and tenant scopes. It seeds `platform_admin`, `tenant_owner`, and `tenant_admin` as immutable system roles. Partner and affiliate scopes, custom roles, subscription entitlements, self-registration, social login, SSO, and complete MFA are deferred from this Sprint 1B administrative slice. Actor-specific Customer/Partner authentication and the dynamic-RBAC transition are governed by the dated amendment above and the 90-day roadmap.
 
 ## Approved Product Decisions
 
 The following decisions were approved during design review:
 
-1. Accounts are admin-provisioned; public self-registration is disabled.
-2. New users set their password through a one-time activation link.
+1. Accounts are admin-provisioned; public self-registration is disabled for the Sprint 1B Platform/Tenant administrative slice.
+2. New administrative users set their password through a one-time activation link.
 3. Browser authentication uses opaque server-side sessions rather than browser-held JWTs.
 4. Multiple concurrent device sessions are allowed and independently revocable.
 5. Sessions expire after seven days of inactivity and no later than 30 days after creation.
@@ -26,14 +27,16 @@ The following decisions were approved during design review:
 7. Passwords require at least 12 characters, use Argon2id, and are checked against common or breached-password data without traditional composition rules.
 8. Login abuse protection uses progressive delay and rate limits keyed by both account identifier and network source; accounts are not hard-locked by failed attempts.
 9. Sprint 1B supports platform and tenant authorization scopes only.
-10. Sprint 1B exposes immutable system roles only; tenant-defined roles are deferred.
+10. Sprint 1B exposes immutable system roles only; tenant-defined roles are deferred to the explicit dynamic-RBAC transition.
 11. A platform admin provisions a tenant owner. Tenant owners and tenant admins may invite users within their tenant, subject to grant restrictions.
 12. An existing global user is reused when invited to another tenant.
 13. Sessions are host-only and are never shared across tenant subdomains.
 14. An invited existing user must authenticate and explicitly accept the invitation. Invitation tokens do not create a session.
-15. Password-reset links are single-use, expire after 30 minutes, and revoke all sessions after successful reset.
+15. Password-reset links are single-use, expire after 30 minutes, and revoke all sessions after successful reset for the Sprint 1B administrative flows.
 
-## Current State
+The 2026-08-10 amendment is authoritative where later approved product decisions supersede exact permission-key examples, Customer authentication delivery, dynamic-RBAC timing, or actor-scope interpretation in this historical design.
+
+## Baseline State at Design Approval — 2026-08-05
 
 Sprint 1A provides:
 
@@ -46,7 +49,7 @@ Sprint 1A provides:
 - dependency-direction checks for Hexagonal API module boundaries;
 - safe worker privilege and infrastructure event paths.
 
-The current application does not provide:
+At design approval, the application did not provide:
 
 - a global user model;
 - password credentials or account activation;
@@ -58,6 +61,17 @@ The current application does not provide:
 - an authorization-context endpoint.
 
 Sprint 1B must build on the Sprint 1A boundary rather than introduce tenant IDs from request bodies, query parameters, arbitrary headers, or browser-managed access tokens.
+
+## Implementation Status — reconciled 2026-08-10
+
+Reconciled with `main` at `81f0a191abdc475ff1ce2c502a45daf78d9352b6` and `docs/superpowers/checkpoints/2026-08-10-sprint-1b-reconciliation.md`.
+
+- Plans 1B.1–1B.3 have implementation in the repository for identity foundation, opaque sessions, membership/provisioning, and related administrative flows.
+- Plan 1B.4 Task 1 is implemented by `ac5433dfbc272db4eb397269ba23f23926fbdb4b` (`feat: build authoritative authorization context`).
+- Plan 1B.4 Task 2 is implemented by `545d77111dc40dd9a99209c7b9ce5b5d6ea77184` (`feat: enforce permission and resource policies`).
+- Plan 1B.4 Task 3 is **in progress**. `c9a11c7bea153b6f16ea1ab6b738596dbac9740f` adds authorization session snapshots, membership authorization versioning, rejection of attacker-controlled identity/role/permission/version headers, and stale-authority reconciliation/rotation. Task 3 is not complete until its planned before-use-case/concurrency E2E evidence and closeout are verified.
+- Plan 1B.4 Tasks 4–8 are pending and therefore `EXPECTED_INCOMPLETE`; their absent outputs must not be reported as conflicts or missing implementation while Task 3 is active.
+- The implemented Permission Catalog V2 naming direction, Customer six-digit Email OTP initial delivery, actor-auth scope bridge, and dynamic-RBAC bridge are recorded in the dated amendment and supersede conflicting historical examples in this document.
 
 ## Goals
 
@@ -77,11 +91,13 @@ Sprint 1B must build on the Sprint 1A boundary rather than introduce tenant IDs 
 
 ## Non-goals
 
-- Public self-registration.
-- Social login, passkeys, OIDC, SAML, or enterprise SSO.
+These are non-goals for the **Sprint 1B Platform/Tenant administrative slice**, not permanent product exclusions. Later actor/product delivery follows the Master Spec plus the 2026-08-10 amendment.
+
+- Public self-registration inside Sprint 1B. Customer self-registration is delivered later using six-digit Email OTP initially.
+- Social login, passkeys, OIDC, SAML, or enterprise SSO. Social controls remain hidden until a provider flow is explicitly delivered.
 - Shared cookies or central SSO across tenant hostnames.
-- Partner or affiliate scope.
-- Tenant-defined roles or permission editing.
+- Partner or affiliate scope. Partner scope arrives with Partner delivery and reuses the shared auth kernel.
+- Tenant-defined roles or permission editing. Tenant dynamic RBAC is a Sprint 2 transition over code-seeded Permission Catalog V2.
 - Subscription, plan, or entitlement enforcement.
 - Product-domain permissions for listings, bookings, payments, finance, or settlements.
 - Complete MFA or step-up authentication flows.
@@ -177,16 +193,16 @@ The following invariants are mandatory and must be backed by automated tests:
 1. Tenant identity originates only from the trusted effective hostname resolver.
 2. A tenant session is valid only on the exact hostname and tenant for which it was issued.
 3. Cookies use the `__Host-` prefix, `Secure`, `HttpOnly`, `Path=/`, `SameSite=Lax`, and no `Domain` attribute.
-4. Raw activation, invitation, reset, and session secrets are never stored in application-visible database columns or logs.
-5. One-time tokens are single-use, time-limited, purpose-bound, and hostname/scope-bound.
-6. Password reset revokes every platform and tenant session for the user.
+4. Raw activation, invitation, reset, OTP, and session secrets are never stored in application-visible database columns or logs.
+5. One-time tokens/challenges are single-use, time-limited, purpose-bound, and hostname/scope-bound where applicable.
+6. Password reset revokes every platform and tenant session for the user according to the shared security policy.
 7. A user cannot grant a role or permission they are not allowed to grant.
 8. Tenant endpoints cannot create or assign `platform_admin`.
 9. A tenant cannot lose its final active owner while the tenant is active.
 10. Tenant-owned membership, invitation, role-assignment, and tenant-session rows are protected by FORCE RLS.
 11. Platform operations that mutate tenant-owned data enter one explicit tenant transaction at a time.
 12. A stale, suspended, revoked, or scope-mismatched session never reaches product application logic.
-13. Generic login, activation-resend, invitation, and reset responses do not reveal whether an email exists globally.
+13. Generic login, activation-resend, invitation, reset, and verification responses do not reveal whether an email exists globally.
 14. Authentication and authorization responses are never stored in shared caches.
 15. Unsafe browser requests require both a same-origin check and a valid session-bound CSRF token.
 
@@ -288,6 +304,8 @@ Password hashes are rehashed after successful login when stored parameters fall 
 
 Only a cryptographic hash or keyed hash of the raw token is stored. Token comparison is constant-time after selector lookup. Resending or reissuing revokes all prior active tokens for the same purpose and user/scope.
 
+Customer six-digit Email OTP challenges are a later actor-specific extension over the same identity/security kernel. Their channel-independent challenge model and initial Email delivery are specified by the 2026-08-10 amendment; they do not replace Sprint 1B administrative activation links.
+
 ### Tenant membership
 
 `TenantMembership`
@@ -358,7 +376,7 @@ Only one active invitation for the same `(tenantId, normalizedEmail, intendedRol
 
 Database checks enforce valid scope shape. Tenant assignments include `tenantId` directly so FORCE RLS does not depend on joins.
 
-The schema supports later dynamic roles, but Sprint 1B exposes no create, update, delete, or permission-editing API for roles. Seeded system roles and permissions are migration-controlled.
+The schema supports later dynamic roles, but Sprint 1B exposes no create, update, delete, or permission-editing API for roles. Seeded system roles and permissions are migration-controlled. The explicit transition is Sprint 1B fixed system roles → Sprint 2 tenant dynamic roles → Partner-scoped roles with Partner delivery → Phase 2 full three-level Role Builder UI.
 
 ### Sessions
 
@@ -462,9 +480,9 @@ No long-lived bootstrap secret, default password, or public setup route is permi
 
 Sprint 1B has no regular tenant-member role. Product-specific member roles will be introduced with the product modules that require them.
 
-### Initial permission catalog
+### Initial permission catalog — historical design input
 
-The migration seeds stable permission keys rather than checking role names in controllers:
+The following list was the exact permission-key proposal approved with this design on 2026-08-05. It is preserved for traceability, but **its exact key naming is superseded where it conflicts with** `docs/spec-amendments/2026-08-10-master-spec-v4-identity-authorization-amendment.md`. The code-seeded Permission Catalog V2 is canonical for capabilities already implemented.
 
 ```text
 platform.tenant.create
@@ -483,7 +501,7 @@ tenant.security.session.read
 tenant.security.session.revoke
 ```
 
-Permission keys are append-only identifiers. Renaming a permission requires an explicit migration and compatibility plan.
+Permission keys remain append-only identifiers. Renaming or removing an issued permission requires an explicit migration and compatibility plan. The amendment changes the canonical exact names for implemented capabilities; it does not weaken this append-only rule.
 
 ### Grant rules
 
@@ -551,6 +569,8 @@ Passwords:
 The initial Argon2id policy must define a tested minimum and remain configurable. A suitable baseline is Argon2id version 19 with at least 64 MiB memory, three iterations, and parallelism one, subject to deployment benchmarking. The implementation must support transparent rehash after successful authentication.
 
 Password changes and resets increment the user authorization version. A password reset revokes every session. An authenticated password change may either revoke all other sessions or all sessions according to the final implementation plan, but it must rotate the current session if retained.
+
+Customer password recovery is not defined by this Sprint 1B administrative link flow. Per the dated amendment, the initial Customer flow uses a six-digit Email OTP challenge, then reuses the same credential/session invalidation security invariants.
 
 ## Login and Abuse Protection
 
@@ -656,7 +676,7 @@ Every unsafe browser request must satisfy:
 2. a valid CSRF token sent in a custom header;
 3. normal session, scope, permission, and RLS checks when the route is authenticated.
 
-Authenticated routes use a session-bound synchronizer or double-submit token. Pre-authentication routes such as login, forgot-password, activation, and reset use a short-lived host-bound pre-authentication CSRF token. The CSRF token is never the session secret. It may be exposed to same-origin JavaScript through a dedicated endpoint or host-only non-HttpOnly cookie and is validated using constant-time comparison or a keyed derivation.
+Authenticated routes use a session-bound synchronizer or double-submit token. Pre-authentication routes such as login, forgot-password, activation, reset, and later Customer OTP verification use a short-lived host-bound pre-authentication CSRF token. The CSRF token is never the session secret or OTP. It may be exposed to same-origin JavaScript through a dedicated endpoint or host-only non-HttpOnly cookie and is validated using constant-time comparison or a keyed derivation.
 
 CORS is deny-by-default. Production allows only configured first-party origins and credentials. Wildcard origins with credentials are prohibited.
 
@@ -708,9 +728,11 @@ An `invitation_pending` session is a deliberate exception with an explicit route
 
 The endpoint is backend-authoritative, uses `Cache-Control: private, no-store`, and never returns password metadata, token hashes, raw tokens, internal abuse state, or other-tenant memberships.
 
+This endpoint remains a Plan 1B.4 Task 4 deliverable. Its absence while Task 3 is active is `EXPECTED_INCOMPLETE`, not a design/code conflict.
+
 ## Minimal API Surface
 
-Exact route naming may be adjusted during implementation planning, but the following capabilities are required.
+Exact route naming may be adjusted during implementation planning, but the following capabilities are required for Sprint 1B closeout.
 
 ### Public authentication routes on an allowed hostname
 
@@ -768,7 +790,7 @@ Sprint 1B requires only the screens needed to exercise the vertical slice:
 - current-session and session-list management;
 - minimal tenant membership list and invitation form.
 
-No full onboarding wizard, custom role editor, subscription selector, or product navigation is required.
+No full onboarding wizard, custom role editor, subscription selector, Customer signup UX, Partner onboarding UX, or product navigation is required by Sprint 1B itself.
 
 ## One-Time Token Delivery
 
@@ -781,7 +803,7 @@ The identity transaction stores only token hashes. Reliable email delivery still
 5. Structured logs, traces, dead-letter views, and error reports redact the envelope and token.
 6. The encrypted delivery payload is deleted or cryptographically expired after successful delivery or terminal failure.
 
-Encryption keys come from deployment secret management and support rotation. Storing raw one-time tokens in plain JSON outbox payloads is prohibited.
+Encryption keys come from deployment secret management and support rotation. Storing raw one-time tokens in plain JSON outbox payloads is prohibited. Later Customer Email OTP delivery must follow equivalent secret-handling, enumeration, rate-limit, expiry, and single-use invariants.
 
 ## Audit and Observability
 
@@ -811,7 +833,7 @@ platform.bootstrap_admin_created
 authorization.denied
 ```
 
-Audit records capture actor ID when known, target ID, tenant ID when applicable, request ID, trusted hostname, action, result, and a stable reason code. They never capture passwords, raw tokens, session cookies, full authorization headers, or unredacted email bodies.
+Audit records capture actor ID when known, target ID, tenant ID when applicable, request ID, trusted hostname, action, result, and a stable reason code. They never capture passwords, OTPs, raw tokens, session cookies, full authorization headers, or unredacted email bodies.
 
 Metrics include login success/failure, progressive-delay activation, token issue/consume/expiry, invitation acceptance, session creation/revocation/reuse, authorization denial, and tenant provisioning duration. Metrics must avoid raw email and user IDs as high-cardinality labels.
 
@@ -970,7 +992,7 @@ Invitation acceptance and password reset lock the one-time token row before vali
 - add password hashing, activation, login, session validation, CSRF, rotation, revocation, and reset;
 - add secure token-delivery envelope and email adapter contract;
 - add bootstrap platform-admin command;
-- expose `/auth/me` and `/auth/me/authorization`.
+- expose `/auth/me` and `/auth/me/authorization` as the relevant Plan 1B.4 tasks are completed.
 
 ### Phase 3: membership and provisioning vertical slice
 
@@ -999,13 +1021,15 @@ Sprint 1B is complete only when all of the following are true:
 6. Every hostname has an independent host-only session cookie.
 7. A tenant session cannot be replayed across tenants or on the platform hostname.
 8. Sessions support seven-day idle expiry, 30-day absolute expiry, rotation, reuse detection, listing, and revocation.
-9. Password reset is single-use, expires after 30 minutes, is enumeration-safe, and revokes all sessions.
+9. Password reset is single-use, expires after 30 minutes, is enumeration-safe, and revokes all sessions for the Sprint 1B administrative flow.
 10. Tenant owner and tenant admin grant boundaries are enforced, including the final-owner invariant.
 11. `/auth/me/authorization` returns authoritative roles, permissions, scope, and authorization versions with `no-store` caching.
 12. All tenant-owned identity-access tables have FORCE RLS and pass cross-tenant isolation tests.
 13. State-changing browser requests fail without valid same-origin and CSRF proof.
 14. Raw secrets are absent from persistent application columns, logs, traces, and unencrypted outbox payloads.
 15. OpenAPI, unit, database integration, API E2E, browser smoke, architecture, migration, production-guard, dependency-audit, and secret-scan gates pass.
+
+These criteria describe Sprint 1B completion, not the current implementation state. Until Plan 1B.4 reaches its completion gate, unmet later criteria remain planned work rather than automatic conflicts.
 
 ## Risks and Tradeoffs
 
@@ -1019,7 +1043,16 @@ Users may need to sign in separately on each tenant hostname. This is accepted f
 
 ### Fixed roles limit product flexibility
 
-Only platform admin, tenant owner, and tenant admin are available. This is deliberate until product modules define concrete member permissions. The schema supports later custom roles, but no premature role editor is built.
+Only platform admin, tenant owner, and tenant admin are available in Sprint 1B. This is a transitional authorization bootstrap, not the final RBAC model. The approved delivery bridge is:
+
+```text
+Sprint 1B fixed system roles
+→ Sprint 2 tenant-scoped dynamic roles
+→ Partner-scoped roles with Partner delivery
+→ Phase 2 full three-level Role Builder UI
+```
+
+Permissions remain code-seeded capability identifiers; role definitions and role-permission mappings are the dynamic layer.
 
 ### Global passwords have global blast radius
 
@@ -1027,19 +1060,28 @@ One password authenticates the global user across every membership. Password res
 
 ### Reliable email requires sensitive payload handling
 
-Transactional delivery cannot store plain raw tokens. The encrypted outbox envelope adds key-management work but prevents tokens from leaking through database inspection, logs, or dead-letter tooling.
+Transactional delivery cannot store plain raw tokens or OTPs. The encrypted outbox envelope adds key-management work but prevents secrets from leaking through database inspection, logs, or dead-letter tooling.
 
 ## Deferred Follow-ups
 
 - Sprint 1C subscription and entitlement enforcement in the authorization equation.
+- Sprint 2 tenant-scoped dynamic RBAC (custom roles, role-permission mapping, assignment/revocation, grant boundaries, audit/concurrency) over Permission Catalog V2.
 - Product-specific tenant member roles and permissions.
-- Partner and affiliate scopes.
-- Tenant-defined roles and permission management.
+- Partner registration via email verification and Partner authorization scope with Partner delivery; affiliate scope follows the relevant marketplace slice.
+- Customer registration/password recovery via six-digit Email OTP in the Customer/storefront slice; SMS remains a future replaceable delivery channel.
+- Phase 2 full three-level Role Builder UI after the corresponding backend scopes exist.
 - MFA and step-up authentication for owner, platform, finance, payout, and recovery actions.
 - Central SSO that exchanges one-time codes for host-only tenant sessions.
-- Passkeys and external identity providers.
+- Passkeys and external identity providers; Google/Facebook remain deferred/hidden until scheduled.
 - Advanced device trust, anomaly detection, and risk-based authentication.
 
-## Implementation Planning Gate
+## Implementation Planning Gate — satisfied
 
-Implementation must not begin from this design alone. The next step is a task-level implementation plan that maps schema changes, ports, use cases, adapters, routes, BFF pages, migrations, tests, and rollout checks into reviewable commits. The implementation plan must preserve the security invariants and acceptance criteria in this document and should split work into small vertical, test-first increments.
+The original planning gate is satisfied by the task-level implementation plans:
+
+- `../plans/2026-08-05-sprint-1b-01-identity-foundation.md`
+- `../plans/2026-08-05-sprint-1b-02-session-kernel.md`
+- `../plans/2026-08-05-sprint-1b-03-membership-provisioning.md`
+- `../plans/2026-08-05-sprint-1b-04-authorization-hardening.md`
+
+Current execution follows Plan 1B.4 and `../checkpoints/2026-08-10-sprint-1b-reconciliation.md`. Agents must use current repository evidence and `../../governance/DELIVERY-RECONCILIATION.md` rather than treating the historical planning-gate prose or unchecked recipe boxes as current status.
