@@ -1,5 +1,6 @@
 export const PERMISSION_KEYS = {
   platformSecurityAuditRead: "platform.security.audit.read",
+  platformSecuritySessionRevoke: "platform.security.session.revoke",
   platformTenantsProvision: "platform.tenants.provision",
   platformUsersProvision: "platform.users.provision",
   tenantMembershipRead: "tenant.membership.read",
