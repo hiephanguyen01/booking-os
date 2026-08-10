@@ -46,7 +46,7 @@ export class PrismaTenantRoleAssignmentRepositoryAdapter
          AND membership."status" = 'active'::tenant_membership_status
          AND role."key" = 'tenant_owner'
        ORDER BY assignment."user_id"
-       FOR UPDATE OF assignment, membership`,
+       FOR UPDATE OF assignment`,
       this.tenantId,
     );
     return Object.freeze(rows.map((row) => row.userId));
