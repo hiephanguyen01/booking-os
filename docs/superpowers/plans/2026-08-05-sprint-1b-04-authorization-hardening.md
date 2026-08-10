@@ -8,6 +8,23 @@
 
 **Tech Stack:** Node.js 22+, TypeScript 5.9, NestJS 11.1, Prisma 6.19, PostgreSQL 17 FORCE RLS, Redis 7, OpenAPI 3.1, Node test runner, Supertest, Playwright, pnpm 10, GitHub Actions.
 
+## Execution Status — reconciled 2026-08-10
+
+Status: IN_PROGRESS  
+Current Task: Task 3  
+Last reconciled with main: `81f0a191abdc475ff1ce2c502a45daf78d9352b6`
+
+Implementation evidence:
+
+- Task 1 implementation is present in `ac5433dfbc272db4eb397269ba23f23926fbdb4b` — `feat: build authoritative authorization context`.
+- Task 2 implementation is present in `545d77111dc40dd9a99209c7b9ce5b5d6ea77184` — `feat: enforce permission and resource policies`.
+- Task 3 is **IN PROGRESS**. `c9a11c7bea153b6f16ea1ab6b738596dbac9740f` adds authorization session snapshots, membership authorization versioning, attacker-header rejection, and stale-authority reconciliation/rotation behavior. The planned dedicated before-use-case/concurrency E2E evidence and intended Task 3 closeout are not yet verified, so Task 3 MUST NOT be reported complete.
+- Tasks 4–8 are **PENDING / EXPECTED_INCOMPLETE** while Task 3 is active. Their absent outputs are not specification conflicts and are not missing implementation yet.
+
+The task checkboxes below are the original execution recipe/evidence checklist. They are not, by themselves, canonical proof of current progress. Before resuming work, read `docs/superpowers/checkpoints/2026-08-10-sprint-1b-reconciliation.md`, inspect current repository evidence, and follow `docs/governance/DELIVERY-RECONCILIATION.md`.
+
+Exact permission-key naming for implemented capabilities is governed by `docs/spec-amendments/2026-08-10-master-spec-v4-identity-authorization-amendment.md`. Do not rename the current Permission Catalog V2 merely to match historical examples in this plan/design.
+
 ## Global Constraints
 
 - Begin after Plans 1–3 review on `feat/sprint-1b-04-authorization-hardening` from the accepted Plan 3 head.

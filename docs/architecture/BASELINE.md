@@ -1,5 +1,11 @@
 # Architecture Baseline
 
+## Source-of-truth amendments
+
+- Product baseline: `booking-saas-marketplace-master-spec-v4-nextjs.docx`.
+- Approved dated amendments supersede only the conflicting details they name; unaffected Master Spec requirements remain active.
+- Current identity/authorization amendment: `docs/spec-amendments/2026-08-10-master-spec-v4-identity-authorization-amendment.md`.
+
 ## Sản phẩm Pilot
 
 Studio booking theo giờ, VND, vi/en, Instant Booking, đặt cọc online qua PayOS hoặc Mock, phần còn lại trả tại địa điểm.
