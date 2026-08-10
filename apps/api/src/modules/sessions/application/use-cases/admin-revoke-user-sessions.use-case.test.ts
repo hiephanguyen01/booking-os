@@ -11,7 +11,9 @@ import {
 const targetUserId = "00000000-0000-4000-8000-000000000020";
 const revokedAt = new Date("2026-08-10T08:00:00.000Z");
 
-function platformAuthorization(permissionKeys: AuthorizationContext["permissionKeys"]): AuthorizationContext {
+function platformAuthorization(
+  permissionKeys: AuthorizationContext["permissionKeys"],
+): AuthorizationContext {
   return {
     userId: "00000000-0000-4000-8000-000000000001",
     sessionId: "00000000-0000-4000-8000-000000000002",
