@@ -193,7 +193,7 @@ test("maps tenant slug and hostname unique violations to a stable provisioning c
   const tenants = new PrismaTenantProvisioningRepositoryAdapter(transaction as never, tenantId);
 
   for (const operation of [
-    () => tenants.createProvisioning({ slug: "acme", name: "Acme", now),
+    () => tenants.createProvisioning({ slug: "acme", name: "Acme", now }),
     () => tenants.addPrimaryDomain("acme.example.test", now),
   ]) {
     await assert.rejects(
