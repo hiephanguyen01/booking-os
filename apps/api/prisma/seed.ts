@@ -46,6 +46,12 @@ const permissionDefinitions = [
     description: "Read platform security audit events.",
   },
   {
+    id: "00000000-0000-4000-8000-000000000204",
+    key: "platform.security.session.revoke",
+    scopeLevel: RoleScopeLevel.platform,
+    description: "Revoke all sessions for a user during a platform security incident.",
+  },
+  {
     id: "00000000-0000-4000-8000-000000000202",
     key: "platform.tenants.provision",
     scopeLevel: RoleScopeLevel.platform,
@@ -110,6 +116,7 @@ const permissionDefinitions = [
 const permissionKeysByRole = {
   platform_admin: [
     "platform.security.audit.read",
+    "platform.security.session.revoke",
     "platform.tenants.provision",
     "platform.users.provision",
   ],
