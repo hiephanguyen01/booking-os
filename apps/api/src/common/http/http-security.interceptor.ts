@@ -30,9 +30,7 @@ function pathnameOf(request: SecurityRequest): string {
 
 @Injectable()
 export class HttpSecurityInterceptor implements NestInterceptor {
-  constructor(
-    @Inject(EnvironmentService) private readonly environment: EnvironmentService,
-  ) {}
+  constructor(@Inject(EnvironmentService) private readonly environment: EnvironmentService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const http = context.switchToHttp();
