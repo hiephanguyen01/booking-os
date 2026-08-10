@@ -9,6 +9,8 @@ import { AuthorizationController } from "./authorization.controller.js";
 
 const authenticated = {
   requestId: "request-1",
+  traceId: "trace-1",
+  source: "console",
   actorId: "00000000-0000-4000-8000-000000000001",
   sessionId: "00000000-0000-4000-8000-000000000002",
   authScope: { type: "platform" },
