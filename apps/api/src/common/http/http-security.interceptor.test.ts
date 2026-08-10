@@ -72,7 +72,10 @@ test("sets common browser hardening headers and defaults auth routes to private 
   assert.equal(response.getHeader("X-Frame-Options"), "DENY");
   assert.equal(response.getHeader("X-Content-Type-Options"), "nosniff");
   assert.equal(response.getHeader("Referrer-Policy"), "no-referrer");
-  assert.equal(response.getHeader("Permissions-Policy"), "camera=(), geolocation=(), microphone=()");
+  assert.equal(
+    response.getHeader("Permissions-Policy"),
+    "camera=(), geolocation=(), microphone=()",
+  );
   assert.equal(response.getHeader("Cache-Control"), "private, no-store");
   assert.equal(response.getHeader("Strict-Transport-Security"), undefined);
 });
