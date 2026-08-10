@@ -49,6 +49,47 @@ test("recursively redacts sensitive fields without hiding safe authorization met
   });
 });
 
+test("redacts transport headers and message envelopes as bounded sensitive containers", () => {
+  const input = {
+    trace: {
+      requestHeaders: {
+        authorization: "Bearer access-token",
+        "x-request-id": "req-1",
+      },
+      responseHeaders: {
+        "set-cookie": "session=opaque; HttpOnly",
+      },
+    },
+    deadLetter: {
+      envelope: {
+        to: "customer@example.com",
+        subject: "Activate your account",
+        html: "<a href=\"https://example.test/activate?token=raw-secret\">Activate</a>",
+      },
+      retryCount: 3,
+    },
+    error: {
+      emailBody: "Reset code: 123456",
+      code: "smtp_rejected",
+    },
+  };
+
+  assert.deepEqual(redactSensitiveData(input), {
+    trace: {
+      requestHeaders: REDACTED,
+      responseHeaders: REDACTED,
+    },
+    deadLetter: {
+      envelope: REDACTED,
+      retryCount: 3,
+    },
+    error: {
+      emailBody: REDACTED,
+      code: "smtp_rejected",
+    },
+  });
+});
+
 test("does not mutate the original value", () => {
   const input = {
     nested: {
