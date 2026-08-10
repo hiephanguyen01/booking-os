@@ -99,7 +99,9 @@ export async function main(argv = process.argv.slice(2)) {
     return 1;
   }
 
-  console.log(`Delivery reconciliation validation passed (${files.length} checkpoint${files.length === 1 ? "" : "s"}).`);
+  console.log(
+    `Delivery reconciliation validation passed (${files.length} checkpoint${files.length === 1 ? "" : "s"}).`,
+  );
   return 0;
 }
 
