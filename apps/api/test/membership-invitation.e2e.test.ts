@@ -155,6 +155,7 @@ async function createOwnerSession(): Promise<SessionFixture> {
     hostname: HOSTNAME,
     state: "active",
     authorizationVersion: 1,
+    membershipAuthorizationVersion: 1,
     requestId: `pr26-session-${RUN_TAG}`,
   });
   const cookie = `${BOOKING_SESSION_COOKIE}=${encodeURIComponent(created.token)}`;
