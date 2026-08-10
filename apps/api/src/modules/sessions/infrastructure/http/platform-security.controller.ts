@@ -12,7 +12,13 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common";
-import { ApiBody, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
+import {
+  ApiBody,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from "@nestjs/swagger";
 
 import { SupportedApi } from "../../../../api-visibility/api-visibility.decorator.js";
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
@@ -83,7 +89,10 @@ export class PlatformSecurityController {
     @Inject(RequestContextStorage)
     private readonly requestContext: RequestContextStorage,
     @Inject(EnvironmentService)
-    private readonly environment: Pick<EnvironmentService, "platformHostname" | "trustProxy">,
+    private readonly environment: Pick<
+      EnvironmentService,
+      "platformHostname" | "trustProxy"
+    >,
   ) {}
 
   @SessionRequired()
