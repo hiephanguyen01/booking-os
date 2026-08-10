@@ -89,7 +89,10 @@ test("auth responses carry browser hardening headers without weakening no-store 
       .expect(200);
 
     assert.equal(response.headers["cache-control"], "no-store");
-    assert.equal(response.headers["content-security-policy"], "default-src 'none'; frame-ancestors 'none'");
+    assert.equal(
+      response.headers["content-security-policy"],
+      "default-src 'none'; frame-ancestors 'none'",
+    );
     assert.equal(response.headers["x-frame-options"], "DENY");
     assert.equal(response.headers["x-content-type-options"], "nosniff");
     assert.equal(response.headers["referrer-policy"], "no-referrer");
