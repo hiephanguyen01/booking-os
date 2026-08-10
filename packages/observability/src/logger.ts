@@ -1,3 +1,4 @@
+import { redactSensitiveData } from "./redaction.js";
 import type {
   CreateStructuredLoggerOptions,
   LogContext,
@@ -66,7 +67,7 @@ function createBoundLogger(
       ...(error ? { error } : {}),
     };
 
-    sink(record);
+    sink(redactSensitiveData(record));
   }
 
   return {
