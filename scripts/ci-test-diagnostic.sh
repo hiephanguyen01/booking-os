@@ -17,10 +17,11 @@ if [[ $status -ne 0 ]]; then
     start=$((end > 60 ? end - 60 : 1))
   fi
 
-  sed -n "${start},${end}p" "$log_file" | head -n 56 | while IFS= read -r line; do
-    escaped="${line//'%'/'%25'}"
-    echo "::error title=Workspace failing test::${escaped}"
-  done
+  block="$(sed -n "${start},${end}p" "$log_file" | head -n 56)"
+  escaped="${block//'%'/'%25'}"
+  escaped="${escaped//$'\r'/'%0D'}"
+  escaped="${escaped//$'\n'/'%0A'}"
+  echo "::error title=Workspace failing test block::${escaped}"
   rm -f "$log_file"
   exit "$status"
 fi
