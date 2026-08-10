@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -45,7 +45,10 @@ for (const field of ["Plan Status", "Current Task", "Classification", "Required 
 
 test("rejects an unsupported finding classification", async () => {
   const result = await runValidator(
-    validCheckpoint.replace("Classification: EXPECTED_INCOMPLETE", "Classification: SOMETHING_ELSE"),
+    validCheckpoint.replace(
+      "Classification: EXPECTED_INCOMPLETE",
+      "Classification: SOMETHING_ELSE",
+    ),
   );
   assert.notEqual(result.status, 0);
   assert.match(`${result.stderr}${result.stdout}`, /classification/i);
