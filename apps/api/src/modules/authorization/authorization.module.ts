@@ -48,8 +48,9 @@ import { PrismaSessionAuthorizationRefreshAdapter } from "./infrastructure/persi
     {
       provide: GetCurrentAuthorizationUseCase,
       inject: [ReconcileAuthorizationVersionUseCase],
-      useFactory: (authorization: ReconcileAuthorizationVersionUseCase): GetCurrentAuthorizationUseCase =>
-        new GetCurrentAuthorizationUseCase(authorization),
+      useFactory: (
+        authorization: ReconcileAuthorizationVersionUseCase,
+      ): GetCurrentAuthorizationUseCase => new GetCurrentAuthorizationUseCase(authorization),
     },
     {
       provide: PROTECTED_REQUEST_AUTHORIZATION_PORT,
