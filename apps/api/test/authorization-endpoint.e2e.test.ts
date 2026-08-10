@@ -214,10 +214,8 @@ function assertPrivateAuthorizationResponse(response: request.Response): void {
   assert.ok(vary.includes("origin"));
   assert.equal(response.headers.etag, undefined);
   assert.match(String(response.headers["content-type"]), /^application\/json; charset=utf-8$/u);
-  assert.doesNotMatch(
-    JSON.stringify(response.body),
-    /password|hash|token|credential|abuse|memberships/iu,
-  );
+  assert.doesNotMatch(JSON.stringify(response.body), /password|hash|token|credential|abuse/iu);
+  assert.equal("memberships" in response.body, false);
 }
 
 before(async () => {
