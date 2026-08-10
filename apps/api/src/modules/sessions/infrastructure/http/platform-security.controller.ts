@@ -12,13 +12,7 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common";
-import {
-  ApiBody,
-  ApiOkResponse,
-  ApiOperation,
-  ApiParam,
-  ApiTags,
-} from "@nestjs/swagger";
+import { ApiBody, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
 
 import { SupportedApi } from "../../../../api-visibility/api-visibility.decorator.js";
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
@@ -60,11 +54,7 @@ function effectiveHostname(headers: RequestHeaders, trustProxy: boolean): string
 
 function requireUuid(value: unknown, field: string): string {
   const normalized = typeof value === "string" ? value.trim() : "";
-  if (
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
-      normalized,
-    )
-  ) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(normalized)) {
     throw new BadRequestException(`${field} must be a UUID.`);
   }
   return normalized;
@@ -89,10 +79,7 @@ export class PlatformSecurityController {
     @Inject(RequestContextStorage)
     private readonly requestContext: RequestContextStorage,
     @Inject(EnvironmentService)
-    private readonly environment: Pick<
-      EnvironmentService,
-      "platformHostname" | "trustProxy"
-    >,
+    private readonly environment: Pick<EnvironmentService, "platformHostname" | "trustProxy">,
   ) {}
 
   @SessionRequired()
