@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test, { after, before } from "node:test";
 
-import { PERMISSION_KEYS, SYSTEM_ROLES } from "@booking-os/auth";
-import type { AuthorizationContext } from "@booking-os/contracts";
+import { SYSTEM_ROLES } from "@booking-os/auth";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
 import { AppModule } from "../src/app.module.js";
 import { PrismaService } from "../src/database/prisma.service.js";
+import { BuildAuthorizationContextUseCase } from "../src/modules/authorization/application/use-cases/build-authorization-context.use-case.js";
 import { DemoteOwnerUseCase } from "../src/modules/memberships/application/use-cases/demote-owner.use-case.js";
 import { SuspendMembershipUseCase } from "../src/modules/memberships/application/use-cases/suspend-membership.use-case.js";
 import {
@@ -51,6 +51,7 @@ const originalEnvironment = {
 
 let app: INestApplication;
 let prisma: PrismaService;
+let buildAuthorization: BuildAuthorizationContextUseCase;
 let demoteOwner: DemoteOwnerUseCase;
 let suspendMembership: SuspendMembershipUseCase;
 
@@ -60,21 +61,19 @@ function restoreEnvironmentValue(key: keyof typeof originalEnvironment): void {
   else process.env[key] = value;
 }
 
-function ownerAuthorization(userId: string, membershipId: string): AuthorizationContext {
-  return {
-    userId,
+async function ownerAuthorization(userId: string) {
+  return buildAuthorization.execute({
+    requestId: `pr26-authorization-${RUN_TAG}-${userId}`,
+    traceId: randomUUID(),
+    source: "internal",
+    actorId: userId,
     sessionId: randomUUID(),
-    scope: { type: "tenant", tenantId: TENANT_ID, tenantSlug: TENANT_SLUG },
-    membershipId,
-    membershipStatus: "active",
-    roleKeys: [SYSTEM_ROLES.tenantOwner],
-    permissionKeys: [
-      PERMISSION_KEYS.tenantMembershipAdminSuspend,
-      PERMISSION_KEYS.tenantMembershipOwnerDemote,
-    ],
-    userAuthorizationVersion: 1,
+    tenantId: TENANT_ID,
+    authScope: { type: "tenant", tenantId: TENANT_ID },
+    sessionState: "active",
+    authorizationVersion: 1,
     membershipAuthorizationVersion: 1,
-  };
+  });
 }
 
 async function cleanup(): Promise<void> {
@@ -199,6 +198,7 @@ before(async () => {
   app.setGlobalPrefix("api");
   await app.init();
   prisma = app.get(PrismaService);
+  buildAuthorization = app.get(BuildAuthorizationContextUseCase);
   demoteOwner = app.get(DemoteOwnerUseCase);
   suspendMembership = app.get(SuspendMembershipUseCase);
   await cleanup();
@@ -217,10 +217,11 @@ after(async () => {
 });
 
 test("cross-tenant membership IDs remain invisible to tenant membership mutations", async () => {
+  const authorization = await ownerAuthorization(OWNER_ONE_ID);
   await assert.rejects(
     () =>
       suspendMembership.execute({
-        authorization: ownerAuthorization(OWNER_ONE_ID, OWNER_ONE_MEMBERSHIP_ID),
+        authorization,
         membershipId: CROSS_TENANT_MEMBERSHIP_ID,
         requestId: `pr26-cross-tenant-${RUN_TAG}`,
       }),
@@ -235,14 +236,18 @@ test("cross-tenant membership IDs remain invisible to tenant membership mutation
 });
 
 test("concurrent owner demotions serialize so exactly one active owner remains", async () => {
+  const [ownerOneAuthorization, ownerTwoAuthorization] = await Promise.all([
+    ownerAuthorization(OWNER_ONE_ID),
+    ownerAuthorization(OWNER_TWO_ID),
+  ]);
   const results = await Promise.allSettled([
     demoteOwner.execute({
-      authorization: ownerAuthorization(OWNER_ONE_ID, OWNER_ONE_MEMBERSHIP_ID),
+      authorization: ownerOneAuthorization,
       membershipId: OWNER_ONE_MEMBERSHIP_ID,
       requestId: `pr26-demote-owner-one-${RUN_TAG}`,
     }),
     demoteOwner.execute({
-      authorization: ownerAuthorization(OWNER_TWO_ID, OWNER_TWO_MEMBERSHIP_ID),
+      authorization: ownerTwoAuthorization,
       membershipId: OWNER_TWO_MEMBERSHIP_ID,
       requestId: `pr26-demote-owner-two-${RUN_TAG}`,
     }),
