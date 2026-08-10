@@ -2,14 +2,14 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test, { after, before } from "node:test";
 
-import { BOOKING_SESSION_COOKIE, PERMISSION_KEYS, SYSTEM_ROLES } from "@booking-os/auth";
-import type { AuthorizationContext } from "@booking-os/contracts";
+import { BOOKING_SESSION_COOKIE, SYSTEM_ROLES } from "@booking-os/auth";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 
 import { AppModule } from "../src/app.module.js";
 import { PrismaService } from "../src/database/prisma.service.js";
+import { BuildAuthorizationContextUseCase } from "../src/modules/authorization/application/use-cases/build-authorization-context.use-case.js";
 import { RevokeMembershipUseCase } from "../src/modules/memberships/application/use-cases/revoke-membership.use-case.js";
 import { SuspendMembershipUseCase } from "../src/modules/memberships/application/use-cases/suspend-membership.use-case.js";
 import { CreateSessionUseCase } from "../src/modules/sessions/application/use-cases/create-session.js";
@@ -52,6 +52,7 @@ const originalEnvironment = {
 
 let app: INestApplication;
 let prisma: PrismaService;
+let buildAuthorization: BuildAuthorizationContextUseCase;
 let createSession: CreateSessionUseCase;
 let revokeMembership: RevokeMembershipUseCase;
 let suspendMembership: SuspendMembershipUseCase;
@@ -64,21 +65,19 @@ function restoreEnvironmentValue(key: keyof typeof originalEnvironment): void {
   else process.env[key] = value;
 }
 
-function ownerAuthorization(): AuthorizationContext {
-  return {
-    userId: OWNER_ID,
+async function ownerAuthorization() {
+  return buildAuthorization.execute({
+    requestId: `pr26-owner-authorization-${RUN_TAG}`,
+    traceId: randomUUID(),
+    source: "internal",
+    actorId: OWNER_ID,
     sessionId: randomUUID(),
-    scope: { type: "tenant", tenantId: TENANT_ID, tenantSlug: TENANT_SLUG },
-    membershipId: OWNER_MEMBERSHIP_ID,
-    membershipStatus: "active",
-    roleKeys: [SYSTEM_ROLES.tenantOwner],
-    permissionKeys: [
-      PERMISSION_KEYS.tenantMembershipAdminSuspend,
-      PERMISSION_KEYS.tenantMembershipAdminRevoke,
-    ],
-    userAuthorizationVersion: 1,
+    tenantId: TENANT_ID,
+    authScope: { type: "tenant", tenantId: TENANT_ID },
+    sessionState: "active",
+    authorizationVersion: 1,
     membershipAuthorizationVersion: 1,
-  };
+  });
 }
 
 async function cleanup(): Promise<void> {
@@ -220,6 +219,7 @@ async function seed(): Promise<void> {
     hostname: HOSTNAME,
     state: "active",
     authorizationVersion: 1,
+    membershipAuthorizationVersion: 1,
     requestId: `pr26-target-session-${RUN_TAG}`,
   });
   otherTenantSession = await createSession.execute({
@@ -228,6 +228,7 @@ async function seed(): Promise<void> {
     hostname: OTHER_HOSTNAME,
     state: "active",
     authorizationVersion: 1,
+    membershipAuthorizationVersion: 1,
     requestId: `pr26-other-target-session-${RUN_TAG}`,
   });
 }
@@ -259,6 +260,7 @@ before(async () => {
   app.setGlobalPrefix("api");
   await app.init();
   prisma = app.get(PrismaService);
+  buildAuthorization = app.get(BuildAuthorizationContextUseCase);
   createSession = app.get(CreateSessionUseCase);
   revokeMembership = app.get(RevokeMembershipUseCase);
   suspendMembership = app.get(SuspendMembershipUseCase);
@@ -293,7 +295,7 @@ test("suspension then revocation isolates the target tenant's membership and ses
     .expect(200);
 
   const result = await suspendMembership.execute({
-    authorization: ownerAuthorization(),
+    authorization: await ownerAuthorization(),
     membershipId: TARGET_MEMBERSHIP_ID,
     requestId: `pr26-suspend-${RUN_TAG}`,
   });
@@ -345,7 +347,7 @@ test("suspension then revocation isolates the target tenant's membership and ses
     .expect(200);
 
   const revokeResult = await revokeMembership.execute({
-    authorization: ownerAuthorization(),
+    authorization: await ownerAuthorization(),
     membershipId: TARGET_MEMBERSHIP_ID,
     requestId: `pr26-revoke-${RUN_TAG}`,
   });
