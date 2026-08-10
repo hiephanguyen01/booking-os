@@ -9,7 +9,7 @@ async function readJson(path) {
 }
 
 function requiredComposeVariable(name) {
-  return "$" + `{${name}:?${name} is required}`;
+  return `\${${name}:?${name} is required}`;
 }
 
 const [composeSource, dockerEnv, caddyfile, packageJson] = await Promise.all([
