@@ -226,8 +226,7 @@ export async function createPlaywrightSession(input: PlaywrightSessionInput): Pr
         hostname: input.hostname,
         state: "active",
         authorizationVersion,
-        membershipAuthorizationVersion:
-          input.scope.type === "tenant" ? authorizationVersion : null,
+        membershipAuthorizationVersion: input.scope.type === "tenant" ? authorizationVersion : null,
         version: 1,
         idleExpiresAt: new Date(now.getTime() + 7 * DAY_MS),
         absoluteExpiresAt,
