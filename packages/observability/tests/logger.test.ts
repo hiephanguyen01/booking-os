@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createStructuredLogger, type StructuredLogRecord } from "../src/index.js";
+import {
+  createStructuredLogger,
+  type LogContext,
+  type StructuredLogRecord,
+} from "../src/index.js";
 
 test("writes a structured record with merged child context", () => {
   const records: StructuredLogRecord[] = [];
@@ -89,4 +93,35 @@ test("merges dynamic request context into each log record", () => {
   assert.equal(records[1]?.requestId, "req-2");
   assert.equal(records[1]?.traceId, "550e8400-e29b-41d4-a716-446655440000");
   assert.equal(records[1]?.tenantId, "tenant-1");
+});
+
+test("redacts nested sensitive context before writing to the sink", () => {
+  const records: StructuredLogRecord[] = [];
+  const logger = createStructuredLogger({
+    service: "api",
+    sink: (record) => records.push(record),
+    now: () => new Date("2026-08-10T12:00:00.000Z"),
+  });
+  const context = {
+    requestId: "req-1",
+    password: "plaintext-password",
+    metadata: {
+      accessToken: "plaintext-token",
+      safe: "visible",
+      nested: [{ refresh_token: "plaintext-refresh" }],
+    },
+  } as unknown as LogContext;
+
+  logger.info("auth.request", context);
+
+  const record = records[0] as unknown as {
+    password?: unknown;
+    metadata?: unknown;
+  };
+  assert.equal(record.password, "[REDACTED]");
+  assert.deepEqual(record.metadata, {
+    accessToken: "[REDACTED]",
+    safe: "visible",
+    nested: [{ refresh_token: "[REDACTED]" }],
+  });
 });
