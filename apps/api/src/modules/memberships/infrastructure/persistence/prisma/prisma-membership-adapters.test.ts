@@ -220,7 +220,7 @@ test("does not misclassify unrelated raw query failures as provisioning conflict
   const tenants = new PrismaTenantProvisioningRepositoryAdapter(transaction as never, tenantId);
 
   await assert.rejects(
-    tenants.createProvisioning({ slug: "acme", name: "Acme", now),
+    tenants.createProvisioning({ slug: "acme", name: "Acme", now }),
     (error: unknown) => error === rawQueryFailure,
   );
 });
