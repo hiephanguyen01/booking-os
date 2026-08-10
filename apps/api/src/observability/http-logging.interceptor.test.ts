@@ -14,6 +14,7 @@ import type { RoutableRequest } from "./route-resolver.js";
 interface LoggingRequest extends RoutableRequest {
   readonly requestId: string;
   readonly method: string;
+  readonly body?: unknown;
 }
 
 class ResponseDouble extends EventEmitter {
@@ -116,6 +117,28 @@ test("uses warn level for server errors", () => {
 
   assert.equal(records[0]?.level, "warn");
   assert.equal(records[0]?.route, "/api/fail");
+});
+
+test("never logs auth request bodies", () => {
+  const records = runCompletion({
+    request: {
+      requestId: "request-auth-reset",
+      method: "POST",
+      baseUrl: "/api",
+      route: { path: "/auth/password/reset" },
+      body: {
+        token: "plaintext-reset-token",
+        newPassword: "plaintext-new-password",
+      },
+    },
+    statusCode: 200,
+  });
+
+  assert.equal(records.length, 1);
+  const serialized = JSON.stringify(records[0]);
+  assert.equal(serialized.includes("plaintext-reset-token"), false);
+  assert.equal(serialized.includes("plaintext-new-password"), false);
+  assert.equal(Object.hasOwn(records[0] ?? {}, "body"), false);
 });
 
 test("suppresses successful liveness and readiness completion logs", () => {
