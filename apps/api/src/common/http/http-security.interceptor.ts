@@ -9,12 +9,12 @@ import type { Observable } from "rxjs";
 
 import { EnvironmentService } from "../../config/environment.service.js";
 
-interface SecurityRequest {
+export interface SecurityRequest {
   readonly originalUrl?: string;
   readonly url?: string;
 }
 
-interface SecurityResponse {
+export interface SecurityResponse {
   getHeader(name: string): unknown;
   setHeader(name: string, value: string): void;
 }
@@ -28,34 +28,42 @@ function pathnameOf(request: SecurityRequest): string {
   return value.split("?", 1)[0] ?? "";
 }
 
+export function applyHttpSecurityPolicy(
+  request: SecurityRequest,
+  response: SecurityResponse,
+  environment: Pick<EnvironmentService, "apiPrefix" | "isProduction">,
+): void {
+  response.setHeader("Content-Security-Policy", CONTENT_SECURITY_POLICY);
+  response.setHeader("X-Frame-Options", "DENY");
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setHeader("Referrer-Policy", "no-referrer");
+  response.setHeader("Permissions-Policy", PERMISSIONS_POLICY);
+
+  if (environment.isProduction) {
+    response.setHeader("Strict-Transport-Security", STRICT_TRANSPORT_SECURITY);
+  }
+
+  const authPrefix = `/${environment.apiPrefix}/auth`;
+  const pathname = pathnameOf(request);
+  if (
+    (pathname === authPrefix || pathname.startsWith(`${authPrefix}/`)) &&
+    response.getHeader("Cache-Control") === undefined
+  ) {
+    response.setHeader("Cache-Control", "private, no-store");
+  }
+}
+
 @Injectable()
 export class HttpSecurityInterceptor implements NestInterceptor {
   constructor(@Inject(EnvironmentService) private readonly environment: EnvironmentService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const http = context.switchToHttp();
-    const request = http.getRequest<SecurityRequest>();
-    const response = http.getResponse<SecurityResponse>();
-
-    response.setHeader("Content-Security-Policy", CONTENT_SECURITY_POLICY);
-    response.setHeader("X-Frame-Options", "DENY");
-    response.setHeader("X-Content-Type-Options", "nosniff");
-    response.setHeader("Referrer-Policy", "no-referrer");
-    response.setHeader("Permissions-Policy", PERMISSIONS_POLICY);
-
-    if (this.environment.isProduction) {
-      response.setHeader("Strict-Transport-Security", STRICT_TRANSPORT_SECURITY);
-    }
-
-    const authPrefix = `/${this.environment.apiPrefix}/auth`;
-    const pathname = pathnameOf(request);
-    if (
-      (pathname === authPrefix || pathname.startsWith(`${authPrefix}/`)) &&
-      response.getHeader("Cache-Control") === undefined
-    ) {
-      response.setHeader("Cache-Control", "private, no-store");
-    }
-
+    applyHttpSecurityPolicy(
+      http.getRequest<SecurityRequest>(),
+      http.getResponse<SecurityResponse>(),
+      this.environment,
+    );
     return next.handle();
   }
 }
