@@ -1,0 +1,93 @@
+name: PR 31 API test diagnostics
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr31-api-test-diagnostics-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnose-api-tests:
+    name: Diagnose API test failure
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: booking
+          POSTGRES_PASSWORD: booking
+          POSTGRES_DB: booking_os_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U booking -d booking_os_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://booking:booking@127.0.0.1:5432/booking_os_test
+      REDIS_URL: redis://127.0.0.1:6379/1
+      SESSION_SECRET: test-only-session-secret-at-least-32-characters
+      PAYMENT_PROVIDER: mock
+      NODE_ENV: test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Prisma schema
+        run: pnpm --filter @booking-os/api prisma:validate
+
+      - name: Apply database migrations
+        run: pnpm --filter @booking-os/api prisma:migrate:deploy
+
+      - name: Run API tests with failure annotations
+        shell: bash
+        run: |
+          set +e
+          pnpm --filter @booking-os/api test 2>&1 | tee api-test.log
+          status=${PIPESTATUS[0]}
+          python - <<'PY'
+          import re
+          from pathlib import Path
+
+          ansi = re.compile(r"\x1b\[[0-9;]*m")
+          interesting = re.compile(
+              r"(not ok|✖|AssertionError|ERR_[A-Z_]+|failureType:|error:|expected:|actual:|operator:|location:)",
+              re.IGNORECASE,
+          )
+          lines = [ansi.sub("", line.rstrip()) for line in Path("api-test.log").read_text(errors="replace").splitlines()]
+          matches = [line for line in lines if interesting.search(line)]
+          for line in matches[-120:]:
+              safe = line.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              print(f"::error::{safe[:1500]}")
+          PY
+          exit "$status"
