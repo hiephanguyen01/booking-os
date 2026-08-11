@@ -121,3 +121,26 @@ test("redacts nested sensitive context before writing to the sink", () => {
     nested: [{ refresh_token: "[REDACTED]" }],
   });
 });
+
+test("redacts sensitive exception messages and stacks before they reach the sink", () => {
+  const records: StructuredLogRecord[] = [];
+  const logger = createStructuredLogger({
+    service: "api",
+    sink: (record) => records.push(record),
+  });
+  const error = new Error(
+    "authorization=Bearer raw-token password=hunter2 customer=owner@example.test",
+  );
+
+  logger.error("auth.failed", error);
+
+  const record = records[0];
+  assert.equal(record?.error?.name, "Error");
+  assert.equal(record?.error?.message, "[REDACTED]");
+  assert.equal(record?.error?.stack, undefined);
+
+  const serialized = JSON.stringify(record);
+  for (const sensitiveValue of ["raw-token", "hunter2", "owner@example.test", "Bearer"]) {
+    assert.equal(serialized.includes(sensitiveValue), false, sensitiveValue);
+  }
+});
