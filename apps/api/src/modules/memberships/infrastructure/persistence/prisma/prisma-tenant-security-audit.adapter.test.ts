@@ -39,7 +39,14 @@ function record(metadata: Readonly<Record<string, unknown>>) {
 test("persists bounded tenant audit metadata", async () => {
   const { adapter, writes } = createAdapter();
 
-  await adapter.append(record({ action: "owner_promoted", result: "success", reason: "manual" }));
+  await adapter.append(
+    record({
+      action: "owner_promoted",
+      result: "success",
+      reason: "manual",
+      authorizationVersion: 4,
+    }),
+  );
 
   assert.equal(writes.length, 1);
 });
