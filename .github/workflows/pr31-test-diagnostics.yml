@@ -69,11 +69,11 @@ jobs:
       - name: Apply database migrations
         run: pnpm --filter @booking-os/api prisma:migrate:deploy
 
-      - name: Run API tests with failure annotations
+      - name: Run root tests with failure annotations
         shell: bash
         run: |
           set +e
-          pnpm --filter @booking-os/api test 2>&1 | tee api-test.log
+          pnpm test 2>&1 | tee test.log
           status=${PIPESTATUS[0]}
           python - <<'PY'
           import re
@@ -84,7 +84,7 @@ jobs:
               r"(not ok|✖|AssertionError|ERR_[A-Z_]+|failureType:|error:|expected:|actual:|operator:|location:)",
               re.IGNORECASE,
           )
-          lines = [ansi.sub("", line.rstrip()) for line in Path("api-test.log").read_text(errors="replace").splitlines()]
+          lines = [ansi.sub("", line.rstrip()) for line in Path("test.log").read_text(errors="replace").splitlines()]
           matches = [line for line in lines if interesting.search(line)]
           for line in matches[-120:]:
               safe = line.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
