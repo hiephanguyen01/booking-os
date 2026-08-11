@@ -8,8 +8,12 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: task5-diagnostic-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  auth-security-regression:
+  focused-regressions:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -69,14 +73,22 @@ jobs:
       - name: Apply database migrations
         run: pnpm --filter @booking-os/api prisma:migrate:deploy
 
-      - name: Run only Task 5 auth security regression
+      - name: Run Task 5 focused regressions
         shell: bash
         run: |
           set -o pipefail
           pnpm --filter @booking-os/api exec node ../../scripts/prisma/generate-shared-client.mjs
+          : > "$GITHUB_WORKSPACE/task5-diagnostic.log"
+          status=0
           set +e
-          pnpm --filter @booking-os/api exec node --test --test-concurrency=1 --import tsx test/auth-security-regression.e2e.test.ts 2>&1 | tee "$GITHUB_WORKSPACE/task5-diagnostic.log"
-          status=${PIPESTATUS[0]}
+          echo "=== auth-security-regression ===" | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
+          pnpm --filter @booking-os/api exec node --test --test-concurrency=1 --import tsx test/auth-security-regression.e2e.test.ts 2>&1 | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
+          api_status=${PIPESTATUS[0]}
+          if [ "$api_status" -ne 0 ]; then status=1; fi
+          echo "=== observability-redaction ===" | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
+          pnpm --filter @booking-os/observability exec node --test --import tsx tests/redaction.test.ts 2>&1 | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
+          redaction_status=${PIPESTATUS[0]}
+          if [ "$redaction_status" -ne 0 ]; then status=1; fi
           echo "$status" > "$GITHUB_WORKSPACE/task5-exit.txt"
           exit 0
 
