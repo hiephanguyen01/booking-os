@@ -62,12 +62,12 @@ function applySecurityPolicy(options: {
   return response;
 }
 
-test("sets common browser hardening headers and defaults auth routes to private no-store", () => {
+test("sets common browser hardening headers and defaults auth routes to no-store", () => {
   const response = applySecurityPolicy({ environment: "test", url: "/api/auth/csrf" });
 
   assert.equal(
     response.getHeader("Content-Security-Policy"),
-    "default-src 'none'; frame-ancestors 'none'",
+    "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
   );
   assert.equal(response.getHeader("X-Frame-Options"), "DENY");
   assert.equal(response.getHeader("X-Content-Type-Options"), "nosniff");
@@ -76,8 +76,29 @@ test("sets common browser hardening headers and defaults auth routes to private 
     response.getHeader("Permissions-Policy"),
     "camera=(), geolocation=(), microphone=()",
   );
-  assert.equal(response.getHeader("Cache-Control"), "private, no-store");
+  assert.equal(response.getHeader("Cache-Control"), "no-store");
+  assert.equal(response.getHeader("Vary"), "Origin");
   assert.equal(response.getHeader("Strict-Transport-Security"), undefined);
+});
+
+test("keeps authorization responses private and varies on cookie and origin", () => {
+  const response = applySecurityPolicy({
+    environment: "test",
+    url: "/api/auth/me/authorization",
+  });
+
+  assert.equal(response.getHeader("Cache-Control"), "private, no-store");
+  assert.equal(response.getHeader("Vary"), "Cookie, Origin");
+});
+
+test("protects invitation responses with no-store before authentication guards", () => {
+  const response = applySecurityPolicy({
+    environment: "test",
+    url: "/api/membership/invitations/current",
+  });
+
+  assert.equal(response.getHeader("Cache-Control"), "no-store");
+  assert.equal(response.getHeader("Vary"), "Origin");
 });
 
 test("preserves controller-specific cache policy", () => {
