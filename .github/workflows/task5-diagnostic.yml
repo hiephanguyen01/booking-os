@@ -23,8 +23,7 @@ jobs:
           POSTGRES_USER: booking
           POSTGRES_PASSWORD: booking
           POSTGRES_DB: booking_os_test
-        ports:
-          - 5432:5432
+        ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U booking -d booking_os_test"
           --health-interval 5s
@@ -32,8 +31,7 @@ jobs:
           --health-retries 10
       redis:
         image: redis:7-alpine
-        ports:
-          - 6379:6379
+        ports: ["6379:6379"]
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 5s
@@ -46,33 +44,22 @@ jobs:
       PAYMENT_PROVIDER: mock
       NODE_ENV: test
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v6
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.34.5
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build API workspace dependencies
+      - run: pnpm install --frozen-lockfile
+      - name: Build workspace dependencies
         run: |
           pnpm --filter @booking-os/contracts build
           pnpm --filter @booking-os/observability build
           pnpm --filter @booking-os/auth build
-
-      - name: Apply database migrations
-        run: pnpm --filter @booking-os/api prisma:migrate:deploy
-
+      - run: pnpm --filter @booking-os/api prisma:migrate:deploy
       - name: Run Task 5 focused regressions
         shell: bash
         run: |
@@ -81,32 +68,21 @@ jobs:
           : > "$GITHUB_WORKSPACE/task5-diagnostic.log"
           status=0
           set +e
-
-          echo "=== auth-security-regression ===" | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
-          pnpm --filter @booking-os/api exec node --test --test-concurrency=1 --import tsx test/auth-security-regression.e2e.test.ts 2>&1 | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
-          api_status=${PIPESTATUS[0]}
-          if [ "$api_status" -ne 0 ]; then status=1; fi
-
-          echo "=== observability-redaction ===" | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
-          pnpm --filter @booking-os/observability exec node --test --import tsx tests/redaction.test.ts 2>&1 | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
-          redaction_status=${PIPESTATUS[0]}
-          if [ "$redaction_status" -ne 0 ]; then status=1; fi
-
-          echo "=== safe-return-url ===" | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
-          pnpm --filter @booking-os/web-console exec node --test --import tsx src/lib/safe-return-url.test.ts 2>&1 | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
-          return_url_status=${PIPESTATUS[0]}
-          if [ "$return_url_status" -ne 0 ]; then status=1; fi
-
-          if [ -f apps/web-console/src/lib/security/web-security-headers.test.ts ]; then
-            echo "=== web-security-headers ===" | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
-            pnpm --filter @booking-os/web-console exec node --test --import tsx src/lib/security/web-security-headers.test.ts 2>&1 | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
-            web_headers_status=${PIPESTATUS[0]}
-            if [ "$web_headers_status" -ne 0 ]; then status=1; fi
-          fi
-
+          run_test() {
+            label="$1"; shift
+            echo "=== $label ===" | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
+            "$@" 2>&1 | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
+            code=${PIPESTATUS[0]}
+            if [ "$code" -ne 0 ]; then status=1; fi
+          }
+          run_test auth-security-regression pnpm --filter @booking-os/api exec node --test --test-concurrency=1 --import tsx test/auth-security-regression.e2e.test.ts
+          run_test observability-redaction pnpm --filter @booking-os/observability exec node --test --import tsx tests/redaction.test.ts
+          run_test observability-logger pnpm --filter @booking-os/observability exec node --test --import tsx tests/logger.test.ts
+          run_test outbox-diagnostics pnpm --filter @booking-os/worker-critical exec node --test --import tsx src/outbox/outbox-dispatcher.test.ts
+          run_test safe-return-url pnpm --filter @booking-os/web-console exec node --test --import tsx src/lib/safe-return-url.test.ts
+          run_test web-security-headers pnpm --filter @booking-os/web-console exec node --test --import tsx src/lib/security/web-security-headers.test.ts
           echo "$status" > "$GITHUB_WORKSPACE/task5-exit.txt"
           exit 0
-
       - name: Upload diagnostic output
         if: always()
         uses: actions/upload-artifact@v6
@@ -115,8 +91,6 @@ jobs:
           path: |
             task5-diagnostic.log
             task5-exit.txt
-
       - name: Preserve regression exit status
         if: always()
-        shell: bash
         run: exit "$(cat task5-exit.txt)"
