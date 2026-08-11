@@ -59,6 +59,7 @@ jobs:
           pnpm --filter @booking-os/contracts build
           pnpm --filter @booking-os/observability build
           pnpm --filter @booking-os/auth build
+          pnpm --filter @booking-os/testing build
       - run: pnpm --filter @booking-os/api prisma:migrate:deploy
       - name: Run Task 5 focused regressions and API unit suite
         shell: bash
