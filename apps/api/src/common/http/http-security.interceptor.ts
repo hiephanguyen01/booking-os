@@ -79,7 +79,8 @@ export function applyHttpSecurityPolicy(
   const authorizationPath = `${authPrefix}/me/authorization`;
   const invitationsPrefix = `/${environment.apiPrefix}/membership/invitations`;
   const isAuthorization = pathname === authorizationPath;
-  const isSensitive = isPathWithin(pathname, authPrefix) || isPathWithin(pathname, invitationsPrefix);
+  const isSensitive =
+    isPathWithin(pathname, authPrefix) || isPathWithin(pathname, invitationsPrefix);
 
   if (!isSensitive) return;
 
