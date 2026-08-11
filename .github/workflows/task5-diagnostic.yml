@@ -6,41 +6,12 @@ on:
       - feat/sprint-1b-04-task4-authorization-endpoint
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  auth-security-regression:
+  format-security-policy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_USER: booking
-          POSTGRES_PASSWORD: booking
-          POSTGRES_DB: booking_os_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U booking -d booking_os_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      DATABASE_URL: postgresql://booking:booking@127.0.0.1:5432/booking_os_test
-      REDIS_URL: redis://127.0.0.1:6379/1
-      SESSION_SECRET: test-only-session-secret-at-least-32-characters
-      PAYMENT_PROVIDER: mock
-      NODE_ENV: test
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
@@ -52,15 +23,26 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @booking-os/api prisma:migrate:deploy
-      - name: Reproduce CI unit-test step
+      - name: Format security policy
+        run: pnpm exec biome format --write apps/api/src/common/http/http-security.interceptor.ts
+      - name: Restrict formatter diff
         shell: bash
         run: |
-          set -o pipefail
-          pnpm test 2>&1 | tee task5-diagnostic.log
-      - name: Upload diagnostic log
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: task5-diagnostic-log
-          path: task5-diagnostic.log
+          set -euo pipefail
+          unexpected="$(git diff --name-only | grep -v '^apps/api/src/common/http/http-security.interceptor.ts$' || true)"
+          if [ -n "$unexpected" ]; then
+            printf 'Unexpected formatter changes:\n%s\n' "$unexpected" >&2
+            exit 1
+          fi
+      - name: Commit formatter output
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/api/src/common/http/http-security.interceptor.ts
+          git commit -m "style: format Task 5 security policy"
+          git push origin HEAD:feat/sprint-1b-04-task4-authorization-endpoint
