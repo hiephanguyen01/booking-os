@@ -11,7 +11,7 @@ permissions:
 jobs:
   auth-security-regression:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:17-alpine
@@ -53,12 +53,11 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @booking-os/api prisma:migrate:deploy
-      - name: Run only Task 5 auth security regression
+      - name: Reproduce CI unit-test step
         shell: bash
         run: |
           set -o pipefail
-          pnpm --filter @booking-os/api exec node ../../scripts/prisma/generate-shared-client.mjs
-          pnpm --filter @booking-os/api exec node --test --test-concurrency=1 --import tsx test/auth-security-regression.e2e.test.ts 2>&1 | tee task5-diagnostic.log
+          pnpm test 2>&1 | tee task5-diagnostic.log
       - name: Upload diagnostic log
         if: always()
         uses: actions/upload-artifact@v6
