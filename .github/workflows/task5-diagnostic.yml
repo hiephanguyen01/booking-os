@@ -81,14 +81,29 @@ jobs:
           : > "$GITHUB_WORKSPACE/task5-diagnostic.log"
           status=0
           set +e
+
           echo "=== auth-security-regression ===" | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
           pnpm --filter @booking-os/api exec node --test --test-concurrency=1 --import tsx test/auth-security-regression.e2e.test.ts 2>&1 | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
           api_status=${PIPESTATUS[0]}
           if [ "$api_status" -ne 0 ]; then status=1; fi
+
           echo "=== observability-redaction ===" | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
           pnpm --filter @booking-os/observability exec node --test --import tsx tests/redaction.test.ts 2>&1 | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
           redaction_status=${PIPESTATUS[0]}
           if [ "$redaction_status" -ne 0 ]; then status=1; fi
+
+          echo "=== safe-return-url ===" | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
+          pnpm --filter @booking-os/web-console exec node --test --import tsx src/lib/safe-return-url.test.ts 2>&1 | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
+          return_url_status=${PIPESTATUS[0]}
+          if [ "$return_url_status" -ne 0 ]; then status=1; fi
+
+          if [ -f apps/web-console/src/lib/security/web-security-headers.test.ts ]; then
+            echo "=== web-security-headers ===" | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
+            pnpm --filter @booking-os/web-console exec node --test --import tsx src/lib/security/web-security-headers.test.ts 2>&1 | tee -a "$GITHUB_WORKSPACE/task5-diagnostic.log"
+            web_headers_status=${PIPESTATUS[0]}
+            if [ "$web_headers_status" -ne 0 ]; then status=1; fi
+          fi
+
           echo "$status" > "$GITHUB_WORKSPACE/task5-exit.txt"
           exit 0
 
