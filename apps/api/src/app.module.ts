@@ -2,6 +2,7 @@ import { type MiddlewareConsumer, Module, type NestModule } from "@nestjs/common
 import { APP_INTERCEPTOR, DiscoveryModule } from "@nestjs/core";
 
 import { HttpSecurityInterceptor } from "./common/http/http-security.interceptor.js";
+import { HttpSecurityMiddleware } from "./common/http/http-security.middleware.js";
 import { RequestContextModule } from "./common/request-context/request-context.module.js";
 import { EnvironmentModule } from "./config/environment.module.js";
 import { DatabaseModule } from "./database/database.module.js";
@@ -47,6 +48,7 @@ import { ReliabilityModule } from "./reliability/reliability.module.js";
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(HttpSecurityMiddleware).forRoutes(AuthorizationController);
     consumer
       .apply(SessionAuthMiddleware)
       .forRoutes(PlatformTenantsController, PlatformSecurityController);
