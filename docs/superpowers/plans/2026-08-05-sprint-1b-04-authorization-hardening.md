@@ -11,8 +11,8 @@
 ## Execution Status — reconciled 2026-08-11
 
 Status: IN_PROGRESS  
-Current Task: Task 5  
-Last implementation-state reconciliation baseline: `991fbeeb710daeada7adb65cc0f9679ca4c9578a`
+Current Task: Task 6 (next; not started)  
+Last implementation-state reconciliation baseline: `e4ac5a6119531e3766d99bbd434e03c2cef81d47`
 
 Implementation evidence:
 
@@ -20,8 +20,8 @@ Implementation evidence:
 - Task 2 is **VERIFIED IMPLEMENTED**. `545d77111dc40dd9a99209c7b9ce5b5d6ea77184` — `feat: enforce permission and resource policies`.
 - Task 3 is **VERIFIED COMPLETE**. `c9a11c7bea153b6f16ea1ab6b738596dbac9740f` introduced authorization session snapshots, membership authorization versioning, attacker-header rejection, and stale-authority reconciliation/rotation. Current `main` also contains the planned `authorization-before-use-case.e2e.test.ts` and `authorization-context-concurrency.e2e.test.ts`; request-context and tenant-transaction tests cover spoofed authority headers plus nested tenant/actor/session/snapshot conflicts; CI #1480 completed Unit/API E2E/RLS successfully with these tests in the `test:e2e` glob.
 - Task 4 is **VERIFIED COMPLETE** at code baseline `991fbeeb710daeada7adb65cc0f9679ca4c9578a`. The branch exposes current-scope-only `GET /auth/me/authorization`, protects authenticated and unauthenticated authorization responses from shared/browser caching, implements exact-host/CSRF/permission-gated platform incident session revocation, persists `platform.security.session.revoke` through an additive migration, and commits regenerated OpenAPI/API-client artifacts. Fresh GitHub evidence on that baseline: CI run #1562 completed Quality, OpenAPI compatibility, Unit/API E2E/RLS, and migration verification successfully; Sprint 0 gates run #1117 completed OpenAPI generated-artifact check, generated-client typecheck, and repository-generator tests successfully.
-- Task 5 is **ACTIVE**. Browser/cache/logging/outbox hardening artifacts already present on the branch are treated as Task 5 work-in-progress and must be reconciled against the exact Task 5 requirements before completion is claimed.
-- Tasks 6–8 are **PENDING / EXPECTED_INCOMPLETE** while Task 5 is active. Their absent outputs are not specification conflicts and are not missing implementation yet.
+- Task 5 is **VERIFIED COMPLETE**. The implementation enforces the approved browser/cache policy across sensitive API and web-console auth surfaces, preserves the `private, no-store` authorization-endpoint exception, rejects unsafe return URLs, bounds recursive redaction with cycle handling, prevents sensitive exception messages/stacks from reaching structured logs, and keeps outbox dead-letter diagnostics bounded without stripping encrypted business payloads. Focused Task 5 diagnostic run #34 completed the API security regression, observability redaction/logger, worker outbox, return-URL, web security-header, and full API unit suites successfully on `ba7ea56131f83ea1873b70a2a0f83871dec745a2`. Standard CI run #1594 on the same implementation head completed Quality, OpenAPI compatibility, Unit/API E2E/RLS, migration verification, and Build successfully; API architecture #1083, Sprint 0 gates #1149, and Identity email integration #862 also completed successfully. The temporary Task 5 diagnostic workflow was removed in `e4ac5a6119531e3766d99bbd434e03c2cef81d47` after verification.
+- Tasks 6–8 are **PENDING / EXPECTED_INCOMPLETE**. Task 6 is the next task, but no Task 6 implementation is claimed by this reconciliation.
 
 Task 3 evidence details are recorded in `docs/superpowers/checkpoints/2026-08-10-reconciliation-governance-closeout.md`.
 
@@ -147,11 +147,11 @@ interface AuthorizedTenantExecutionContext extends TenantExecutionContext {
 
 **Required headers:** `Content-Security-Policy: default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`, `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`, `Cache-Control: no-store`.
 
-- [ ] Write tests for activation/reset/invite/login/me/authorization headers, external/protocol-relative/encoded return URL rejection, and recursive redaction of password/cookie/header/token/envelope fields from logs/traces/dead letters/errors.
-- [ ] Run `pnpm --filter @booking-os/api test:e2e -- auth-security-regression.e2e.test.ts`; expected FAIL.
-- [ ] Implement route-aware headers, bounded recursive redaction, no auth request-body logging, and same-origin redirect allowlist.
-- [ ] Rerun API/observability/worker/web tests; expected PASS.
-- [ ] Commit: `fix: harden identity access boundaries`.
+- [x] Write tests for activation/reset/invite/login/me/authorization headers, external/protocol-relative/encoded return URL rejection, and recursive redaction of password/cookie/header/token/envelope fields from logs/traces/dead letters/errors.
+- [x] Run `pnpm --filter @booking-os/api test:e2e -- auth-security-regression.e2e.test.ts`; RED evidence was captured while stale browser/CSP and redaction behavior remained, then the focused Task 5 diagnostic was rerun to GREEN after implementation.
+- [x] Implement route-aware headers, bounded recursive redaction, no auth request-body logging, sensitive exception-message fail-closed handling, and same-origin redirect allowlist.
+- [x] Rerun API/observability/worker/web tests; focused Task 5 diagnostic #34 and standard CI #1594 completed successfully on the verified implementation head.
+- [x] Task 5 hardening changes are committed on the branch; temporary diagnostic infrastructure was removed after verification.
 
 ### Task 6: Transactional Audit and Bounded Metrics
 
