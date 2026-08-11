@@ -61,13 +61,13 @@ test("provisions a pending user and its audit event in one transaction", async (
     },
   };
   const prisma = {
+    ...transactionPrisma(transaction, operations),
     user: {
       async create() {
         operations.push("root_create_user");
         return userRow;
       },
     },
-    ...transactionPrisma(transaction, operations),
   } as unknown as PrismaService;
   const adapter = new PrismaIdentityRepositoryAdapter(prisma);
   const input = {
