@@ -91,7 +91,7 @@ test("auth responses carry browser hardening headers without weakening no-store 
     assert.equal(response.headers["cache-control"], "no-store");
     assert.equal(
       response.headers["content-security-policy"],
-      "default-src 'none'; frame-ancestors 'none'",
+      "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
     );
     assert.equal(response.headers["x-frame-options"], "DENY");
     assert.equal(response.headers["x-content-type-options"], "nosniff");
@@ -100,6 +100,7 @@ test("auth responses carry browser hardening headers without weakening no-store 
       response.headers["permissions-policy"],
       "camera=(), geolocation=(), microphone=()",
     );
+    assert.match(response.headers.vary ?? "", /(?:^|,\s*)Origin(?:,|$)/);
   } finally {
     await app.close();
   }
