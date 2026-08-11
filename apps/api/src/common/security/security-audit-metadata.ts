@@ -33,9 +33,7 @@ function isCredentialLikeValue(value: string): boolean {
   );
 }
 
-export function assertSafeSecurityAuditMetadata(
-  metadata: Readonly<Record<string, unknown>>,
-): void {
+export function assertSafeSecurityAuditMetadata(metadata: Readonly<Record<string, unknown>>): void {
   for (const [key, value] of Object.entries(metadata)) {
     if (isProhibitedKey(key)) {
       throw new Error(`Security audit metadata contains prohibited field: ${key}`);
