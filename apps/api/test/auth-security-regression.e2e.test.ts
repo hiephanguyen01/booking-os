@@ -137,7 +137,10 @@ test("Task 5 hardens activation, reset, invite, login, me, and authorization res
       {
         name: "unauthenticated me",
         execute: () =>
-          request(app.getHttpServer()).get("/api/auth/me").set("host", PLATFORM_HOSTNAME).expect(401),
+          request(app.getHttpServer())
+            .get("/api/auth/me")
+            .set("host", PLATFORM_HOSTNAME)
+            .expect(401),
         cacheControl: "no-store",
       },
       {
