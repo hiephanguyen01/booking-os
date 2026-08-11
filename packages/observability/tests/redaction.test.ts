@@ -104,3 +104,59 @@ test("does not mutate the original value", () => {
   assert.equal(input.nested.password, "secret");
   assert.equal(input.nested.safe, "visible");
 });
+
+test("bounds recursive traversal before arbitrarily deep data can reach diagnostics", () => {
+  const input: Record<string, unknown> = {};
+  let cursor = input;
+
+  for (let index = 0; index < 64; index += 1) {
+    const next: Record<string, unknown> = {};
+    cursor.next = next;
+    cursor = next;
+  }
+  cursor.password = "deep-secret";
+
+  const result = redactSensitiveData(input);
+  let value: unknown = result;
+  let hops = 0;
+
+  while (
+    value !== REDACTED &&
+    value !== null &&
+    typeof value === "object" &&
+    "next" in value
+  ) {
+    value = (value as Record<string, unknown>).next;
+    hops += 1;
+    assert.ok(hops < 64, "redaction traversal must stop before the full input depth");
+  }
+
+  assert.equal(value, REDACTED);
+  assert.doesNotMatch(JSON.stringify(result), /deep-secret/u);
+});
+
+test("redacts circular references instead of recursing forever", () => {
+  type CircularPayload = {
+    safe: string;
+    self?: CircularPayload;
+    nested?: {
+      password: string;
+      parent?: CircularPayload;
+    };
+  };
+
+  const input: CircularPayload = { safe: "visible" };
+  input.self = input;
+  input.nested = { password: "cycle-secret", parent: input };
+
+  const result = redactSensitiveData(input);
+
+  assert.deepEqual(result, {
+    safe: "visible",
+    self: REDACTED,
+    nested: {
+      password: REDACTED,
+      parent: REDACTED,
+    },
+  });
+});
