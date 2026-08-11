@@ -204,7 +204,9 @@ test("security-state mutation persists bounded audit metadata in the same succes
 
   assert.deepEqual(response.body, { userId: TARGET_USER_ID, revokedSessionCount: 1 });
 
-  const storedSession = await prisma.authSession.findUniqueOrThrow({ where: { id: targetSessionId } });
+  const storedSession = await prisma.authSession.findUniqueOrThrow({
+    where: { id: targetSessionId },
+  });
   assert.equal(storedSession.state, "revoked");
   assert.equal(storedSession.revocationReason, `platform_incident:${RAW_REASON}`);
 
