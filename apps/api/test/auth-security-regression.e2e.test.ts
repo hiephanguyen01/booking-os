@@ -125,13 +125,13 @@ test("Task 5 hardens activation, reset, invite, login, me, and authorization res
         cacheControl: "no-store",
       },
       {
-        name: "login validation error",
+        name: "login csrf rejection",
         execute: () =>
           request(app.getHttpServer())
             .post("/api/auth/login")
             .set("host", PLATFORM_HOSTNAME)
             .send({})
-            .expect(400),
+            .expect(403),
         cacheControl: "no-store",
       },
       {
