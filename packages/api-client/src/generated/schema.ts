@@ -84,6 +84,22 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/auth/me/authorization": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get: operations["getCurrentAuthorization"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/auth/password/forgot": {
         readonly parameters: {
             readonly query?: never;
@@ -356,6 +372,22 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/platform/security/users/{userId}/sessions/revoke": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post: operations["revokePlatformUserSessions"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/platform/tenants": {
         readonly parameters: {
             readonly query?: never;
@@ -435,6 +467,28 @@ export interface components {
             /** Format: uuid */
             readonly id: string;
         };
+        readonly AuthorizationContextResponseDto: {
+            readonly membershipAuthorizationVersion?: number;
+            /** Format: uuid */
+            readonly membershipId?: string;
+            /** @enum {string} */
+            readonly membershipStatus?: "active";
+            readonly permissionKeys: readonly string[];
+            readonly roleKeys: readonly string[];
+            readonly scope: components["schemas"]["AuthorizationScopeDto"];
+            /** Format: uuid */
+            readonly sessionId: string;
+            readonly userAuthorizationVersion: number;
+            /** Format: uuid */
+            readonly userId: string;
+        };
+        readonly AuthorizationScopeDto: {
+            /** Format: uuid */
+            readonly tenantId?: string;
+            readonly tenantSlug?: string;
+            /** @enum {string} */
+            readonly type: "platform" | "tenant";
+        };
         readonly CompletedResponseDto: {
             /** @example true */
             readonly completed: boolean;
@@ -492,6 +546,14 @@ export interface components {
         readonly OwnerInvitationResendResponseDto: {
             /** @example true */
             readonly accepted: boolean;
+        };
+        readonly PlatformSessionRevocationRequestDto: {
+            readonly reason: string;
+        };
+        readonly PlatformSessionRevocationResponseDto: {
+            readonly revokedSessionCount: number;
+            /** Format: uuid */
+            readonly userId: string;
         };
         readonly PreAuthCsrfResponseDto: {
             readonly csrfToken: string;
@@ -723,6 +785,25 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["CurrentAuthenticationResponseDto"];
+                };
+            };
+        };
+    };
+    readonly getCurrentAuthorization: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AuthorizationContextResponseDto"];
                 };
             };
         };
@@ -1086,6 +1167,31 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["TenantMembershipLifecycleMutationResponseDto"];
+                };
+            };
+        };
+    };
+    readonly revokePlatformUserSessions: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly userId: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["PlatformSessionRevocationRequestDto"];
+            };
+        };
+        readonly responses: {
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PlatformSessionRevocationResponseDto"];
                 };
             };
         };
