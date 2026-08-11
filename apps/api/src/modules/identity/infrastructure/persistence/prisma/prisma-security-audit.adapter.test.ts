@@ -42,7 +42,10 @@ test("persists a bounded security audit record", async () => {
   });
 
   assert.equal(writes.length, 1);
-  assert.doesNotMatch(JSON.stringify(writes[0]), /password|cookie|authorization|bearer|token|envelope/i);
+  assert.doesNotMatch(
+    JSON.stringify(writes[0]),
+    /password|cookie|authorization|bearer|token|envelope/i,
+  );
 });
 
 for (const [key, value] of [
