@@ -147,7 +147,15 @@ test("activation writes bounded audit metadata inside the token-consumption tran
 
   await adapter.consumeActivationToken(input);
 
-  assert.deepEqual(operations, ["begin", "lock", "password", "consume", "activate", "audit", "commit"]);
+  assert.deepEqual(operations, [
+    "begin",
+    "lock",
+    "password",
+    "consume",
+    "activate",
+    "audit",
+    "commit",
+  ]);
   assert.deepEqual(auditWrite, {
     data: {
       eventType: "identity.activation.completed",
@@ -298,17 +306,41 @@ test("audit failure rolls back password reset security-state mutation", async ()
       operations.push("lock");
       return [resetRow];
     },
-    passwordCredential: { async upsert() { operations.push("password"); } },
+    passwordCredential: {
+      async upsert() {
+        operations.push("password");
+      },
+    },
     passwordResetToken: {
-      async update() { operations.push("consume"); },
-      async updateMany() { operations.push("revoke_other_resets"); return { count: 0 }; },
+      async update() {
+        operations.push("consume");
+      },
+      async updateMany() {
+        operations.push("revoke_other_resets");
+        return { count: 0 };
+      },
     },
-    user: { async update() { operations.push("version"); } },
+    user: {
+      async update() {
+        operations.push("version");
+      },
+    },
     authSession: {
-      async findMany() { operations.push("find_sessions"); return []; },
-      async updateMany() { operations.push("revoke_sessions"); return { count: 0 }; },
+      async findMany() {
+        operations.push("find_sessions");
+        return [];
+      },
+      async updateMany() {
+        operations.push("revoke_sessions");
+        return { count: 0 };
+      },
     },
-    authSessionToken: { async updateMany() { operations.push("revoke_session_tokens"); return { count: 0 }; } },
+    authSessionToken: {
+      async updateMany() {
+        operations.push("revoke_session_tokens");
+        return { count: 0 };
+      },
+    },
     securityAuditEvent: {
       async create() {
         operations.push("audit");
