@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import nextConfig from "../../../next.config.ts";
+import nextConfig from "../../../next.config.js";
 
 const CONTENT_SECURITY_POLICY =
   "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
