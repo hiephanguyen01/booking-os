@@ -5,9 +5,9 @@ import { createStructuredLogger, type StructuredLogger } from "@booking-os/obser
 import { Global, type MiddlewareConsumer, Module, type NestModule } from "@nestjs/common";
 import { APP_FILTER, APP_INTERCEPTOR } from "@nestjs/core";
 
+import { ApiExceptionFilter } from "./api-exception.filter.js";
 import { StructuredAuthMetricsAdapter } from "./auth-metrics.adapter.js";
 import type { AuthMetricsPort } from "./auth-metrics.port.js";
-import { ApiExceptionFilter } from "./api-exception.filter.js";
 import { HttpLoggingInterceptor } from "./http-logging.interceptor.js";
 import { RequestIdMiddleware } from "./request-id.middleware.js";
 import {
@@ -53,12 +53,7 @@ import {
       useClass: ApiExceptionFilter,
     },
   ],
-  exports: [
-    API_LOGGER_TOKEN,
-    AUTH_METRICS_PORT,
-    MONOTONIC_CLOCK_TOKEN,
-    WALL_CLOCK_TOKEN,
-  ],
+  exports: [API_LOGGER_TOKEN, AUTH_METRICS_PORT, MONOTONIC_CLOCK_TOKEN, WALL_CLOCK_TOKEN],
 })
 export class ObservabilityModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
