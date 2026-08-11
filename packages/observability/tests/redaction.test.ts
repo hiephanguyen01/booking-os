@@ -120,12 +120,7 @@ test("bounds recursive traversal before arbitrarily deep data can reach diagnost
   let value: unknown = result;
   let hops = 0;
 
-  while (
-    value !== REDACTED &&
-    value !== null &&
-    typeof value === "object" &&
-    "next" in value
-  ) {
+  while (value !== REDACTED && value !== null && typeof value === "object" && "next" in value) {
     value = (value as Record<string, unknown>).next;
     hops += 1;
     assert.ok(hops < 64, "redaction traversal must stop before the full input depth");
