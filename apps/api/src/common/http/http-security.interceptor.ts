@@ -19,13 +19,44 @@ export interface SecurityResponse {
   setHeader(name: string, value: string): void;
 }
 
-const CONTENT_SECURITY_POLICY = "default-src 'none'; frame-ancestors 'none'";
+const CONTENT_SECURITY_POLICY =
+  "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
 const PERMISSIONS_POLICY = "camera=(), geolocation=(), microphone=()";
 const STRICT_TRANSPORT_SECURITY = "max-age=31536000; includeSubDomains";
 
 function pathnameOf(request: SecurityRequest): string {
   const value = request.originalUrl ?? request.url ?? "";
   return value.split("?", 1)[0] ?? "";
+}
+
+function appendVary(response: SecurityResponse, requiredValues: readonly string[]): void {
+  const existing = response.getHeader("Vary");
+  const values = new Map<string, string>();
+
+  const addValues = (value: unknown): void => {
+    if (typeof value === "string") {
+      for (const item of value.split(",")) {
+        const trimmed = item.trim();
+        if (trimmed.length > 0) values.set(trimmed.toLowerCase(), trimmed);
+      }
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) addValues(item);
+    }
+  };
+
+  addValues(existing);
+  for (const value of requiredValues) {
+    if (!values.has(value.toLowerCase())) values.set(value.toLowerCase(), value);
+  }
+
+  response.setHeader("Vary", [...values.values()].join(", "));
+}
+
+function isPathWithin(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
 export function applyHttpSecurityPolicy(
@@ -43,14 +74,20 @@ export function applyHttpSecurityPolicy(
     response.setHeader("Strict-Transport-Security", STRICT_TRANSPORT_SECURITY);
   }
 
-  const authPrefix = `/${environment.apiPrefix}/auth`;
   const pathname = pathnameOf(request);
-  if (
-    (pathname === authPrefix || pathname.startsWith(`${authPrefix}/`)) &&
-    response.getHeader("Cache-Control") === undefined
-  ) {
-    response.setHeader("Cache-Control", "private, no-store");
+  const authPrefix = `/${environment.apiPrefix}/auth`;
+  const authorizationPath = `${authPrefix}/me/authorization`;
+  const invitationsPrefix = `/${environment.apiPrefix}/membership/invitations`;
+  const isAuthorization = pathname === authorizationPath;
+  const isSensitive = isPathWithin(pathname, authPrefix) || isPathWithin(pathname, invitationsPrefix);
+
+  if (!isSensitive) return;
+
+  if (response.getHeader("Cache-Control") === undefined) {
+    response.setHeader("Cache-Control", isAuthorization ? "private, no-store" : "no-store");
   }
+
+  appendVary(response, isAuthorization ? ["Cookie", "Origin"] : ["Origin"]);
 }
 
 @Injectable()
