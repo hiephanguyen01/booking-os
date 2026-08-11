@@ -60,7 +60,7 @@ jobs:
           pnpm --filter @booking-os/observability build
           pnpm --filter @booking-os/auth build
       - run: pnpm --filter @booking-os/api prisma:migrate:deploy
-      - name: Run Task 5 focused regressions
+      - name: Run Task 5 focused regressions and API unit suite
         shell: bash
         run: |
           set -o pipefail
@@ -81,6 +81,7 @@ jobs:
           run_test outbox-diagnostics pnpm --filter @booking-os/worker-critical exec node --test --import tsx src/outbox/outbox-dispatcher.test.ts
           run_test safe-return-url pnpm --filter @booking-os/web-console exec node --test --import tsx src/lib/safe-return-url.test.ts
           run_test web-security-headers pnpm --filter @booking-os/web-console exec node --test --import tsx src/lib/security/web-security-headers.test.ts
+          run_test api-unit-suite pnpm --filter @booking-os/api test
           echo "$status" > "$GITHUB_WORKSPACE/task5-exit.txt"
           exit 0
       - name: Upload diagnostic output
