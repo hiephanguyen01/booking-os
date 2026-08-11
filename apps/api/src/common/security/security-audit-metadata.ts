@@ -34,7 +34,7 @@ function isCredentialLikeValue(value: string): boolean {
 }
 
 export function assertSafeSecurityAuditMetadata(
-  metadata: Readonly<Record<string, string | number | boolean | null>>,
+  metadata: Readonly<Record<string, unknown>>,
 ): void {
   for (const [key, value] of Object.entries(metadata)) {
     if (isProhibitedKey(key)) {
