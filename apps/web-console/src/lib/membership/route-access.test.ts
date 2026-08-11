@@ -37,18 +37,22 @@ for (const [pathname, session, expected] of cases) {
   });
 }
 
-test("middleware matcher protects the actual authenticated console page URLs", () => {
+test("middleware matcher covers authenticated routes and request-bound auth-page CSP", () => {
   assert.deepEqual(middlewareConfig.matcher, [
     "/api/:path*",
+    "/login",
+    "/activate/:path*",
+    "/password/:path*",
+    "/invite/:path*",
     "/platform/:path*",
     "/tenant/:path*",
     "/settings/:path*",
   ]);
 });
 
-test("invitation acceptance shell stays outside auth middleware for fragment handoff", () => {
+test("invitation acceptance shell passes through auth-page middleware for nonce CSP", () => {
   assert.equal(
     middlewareConfig.matcher.some((pattern) => pattern.startsWith("/invite")),
-    false,
+    true,
   );
 });
