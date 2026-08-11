@@ -9,7 +9,7 @@
     "build": "next build --webpack",
     "lint": "biome check app src middleware.ts next.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test --import tsx \"src/**/*.test.ts\" \"app/**/*.test.ts\" && vitest run",
+    "test": "node --test --import tsx \"middleware.test.ts\" \"src/**/*.test.ts\" \"app/**/*.test.ts\" && vitest run",
     "clean": "rimraf .next tsconfig.tsbuildinfo"
   },
   "dependencies": {
