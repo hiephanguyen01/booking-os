@@ -11,6 +11,7 @@ const PROHIBITED_KEY_FRAGMENTS = [
   "email",
 ] as const;
 
+const SAFE_METADATA_KEYS = new Set(["authorizationversion"]);
 const MAX_METADATA_DEPTH = 12;
 const EMAIL_ADDRESS_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BEARER_CREDENTIAL_PATTERN = /^bearer\s+\S+/i;
@@ -22,6 +23,10 @@ function normalizeMetadataKey(key: string): string {
 
 function isProhibitedKey(key: string): boolean {
   const normalized = normalizeMetadataKey(key);
+  if (SAFE_METADATA_KEYS.has(normalized)) {
+    return false;
+  }
+
   return PROHIBITED_KEY_FRAGMENTS.some((fragment) => normalized.includes(fragment));
 }
 
