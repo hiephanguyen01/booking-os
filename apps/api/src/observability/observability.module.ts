@@ -1,15 +1,18 @@
 import { randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
 
-import { createStructuredLogger } from "@booking-os/observability";
+import { createStructuredLogger, type StructuredLogger } from "@booking-os/observability";
 import { Global, type MiddlewareConsumer, Module, type NestModule } from "@nestjs/common";
 import { APP_FILTER, APP_INTERCEPTOR } from "@nestjs/core";
 
+import { StructuredAuthMetricsAdapter } from "./auth-metrics.adapter.js";
+import type { AuthMetricsPort } from "./auth-metrics.port.js";
 import { ApiExceptionFilter } from "./api-exception.filter.js";
 import { HttpLoggingInterceptor } from "./http-logging.interceptor.js";
 import { RequestIdMiddleware } from "./request-id.middleware.js";
 import {
   API_LOGGER_TOKEN,
+  AUTH_METRICS_PORT,
   MONOTONIC_CLOCK_TOKEN,
   REQUEST_ID_GENERATOR_TOKEN,
   WALL_CLOCK_TOKEN,
@@ -21,6 +24,12 @@ import {
     {
       provide: API_LOGGER_TOKEN,
       useFactory: () => createStructuredLogger({ service: "api" }),
+    },
+    {
+      provide: AUTH_METRICS_PORT,
+      inject: [API_LOGGER_TOKEN],
+      useFactory: (logger: StructuredLogger): AuthMetricsPort =>
+        new StructuredAuthMetricsAdapter(logger),
     },
     {
       provide: REQUEST_ID_GENERATOR_TOKEN,
@@ -44,7 +53,12 @@ import {
       useClass: ApiExceptionFilter,
     },
   ],
-  exports: [API_LOGGER_TOKEN, MONOTONIC_CLOCK_TOKEN, WALL_CLOCK_TOKEN],
+  exports: [
+    API_LOGGER_TOKEN,
+    AUTH_METRICS_PORT,
+    MONOTONIC_CLOCK_TOKEN,
+    WALL_CLOCK_TOKEN,
+  ],
 })
 export class ObservabilityModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
