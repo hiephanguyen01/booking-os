@@ -1,55 +1,13 @@
-name: Task 5 web CSP diagnostic
+name: Task 5 web CSP diagnostic (disabled)
 
 on:
-  push:
-    branches:
-      - feat/sprint-1b-04-task4-authorization-endpoint
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  web-console-test:
+  no-op:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 10.34.5
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run web-console tests and preserve output
-        id: web_test
-        shell: bash
-        run: |
-          set +e
-          pnpm turbo run test --filter=@booking-os/web-console --output-logs=full > web-console-test.log 2>&1
-          status=$?
-          cat web-console-test.log
-          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
-          exit 0
-
-      - name: Upload diagnostic output
-        uses: actions/upload-artifact@v7
-        with:
-          name: task5-web-csp-diagnostic
-          path: web-console-test.log
-          if-no-files-found: error
-
-      - name: Preserve test exit status
-        if: steps.web_test.outputs.exit_code != '0'
-        run: exit 1
+      - run: echo "Temporary Task 5 CSP diagnostics are disabled."
