@@ -48,7 +48,15 @@ import { ReliabilityModule } from "./reliability/reliability.module.js";
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(HttpSecurityMiddleware).forRoutes(AuthorizationController);
+    consumer
+      .apply(HttpSecurityMiddleware)
+      .forRoutes(
+        AuthorizationController,
+        NestIdentityPublicController,
+        TenantInvitationsController,
+        SessionHttpController,
+        SessionCsrfHttpController,
+      );
     consumer
       .apply(SessionAuthMiddleware)
       .forRoutes(PlatformTenantsController, PlatformSecurityController);
