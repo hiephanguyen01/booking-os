@@ -9,10 +9,7 @@ import { AdminRevokeUserSessionsUseCase } from "./application/use-cases/admin-re
 import { PlatformSecurityController } from "./infrastructure/http/platform-security.controller.js";
 import { PrismaPlatformSessionRevocationAdapter } from "./infrastructure/persistence/prisma/prisma-platform-session-revocation.adapter.js";
 import { SessionsModule } from "./sessions.module.js";
-import {
-  AUTH_METRICS_PORT,
-  PLATFORM_SESSION_REVOCATION_PORT,
-} from "./sessions.tokens.js";
+import { AUTH_METRICS_PORT, PLATFORM_SESSION_REVOCATION_PORT } from "./sessions.tokens.js";
 
 @Module({
   imports: [AuthorizationModule, RequestContextModule, DatabaseModule, SessionsModule],

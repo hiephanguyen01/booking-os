@@ -2,9 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { StructuredLogger } from "@booking-os/observability";
-
-import type { AuthMetric } from "./auth-metrics.port.js";
 import { StructuredAuthMetricsAdapter } from "./auth-metrics.adapter.js";
+import type { AuthMetric } from "./auth-metrics.port.js";
 
 interface InfoCall {
   readonly message: string;
