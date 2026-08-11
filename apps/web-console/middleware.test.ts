@@ -19,7 +19,10 @@ function assertAuthPageSecurityHeaders(response: Response): string {
   assert.equal(response.headers.get("referrer-policy"), "no-referrer");
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
   assert.equal(response.headers.get("x-frame-options"), "DENY");
-  assert.equal(response.headers.get("permissions-policy"), "camera=(), geolocation=(), microphone=()");
+  assert.equal(
+    response.headers.get("permissions-policy"),
+    "camera=(), geolocation=(), microphone=()",
+  );
   assert.equal(response.headers.get("cache-control"), "no-store");
   return csp;
 }
