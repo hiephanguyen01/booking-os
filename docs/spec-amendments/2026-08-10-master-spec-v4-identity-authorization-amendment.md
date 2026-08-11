@@ -2,6 +2,7 @@
 
 Date: 2026-08-10
 Status: Approved
+Last reconciled: 2026-08-11
 Owner: identity-access
 Applies to: `booking-saas-marketplace-master-spec-v4-nextjs.docx`
 
@@ -19,6 +20,7 @@ The exact permission examples in Master Spec V4 and the original Sprint 1B desig
 
 ```text
 platform.security.audit.read
+platform.security.session.revoke
 platform.tenants.provision
 platform.users.provision
 
