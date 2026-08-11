@@ -1,6 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { Prisma } from "@prisma/client";
 
+import { assertSafeSecurityAuditMetadata } from "../../../../../common/security/security-audit-metadata.js";
 import { PrismaService } from "../../../../../database/prisma.service.js";
 import type {
   SessionSecurityAuditPort,
@@ -12,6 +13,8 @@ export class PrismaSessionSecurityAuditAdapter implements SessionSecurityAuditPo
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async record(record: SessionSecurityAuditRecord): Promise<void> {
+    assertSafeSecurityAuditMetadata(record.metadata);
+
     await this.prisma.securityAuditEvent.create({
       data: {
         eventType: record.eventType,
