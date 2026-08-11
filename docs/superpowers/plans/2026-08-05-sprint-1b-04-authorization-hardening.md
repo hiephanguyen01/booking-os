@@ -8,19 +8,20 @@
 
 **Tech Stack:** Node.js 22+, TypeScript 5.9, NestJS 11.1, Prisma 6.19, PostgreSQL 17 FORCE RLS, Redis 7, OpenAPI 3.1, Node test runner, Supertest, Playwright, pnpm 10, GitHub Actions.
 
-## Execution Status — reconciled 2026-08-10
+## Execution Status — reconciled 2026-08-11
 
 Status: IN_PROGRESS  
-Current Task: Task 4  
-Last implementation-state reconciliation baseline: `edffe46a7d66cbd973af7e86cd554f44c6497eac`
+Current Task: Task 5  
+Last implementation-state reconciliation baseline: `991fbeeb710daeada7adb65cc0f9679ca4c9578a`
 
 Implementation evidence:
 
 - Task 1 is **VERIFIED IMPLEMENTED**. `ac5433dfbc272db4eb397269ba23f23926fbdb4b` — `feat: build authoritative authorization context`.
 - Task 2 is **VERIFIED IMPLEMENTED**. `545d77111dc40dd9a99209c7b9ce5b5d6ea77184` — `feat: enforce permission and resource policies`.
 - Task 3 is **VERIFIED COMPLETE**. `c9a11c7bea153b6f16ea1ab6b738596dbac9740f` introduced authorization session snapshots, membership authorization versioning, attacker-header rejection, and stale-authority reconciliation/rotation. Current `main` also contains the planned `authorization-before-use-case.e2e.test.ts` and `authorization-context-concurrency.e2e.test.ts`; request-context and tenant-transaction tests cover spoofed authority headers plus nested tenant/actor/session/snapshot conflicts; CI #1480 completed Unit/API E2E/RLS successfully with these tests in the `test:e2e` glob.
-- Task 4 is **ACTIVE**. Its endpoint/admin-revocation outputs are now planned current work, not an `EXPECTED_INCOMPLETE` finding.
-- Tasks 5–8 are **PENDING / EXPECTED_INCOMPLETE** while Task 4 is active. Their absent outputs are not specification conflicts and are not missing implementation yet.
+- Task 4 is **VERIFIED COMPLETE** at code baseline `991fbeeb710daeada7adb65cc0f9679ca4c9578a`. The branch exposes current-scope-only `GET /auth/me/authorization`, protects authenticated and unauthenticated authorization responses from shared/browser caching, implements exact-host/CSRF/permission-gated platform incident session revocation, persists `platform.security.session.revoke` through an additive migration, and commits regenerated OpenAPI/API-client artifacts. Fresh GitHub evidence on that baseline: CI run #1562 completed Quality, OpenAPI compatibility, Unit/API E2E/RLS, and migration verification successfully; Sprint 0 gates run #1117 completed OpenAPI generated-artifact check, generated-client typecheck, and repository-generator tests successfully.
+- Task 5 is **ACTIVE**. Browser/cache/logging/outbox hardening artifacts already present on the branch are treated as Task 5 work-in-progress and must be reconciled against the exact Task 5 requirements before completion is claimed.
+- Tasks 6–8 are **PENDING / EXPECTED_INCOMPLETE** while Task 5 is active. Their absent outputs are not specification conflicts and are not missing implementation yet.
 
 Task 3 evidence details are recorded in `docs/superpowers/checkpoints/2026-08-10-reconciliation-governance-closeout.md`.
 
@@ -127,11 +128,11 @@ interface AuthorizedTenantExecutionContext extends TenantExecutionContext {
 
 **Routes:** `GET /auth/me/authorization`, `POST /platform/security/users/:userId/sessions/revoke`.
 
-- [ ] Write contract tests requiring current user/session/scope/tenant/membership/roles/permissions/versions, excluding other memberships/password/hash/token/abuse fields. Require `Cache-Control: private, no-store`, `Vary: Cookie, Origin`, no ETag/shared cache, JSON UTF-8.
-- [ ] Run `pnpm --filter @booking-os/api test -- get-current-authorization.use-case.test.ts authorization.controller.test.ts admin-revoke-user-sessions.use-case.test.ts`; expected FAIL.
-- [ ] Implement endpoint and explicit platform incident revocation with exact host, permission, CSRF, audit reason, target user.
-- [ ] Run unit/E2E, OpenAPI generation/check/breaking check; expected PASS.
-- [ ] Commit: `feat: expose authoritative authorization context`.
+- [x] Write contract tests requiring current user/session/scope/tenant/membership/roles/permissions/versions, excluding other memberships/password/hash/token/abuse fields. Require `Cache-Control: private, no-store`, `Vary: Cookie, Origin`, no ETag/shared cache, JSON UTF-8.
+- [x] Run `pnpm --filter @booking-os/api test -- get-current-authorization.use-case.test.ts authorization.controller.test.ts admin-revoke-user-sessions.use-case.test.ts`; RED behavior was established before implementation and the completed root test suite is green on the verified baseline.
+- [x] Implement endpoint and explicit platform incident revocation with exact host, permission, CSRF, audit reason, target user.
+- [x] Run unit/E2E, OpenAPI generation/check/breaking check; fresh GitHub CI/Sprint 0 gates are green on the verified baseline.
+- [x] Commit Task 4 implementation and generated-contract outputs on `feat/sprint-1b-04-task4-authorization-endpoint`.
 
 ### Task 5: Browser, Cache, Redirect, Logging, and Outbox Hardening
 
