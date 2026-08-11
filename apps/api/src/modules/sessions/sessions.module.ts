@@ -10,6 +10,8 @@ import { EnvironmentService } from "../../config/environment.service.js";
 import { DatabaseModule } from "../../database/database.module.js";
 import { DependenciesModule } from "../../dependencies/dependencies.module.js";
 import { REDIS_CLIENT_TOKEN } from "../../dependencies/tokens.js";
+import type { AuthMetricsPort } from "../../observability/auth-metrics.port.js";
+import { StructuredAuthMetricsAdapter } from "../../observability/auth-metrics.adapter.js";
 import { API_LOGGER_TOKEN } from "../../observability/tokens.js";
 import { ResolvePendingInvitationLoginUseCase } from "../memberships/application/use-cases/resolve-pending-invitation-login.use-case.js";
 import { MembershipsModule } from "../memberships/memberships.module.js";
@@ -43,6 +45,7 @@ import { PrismaSessionRepositoryAdapter } from "./infrastructure/persistence/pri
 import { PrismaSessionSecurityAuditAdapter } from "./infrastructure/persistence/prisma/prisma-session-security-audit.adapter.js";
 import { PrismaSessionSubjectAdapter } from "./infrastructure/persistence/prisma/prisma-session-subject.adapter.js";
 import {
+  AUTH_METRICS_PORT,
   CREDENTIAL_VERIFIER_PORT,
   LOGIN_ABUSE_HMAC_KEY,
   LOGIN_ABUSE_METRICS_PORT,
@@ -100,6 +103,12 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
       inject: [API_LOGGER_TOKEN],
       useFactory: (logger: StructuredLogger): LoginAbuseMetricsPort =>
         new StructuredLoginAbuseMetricsAdapter(logger),
+    },
+    {
+      provide: AUTH_METRICS_PORT,
+      inject: [API_LOGGER_TOKEN],
+      useFactory: (logger: StructuredLogger): AuthMetricsPort =>
+        new StructuredAuthMetricsAdapter(logger),
     },
     {
       provide: LOGIN_ABUSE_PROTECTION_PORT,
@@ -206,6 +215,7 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
   exports: [
     SESSION_REPOSITORY_PORT,
     LOGIN_ABUSE_PROTECTION_PORT,
+    AUTH_METRICS_PORT,
     CreateSessionUseCase,
     ValidateSessionUseCase,
     RefreshSessionUseCase,

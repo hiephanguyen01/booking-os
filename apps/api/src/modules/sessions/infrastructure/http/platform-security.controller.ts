@@ -110,6 +110,7 @@ export class PlatformSecurityController {
         targetUserId: requireUuid(userId, "userId"),
         reason: requireReason(body?.reason),
         requestId: authenticated.requestId,
+        hostname,
       });
     } catch (error: unknown) {
       if (error instanceof AdminSessionRevocationForbiddenError) {

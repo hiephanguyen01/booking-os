@@ -1,6 +1,7 @@
 import type { AuthorizationContext } from "@booking-os/contracts";
 
-import type { SessionRepositoryPort } from "../ports/session-repository.port.js";
+import type { AuthMetricsPort } from "../../../../observability/auth-metrics.port.js";
+import type { PlatformSessionRevocationPort } from "../ports/platform-session-revocation.port.js";
 
 const REQUIRED_PERMISSION = "platform.security.session.revoke" as const;
 
@@ -16,6 +17,7 @@ export interface AdminRevokeUserSessionsInput {
   readonly targetUserId: string;
   readonly reason: string;
   readonly requestId: string;
+  readonly hostname: string;
 }
 
 export interface AdminRevokeUserSessionsResult {
@@ -29,7 +31,8 @@ export interface AdminRevokeUserSessionsClock {
 
 export class AdminRevokeUserSessionsUseCase {
   constructor(
-    private readonly sessions: Pick<SessionRepositoryPort, "revokeAllForUser">,
+    private readonly mutations: PlatformSessionRevocationPort,
+    private readonly metrics: AuthMetricsPort,
     private readonly clock: AdminRevokeUserSessionsClock = { now: () => new Date() },
   ) {}
 
@@ -42,11 +45,24 @@ export class AdminRevokeUserSessionsUseCase {
     }
 
     const reason = input.reason.trim();
-    const revokedSessionCount = await this.sessions.revokeAllForUser({
-      userId: input.targetUserId,
+    const revokedSessionCount = await this.mutations.revokeAllForUserAndAudit({
+      actorUserId: input.authorization.userId,
+      targetUserId: input.targetUserId,
       revokedAt: this.clock.now(),
-      reason: `platform_incident:${reason}`,
+      revocationReason: `platform_incident:${reason}`,
+      requestId: input.requestId,
+      hostname: input.hostname,
     });
+
+    this.metrics.record({
+      eventType: "session",
+      purpose: "revoke",
+      outcome: "success",
+      scope: "platform",
+      reasonFamily: "security_incident",
+      delayBucket: "none",
+    });
+
     return { userId: input.targetUserId, revokedSessionCount };
   }
 }

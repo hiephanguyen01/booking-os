@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type { AuthorizationContext } from "@booking-os/contracts";
 
-import type { AuthMetric, AuthMetricsPort } from "../../../observability/auth-metrics.port.js";
+import type { AuthMetric, AuthMetricsPort } from "../../../../observability/auth-metrics.port.js";
 import {
   AdminRevokeUserSessionsUseCase,
   AdminSessionRevocationForbiddenError,
