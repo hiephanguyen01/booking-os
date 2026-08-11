@@ -270,7 +270,7 @@ test("GET /auth/me/authorization protects unauthenticated responses from browser
   assert.equal(response.headers["cache-control"], "private, no-store");
   assert.equal(
     response.headers["content-security-policy"],
-    "default-src 'none'; frame-ancestors 'none'",
+    "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
   );
   assert.equal(response.headers["x-frame-options"], "DENY");
   assert.equal(response.headers["x-content-type-options"], "nosniff");
