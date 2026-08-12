@@ -69,7 +69,7 @@ after(async () => {
   await prisma.$disconnect();
 });
 
-test("concurrent bootstrap creates one pending platform admin and one encrypted activation delivery", async () => {
+test("concurrent bootstrap creates one pending platform admin, one encrypted activation delivery, and one canonical audit", async () => {
   const results = await Promise.all([
     executePlatformAdminBootstrap({
       prisma,
@@ -122,6 +122,24 @@ test("concurrent bootstrap creates one pending platform admin and one encrypted 
   const serializedPayload = JSON.stringify(events[0]?.payload);
   assert.match(serializedPayload, /"envelope"/u);
   assert.doesNotMatch(serializedPayload, /selector|secret|serialized|tokenHash|rawToken/iu);
+
+  const audits = await prisma.securityAuditEvent.findMany({
+    where: { actorUserId: user.id, subjectUserId: user.id },
+  });
+  assert.equal(audits.length, 1);
+  assert.equal(audits[0]?.eventType, "platform.bootstrap_admin_created");
+  assert.equal(audits[0]?.requestId, null);
+  assert.deepEqual(audits[0]?.metadata, {
+    action: "bootstrap_platform_admin",
+    result: "success",
+    reason: "initial_platform_admin_created",
+    hostname: HOSTNAME,
+    scopeType: "platform",
+  });
+  assert.doesNotMatch(
+    JSON.stringify(audits[0]),
+    /bootstrap\+pilot|selector|secret|serialized|tokenHash|rawToken|cookie|authorization/iu,
+  );
 });
 
 test("same configured email is idempotent and a different email is refused", async () => {
@@ -144,6 +162,16 @@ test("same configured email is idempotent and a different email is refused", asy
   assert.equal(second.created, false);
   assert.equal(await prisma.accountActivationToken.count({ where: { userId: first.userId } }), 1);
   assert.equal(await prisma.outboxEvent.count({ where: { aggregateId: first.userId } }), 1);
+  assert.equal(
+    await prisma.securityAuditEvent.count({
+      where: {
+        actorUserId: first.userId,
+        subjectUserId: first.userId,
+        eventType: "platform.bootstrap_admin_created",
+      },
+    }),
+    1,
+  );
 
   await assert.rejects(
     executePlatformAdminBootstrap({
