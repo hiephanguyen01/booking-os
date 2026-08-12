@@ -28,7 +28,7 @@ test("allows bounded session reasons such as token_reuse", async () => {
   const { adapter, writes } = createAdapter();
 
   await adapter.record({
-    eventType: "session.compromised",
+    eventType: "session.reuse_detected",
     actorUserId: USER_ID,
     subjectUserId: USER_ID,
     sessionId: SESSION_ID,
@@ -45,7 +45,7 @@ test("rejects prohibited session audit metadata before persistence", async () =>
 
   await assert.rejects(
     adapter.record({
-      eventType: "session.compromised",
+      eventType: "session.reuse_detected",
       actorUserId: USER_ID,
       subjectUserId: USER_ID,
       sessionId: SESSION_ID,
