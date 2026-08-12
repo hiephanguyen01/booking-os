@@ -154,7 +154,13 @@ const externalPasswordDenylist: PasswordDenylistPort = Object.freeze({
         passwordDenylist: PasswordDenylistPort,
         clock: ClockPort,
       ): CompletePasswordResetUseCase =>
-        new CompletePasswordResetUseCase(repository, tokens, passwordHasher, passwordDenylist, clock),
+        new CompletePasswordResetUseCase(
+          repository,
+          tokens,
+          passwordHasher,
+          passwordDenylist,
+          clock,
+        ),
     },
     {
       provide: IdentityPublicController,
