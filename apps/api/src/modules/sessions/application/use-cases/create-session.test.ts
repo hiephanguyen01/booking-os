@@ -19,17 +19,20 @@ import {
 test("creates a host-bound tenant session while persisting only the token digest", async () => {
   const created: CreateSessionRecord[] = [];
   const ids = [SESSION_ID, TOKEN_ID];
-  const useCase = new CreateSessionUseCase(createSessionRepository({
-    async create(input) {
-      created.push(input);
-      return input;
+  const useCase = new CreateSessionUseCase(
+    createSessionRepository({
+      async create(input) {
+        created.push(input);
+        return input;
+      },
+    }),
+    {
+      now: () => NOW,
+      digestKey: DIGEST_KEY,
+      idFactory: () => ids.shift() ?? "unexpected-id",
+      tokenFactory: () => TOKEN,
     },
-  }), {
-    now: () => NOW,
-    digestKey: DIGEST_KEY,
-    idFactory: () => ids.shift() ?? "unexpected-id",
-    tokenFactory: () => TOKEN,
-  });
+  );
 
   const result = await useCase.execute({
     userId: USER_ID,
