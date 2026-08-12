@@ -5,8 +5,6 @@ import type { IdentityRepositoryPort } from "../ports/identity-repository.port.j
 import type { OneTimeTokenPort } from "../ports/one-time-token.port.js";
 import type { PasswordDenylistPort } from "../ports/password-denylist.port.js";
 import type { PasswordHasherPort } from "../ports/password-hasher.port.js";
-import type { SecurityAuditPort } from "../ports/security-audit.port.js";
-import type { SessionRevocationPort } from "../ports/session-revocation.port.js";
 import {
   identityTokenPurpose,
   normalizeHostname,
@@ -33,8 +31,6 @@ export class CompletePasswordResetUseCase {
     private readonly tokens: OneTimeTokenPort,
     private readonly passwordHasher: PasswordHasherPort,
     private readonly passwordDenylist: PasswordDenylistPort,
-    private readonly sessions: SessionRevocationPort,
-    private readonly audit: SecurityAuditPort,
     private readonly clock: ClockPort,
   ) {}
 
@@ -62,16 +58,7 @@ export class CompletePasswordResetUseCase {
       tenantId,
       passwordHash,
       now,
-    });
-
-    await this.sessions.revokeAllForUser(result.userId, now);
-    await this.audit.record({
-      eventType: "identity.password_reset.completed",
-      actorUserId: result.userId,
-      subjectUserId: result.userId,
       requestId: command.requestId,
-      metadata: { scopeType: command.scopeType, hostname },
-      occurredAt: now,
     });
 
     return Object.freeze({ userId: result.userId });
