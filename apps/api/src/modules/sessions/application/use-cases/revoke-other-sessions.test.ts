@@ -11,12 +11,15 @@ import {
 
 test("revokes every other session with one aggregate audit event", async () => {
   const revoked: unknown[] = [];
-  const useCase = new RevokeOtherSessionsUseCase(createSessionRepository({
-    async revokeOthersForUser(input) {
-      revoked.push(input);
-      return 2;
-    },
-  }), { now: () => NOW });
+  const useCase = new RevokeOtherSessionsUseCase(
+    createSessionRepository({
+      async revokeOthersForUser(input) {
+        revoked.push(input);
+        return 2;
+      },
+    }),
+    { now: () => NOW },
+  );
 
   assert.deepEqual(
     await useCase.execute({
