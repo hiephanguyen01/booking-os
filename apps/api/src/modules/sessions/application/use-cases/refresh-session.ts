@@ -10,7 +10,6 @@ import {
   SessionCompromisedError,
   SessionUnavailableError,
 } from "../../domain/session-errors.js";
-import type { SessionSecurityAuditPort } from "../ports/security-audit.port.js";
 import type {
   SessionRepositoryPort,
   SessionScope,
@@ -48,7 +47,6 @@ export class RefreshSessionUseCase {
 
   constructor(
     private readonly sessions: SessionRepositoryPort,
-    private readonly audit: SessionSecurityAuditPort,
     private readonly options: RefreshSessionOptions,
   ) {
     this.now = options.now ?? (() => new Date());
@@ -116,10 +114,7 @@ export class RefreshSessionUseCase {
         reuseDetectedAt: null,
         revokedAt: null,
       },
-    });
-
-    if (result.status === "rotated") {
-      await this.audit.record({
+      audit: {
         eventType: "session.rotated",
         actorUserId: stored.session.userId,
         subjectUserId: stored.session.userId,
@@ -132,7 +127,10 @@ export class RefreshSessionUseCase {
           result: "success",
         },
         occurredAt: now,
-      });
+      },
+    });
+
+    if (result.status === "rotated") {
       return { status: "rotated", token: rawSuccessor, session: stored.session };
     }
     if (result.status === "existing") {
@@ -144,15 +142,15 @@ export class RefreshSessionUseCase {
         tokenId: stored.token.id,
         compromisedAt: now,
         reason: "token_reuse",
-      });
-      await this.audit.record({
-        eventType: "session.compromised",
-        actorUserId: stored.session.userId,
-        subjectUserId: stored.session.userId,
-        sessionId: stored.session.id,
-        requestId: input.requestId,
-        metadata: { reason: "token_reuse", hostname: input.hostname },
-        occurredAt: now,
+        audit: {
+          eventType: "session.reuse_detected",
+          actorUserId: stored.session.userId,
+          subjectUserId: stored.session.userId,
+          sessionId: stored.session.id,
+          requestId: input.requestId,
+          metadata: { reason: "token_reuse", hostname: input.hostname },
+          occurredAt: now,
+        },
       });
       throw new SessionCompromisedError();
     }
