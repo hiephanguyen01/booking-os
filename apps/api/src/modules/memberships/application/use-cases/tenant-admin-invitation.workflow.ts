@@ -219,7 +219,7 @@ export class TenantAdminInvitationWorkflow implements TenantAdminInvitationWorkf
           });
         }
         await session.audit.append({
-          eventType: "membership.invitation.resent",
+          eventType: "membership.invitation_resent",
           actorUserId: input.actorUserId,
           subjectUserId: identity.userId,
           requestId: input.requestId,
