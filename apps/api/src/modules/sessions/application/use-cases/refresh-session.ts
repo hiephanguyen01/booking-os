@@ -119,6 +119,20 @@ export class RefreshSessionUseCase {
     });
 
     if (result.status === "rotated") {
+      await this.audit.record({
+        eventType: "session.rotated",
+        actorUserId: stored.session.userId,
+        subjectUserId: stored.session.userId,
+        sessionId: stored.session.id,
+        requestId: input.requestId,
+        metadata: {
+          hostname: input.hostname,
+          scopeType: input.scope.type,
+          tenantId: input.scope.type === "tenant" ? input.scope.tenantId : null,
+          result: "success",
+        },
+        occurredAt: now,
+      });
       return { status: "rotated", token: rawSuccessor, session: stored.session };
     }
     if (result.status === "existing") {
