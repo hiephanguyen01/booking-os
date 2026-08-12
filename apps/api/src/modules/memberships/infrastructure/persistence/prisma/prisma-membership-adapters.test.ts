@@ -131,7 +131,7 @@ test("role assignment, tenant activation, and audit append never accept a foreig
   await roles.assign({ userId, roleKey: "tenant_admin", now });
   await tenants.activate(now);
   await audit.append({
-    eventType: "membership.role_assigned",
+    eventType: "membership.invited",
     actorUserId: userId,
     subjectUserId: userId,
     requestId: "req-1",
