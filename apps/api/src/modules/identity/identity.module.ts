@@ -9,7 +9,6 @@ import type { IdentityRepositoryPort } from "./application/ports/identity-reposi
 import type { OneTimeTokenPort } from "./application/ports/one-time-token.port.js";
 import type { PasswordDenylistPort } from "./application/ports/password-denylist.port.js";
 import type { PasswordHasherPort } from "./application/ports/password-hasher.port.js";
-import type { SecurityAuditPort } from "./application/ports/security-audit.port.js";
 import type { SensitiveEnvelopePort } from "./application/ports/sensitive-envelope.port.js";
 import { CompleteActivationUseCase } from "./application/use-cases/complete-activation.js";
 import { CompletePasswordResetUseCase } from "./application/use-cases/complete-password-reset.js";
@@ -125,7 +124,6 @@ const externalPasswordDenylist: PasswordDenylistPort = Object.freeze({
         IDENTITY_OUTBOX_PORT,
         ONE_TIME_TOKEN_PORT,
         SENSITIVE_ENVELOPE_PORT,
-        SECURITY_AUDIT_PORT,
         CLOCK_PORT,
       ],
       useFactory: (
@@ -133,10 +131,9 @@ const externalPasswordDenylist: PasswordDenylistPort = Object.freeze({
         outbox: IdentityOutboxPort,
         tokens: OneTimeTokenPort,
         envelope: SensitiveEnvelopePort,
-        audit: SecurityAuditPort,
         clock: ClockPort,
       ): RequestPasswordResetUseCase =>
-        new RequestPasswordResetUseCase(repository, outbox, tokens, envelope, audit, clock),
+        new RequestPasswordResetUseCase(repository, outbox, tokens, envelope, clock),
     },
     {
       provide: CompletePasswordResetUseCase,

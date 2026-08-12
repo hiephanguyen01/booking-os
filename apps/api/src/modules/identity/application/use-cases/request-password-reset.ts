@@ -7,7 +7,6 @@ import type { ClockPort } from "../ports/clock.port.js";
 import type { IdentityOutboxPort } from "../ports/identity-outbox.port.js";
 import type { IdentityRepositoryPort } from "../ports/identity-repository.port.js";
 import type { OneTimeTokenPort } from "../ports/one-time-token.port.js";
-import type { SecurityAuditPort } from "../ports/security-audit.port.js";
 import type { SensitiveEnvelopePort } from "../ports/sensitive-envelope.port.js";
 import {
   identityEmailAssociatedData,
@@ -33,7 +32,6 @@ export class RequestPasswordResetUseCase {
     private readonly outbox: IdentityOutboxPort,
     private readonly tokens: OneTimeTokenPort,
     private readonly envelope: SensitiveEnvelopePort,
-    private readonly audit: SecurityAuditPort,
     private readonly clock: ClockPort,
     private readonly createId: () => string = randomUUID,
   ) {}
@@ -96,15 +94,21 @@ export class RequestPasswordResetUseCase {
           envelope: sealed,
         },
       },
-    });
-
-    await this.audit.record({
-      eventType: "identity.password_reset.requested",
-      actorUserId: null,
-      subjectUserId: user.id,
-      requestId: command.requestId,
-      metadata: { scopeType: command.scopeType, hostname },
-      occurredAt: now,
+      audit: {
+        eventType: "identity.password.reset_requested",
+        actorUserId: null,
+        subjectUserId: user.id,
+        requestId: command.requestId,
+        metadata: {
+          action: "request_password_reset",
+          result: "success",
+          reason: "reset_issued",
+          hostname,
+          scopeType: command.scopeType,
+          tenantId,
+        },
+        occurredAt: now,
+      },
     });
   }
 }

@@ -1,14 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { IssueIdentityEmailInput } from "../ports/identity-outbox.port.js";
-import type { SecurityAuditRecord } from "../ports/security-audit.port.js";
+import type { IssuePasswordResetEmailInput } from "../ports/identity-outbox.port.js";
 import { RequestPasswordResetUseCase } from "./request-password-reset.js";
 import {
   createIdentityOutbox,
   createIdentityRepository,
   createOneTimeTokenPort,
-  createSecurityAudit,
   createSensitiveEnvelopePort,
   createUser,
   fixedClock,
@@ -32,7 +30,6 @@ test("returns the same neutral result for missing and existing accounts", async 
     }),
     createOneTimeTokenPort(),
     createSensitiveEnvelopePort(),
-    createSecurityAudit([]),
     fixedClock,
   );
   const existing = new RequestPasswordResetUseCase(
@@ -44,7 +41,6 @@ test("returns the same neutral result for missing and existing accounts", async 
     createIdentityOutbox(),
     createOneTimeTokenPort(),
     createSensitiveEnvelopePort(),
-    createSecurityAudit([]),
     fixedClock,
   );
 
@@ -66,11 +62,10 @@ test("returns the same neutral result for missing and existing accounts", async 
   assert.equal(absentIssued, false);
 });
 
-test("commits a single-use encrypted reset event with a 30-minute expiry", async () => {
+test("commits a single-use encrypted reset event with a 30-minute expiry and canonical audit", async () => {
   const purposes: string[] = [];
-  const issued: IssueIdentityEmailInput[] = [];
+  const issued: IssuePasswordResetEmailInput[] = [];
   const sealed: Array<{ plaintext: string; associatedData: string }> = [];
-  const auditRecords: SecurityAuditRecord[] = [];
   const ids = [TOKEN_ID, EVENT_ID];
   const useCase = new RequestPasswordResetUseCase(
     createIdentityRepository({
@@ -99,7 +94,6 @@ test("commits a single-use encrypted reset event with a 30-minute expiry", async
         associatedData: Buffer.from(associatedData).toString("utf8"),
       });
     }),
-    createSecurityAudit(auditRecords),
     fixedClock,
     () => ids.shift() ?? assert.fail("unexpected identity ID request"),
   );
@@ -126,14 +120,20 @@ test("commits a single-use encrypted reset event with a 30-minute expiry", async
   assert.doesNotMatch(JSON.stringify(message.event), new RegExp(SERIALIZED_TOKEN, "u"));
   assert.equal(sealed[0]?.plaintext, JSON.stringify({ token: SERIALIZED_TOKEN }));
   assert.match(sealed[0]?.associatedData ?? "", /identity\.password_reset\.requested\.v1/u);
-  assert.deepEqual(auditRecords, [
-    {
-      eventType: "identity.password_reset.requested",
-      actorUserId: null,
-      subjectUserId: USER_ID,
-      requestId: "request-reset",
-      metadata: { scopeType: "platform", hostname: HOSTNAME },
-      occurredAt: NOW,
+  assert.deepEqual(message.audit, {
+    eventType: "identity.password.reset_requested",
+    actorUserId: null,
+    subjectUserId: USER_ID,
+    requestId: "request-reset",
+    metadata: {
+      action: "request_password_reset",
+      result: "success",
+      reason: "reset_issued",
+      hostname: HOSTNAME,
+      scopeType: "platform",
+      tenantId: null,
     },
-  ]);
+    occurredAt: NOW,
+  });
+  assert.doesNotMatch(JSON.stringify(message.audit), new RegExp(SERIALIZED_TOKEN, "u"));
 });
