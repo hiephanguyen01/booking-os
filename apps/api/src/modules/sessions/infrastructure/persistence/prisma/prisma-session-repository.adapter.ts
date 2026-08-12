@@ -1,10 +1,14 @@
 import { Inject, Injectable } from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
 
+import { assertSafeSecurityAuditMetadata } from "../../../../../common/security/security-audit-metadata.js";
 import { PrismaService } from "../../../../../database/prisma.service.js";
+import type { SessionSecurityAuditRecord } from "../../../application/ports/security-audit.port.js";
 import type {
   CreateSessionRecord,
   FindSessionInput,
   MarkSessionCompromisedInput,
+  RevokeAllSessionsInput,
   RevokeOtherSessionsInput,
   RevokeSessionInput,
   RotateSessionInput,
@@ -172,11 +176,34 @@ function mapToken(row: TokenRow): StoredSessionToken {
   });
 }
 
+async function writeSecurityAudit(
+  transaction: Prisma.TransactionClient,
+  record: SessionSecurityAuditRecord,
+  extraMetadata: Readonly<Record<string, unknown>> = {},
+): Promise<void> {
+  const metadata = { ...record.metadata, ...extraMetadata };
+  assertSafeSecurityAuditMetadata(metadata);
+
+  await transaction.securityAuditEvent.create({
+    data: {
+      eventType: record.eventType,
+      actorUserId: record.actorUserId,
+      subjectUserId: record.subjectUserId,
+      requestId: record.requestId,
+      metadata: {
+        ...metadata,
+        sessionId: record.sessionId,
+      } as Prisma.InputJsonObject,
+      occurredAt: record.occurredAt,
+    },
+  });
+}
+
 @Injectable()
 export class PrismaSessionRepositoryAdapter implements SessionRepositoryPort {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async create(input: CreateSessionRecord): Promise<CreateSessionRecord> {
+  async create(input: CreateSessionRecord): Promise<StoredSessionWithToken> {
     return this.prisma.$transaction(async (transaction) => {
       const binding = scopeColumns(input.session.scope);
       const session = await transaction.authSession.create({
@@ -217,6 +244,7 @@ export class PrismaSessionRepositoryAdapter implements SessionRepositoryPort {
           revokedAt: input.token.revokedAt,
         },
       });
+      await writeSecurityAudit(transaction, input.audit);
 
       return { session: mapSession(session), token: mapToken(token) };
     });
@@ -298,6 +326,7 @@ export class PrismaSessionRepositoryAdapter implements SessionRepositoryPort {
         where: { id: input.successor.id },
         data: { replacedAt: null, overlapUntil: null },
       });
+      await writeSecurityAudit(transaction, input.audit);
 
       return { status: "rotated", successor: input.successor };
     });
@@ -328,6 +357,7 @@ export class PrismaSessionRepositoryAdapter implements SessionRepositoryPort {
         where: { sessionId: input.sessionId, revokedAt: null },
         data: { revokedAt: input.compromisedAt },
       });
+      await writeSecurityAudit(transaction, input.audit);
     });
   }
 
@@ -377,15 +407,12 @@ export class PrismaSessionRepositoryAdapter implements SessionRepositoryPort {
         where: { sessionId: input.sessionId, revokedAt: null },
         data: { revokedAt: input.revokedAt },
       });
+      await writeSecurityAudit(transaction, input.audit);
       return true;
     });
   }
 
-  async revokeAllForUser(input: {
-    readonly userId: string;
-    readonly revokedAt: Date;
-    readonly reason: string;
-  }): Promise<number> {
+  async revokeAllForUser(input: RevokeAllSessionsInput): Promise<number> {
     return this.prisma.$transaction(async (transaction) => {
       const activeSessions = await transaction.authSession.findMany({
         where: { userId: input.userId, revokedAt: null },
@@ -411,6 +438,7 @@ export class PrismaSessionRepositoryAdapter implements SessionRepositoryPort {
         where: { sessionId: { in: sessionIds }, revokedAt: null },
         data: { revokedAt: input.revokedAt },
       });
+      await writeSecurityAudit(transaction, input.audit, { revokedCount: result.count });
       return result.count;
     });
   }
@@ -445,6 +473,7 @@ export class PrismaSessionRepositoryAdapter implements SessionRepositoryPort {
         where: { sessionId: { in: sessionIds }, revokedAt: null },
         data: { revokedAt: input.revokedAt },
       });
+      await writeSecurityAudit(transaction, input.audit, { revokedCount: result.count });
       return result.count;
     });
   }
