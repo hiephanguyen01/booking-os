@@ -36,20 +36,23 @@ test("rotates through compare-and-set with the approved audit event", async () =
   const rotations: unknown[] = [];
   const ids = [SUCCESSOR_ID];
   const stored = currentSession();
-  const useCase = new RefreshSessionUseCase(createSessionRepository({
-    async findBySelector() {
-      return stored;
+  const useCase = new RefreshSessionUseCase(
+    createSessionRepository({
+      async findBySelector() {
+        return stored;
+      },
+      async rotateCompareAndSet(input) {
+        rotations.push(input);
+        return { status: "rotated", successor: input.successor };
+      },
+    }),
+    {
+      now: () => NOW,
+      digestKey: DIGEST_KEY,
+      idFactory: () => ids.shift() ?? "unexpected-id",
+      tokenFactory: () => SUCCESSOR_TOKEN,
     },
-    async rotateCompareAndSet(input) {
-      rotations.push(input);
-      return { status: "rotated", successor: input.successor };
-    },
-  }), {
-    now: () => NOW,
-    digestKey: DIGEST_KEY,
-    idFactory: () => ids.shift() ?? "unexpected-id",
-    tokenFactory: () => SUCCESSOR_TOKEN,
-  });
+  );
 
   const result = await useCase.execute({
     token: TOKEN,
@@ -94,19 +97,22 @@ test("rotates through compare-and-set with the approved audit event", async () =
 
 test("a concurrent refresh observes the existing successor without minting another secret", async () => {
   const stored = currentSession();
-  const useCase = new RefreshSessionUseCase(createSessionRepository({
-    async findBySelector() {
-      return stored;
+  const useCase = new RefreshSessionUseCase(
+    createSessionRepository({
+      async findBySelector() {
+        return stored;
+      },
+      async rotateCompareAndSet() {
+        return { status: "existing", successorTokenId: SUCCESSOR_ID };
+      },
+    }),
+    {
+      now: () => NOW,
+      digestKey: DIGEST_KEY,
+      idFactory: () => SUCCESSOR_ID,
+      tokenFactory: () => SUCCESSOR_TOKEN,
     },
-    async rotateCompareAndSet() {
-      return { status: "existing", successorTokenId: SUCCESSOR_ID };
-    },
-  }), {
-    now: () => NOW,
-    digestKey: DIGEST_KEY,
-    idFactory: () => SUCCESSOR_ID,
-    tokenFactory: () => SUCCESSOR_TOKEN,
-  });
+  );
 
   assert.deepEqual(
     await useCase.execute({
@@ -123,22 +129,25 @@ test("a concurrent refresh observes the existing successor without minting anoth
 test("a compare-and-set reuse result compromises the family with canonical audit", async () => {
   const compromised: unknown[] = [];
   const stored = currentSession();
-  const useCase = new RefreshSessionUseCase(createSessionRepository({
-    async findBySelector() {
-      return stored;
+  const useCase = new RefreshSessionUseCase(
+    createSessionRepository({
+      async findBySelector() {
+        return stored;
+      },
+      async rotateCompareAndSet() {
+        return { status: "reuse" };
+      },
+      async markCompromised(input) {
+        compromised.push(input);
+      },
+    }),
+    {
+      now: () => NOW,
+      digestKey: DIGEST_KEY,
+      idFactory: () => SUCCESSOR_ID,
+      tokenFactory: () => SUCCESSOR_TOKEN,
     },
-    async rotateCompareAndSet() {
-      return { status: "reuse" };
-    },
-    async markCompromised(input) {
-      compromised.push(input);
-    },
-  }), {
-    now: () => NOW,
-    digestKey: DIGEST_KEY,
-    idFactory: () => SUCCESSOR_ID,
-    tokenFactory: () => SUCCESSOR_TOKEN,
-  });
+  );
 
   await assert.rejects(
     useCase.execute({
