@@ -1,4 +1,3 @@
-import type { SessionSecurityAuditPort } from "../ports/security-audit.port.js";
 import type { SessionRepositoryPort } from "../ports/session-repository.port.js";
 
 export interface RevokeSessionInput {
@@ -13,7 +12,6 @@ export class RevokeSessionUseCase {
 
   constructor(
     private readonly sessions: SessionRepositoryPort,
-    private readonly audit: SessionSecurityAuditPort,
     options: { readonly now?: () => Date } = {},
   ) {
     this.now = options.now ?? (() => new Date());
@@ -26,10 +24,7 @@ export class RevokeSessionUseCase {
       userId: input.userId,
       revokedAt: now,
       reason: input.reason,
-    });
-
-    if (revoked) {
-      await this.audit.record({
+      audit: {
         eventType: "session.revoked",
         actorUserId: input.userId,
         subjectUserId: input.userId,
@@ -37,8 +32,8 @@ export class RevokeSessionUseCase {
         requestId: input.requestId,
         metadata: { reason: input.reason },
         occurredAt: now,
-      });
-    }
+      },
+    });
 
     return { revoked };
   }
