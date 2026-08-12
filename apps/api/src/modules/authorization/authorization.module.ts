@@ -10,12 +10,14 @@ import { GetCurrentAuthorizationUseCase } from "./application/use-cases/get-curr
 import { ReconcileAuthorizationVersionUseCase } from "./application/use-cases/reconcile-authorization-version.use-case.js";
 import {
   AUTHORIZATION_REPOSITORY_PORT,
+  AUTHORIZATION_SECURITY_AUDIT_PORT,
   PROTECTED_REQUEST_AUTHORIZATION_PORT,
   SESSION_AUTHORIZATION_REFRESH_PORT,
 } from "./authorization.tokens.js";
 import { AuthorizationController } from "./infrastructure/http/authorization.controller.js";
 import { PermissionGuard } from "./infrastructure/http/permission.guard.js";
 import { PrismaAuthorizationRepositoryAdapter } from "./infrastructure/persistence/prisma/prisma-authorization-repository.adapter.js";
+import { PrismaAuthorizationSecurityAuditAdapter } from "./infrastructure/persistence/prisma/prisma-authorization-security-audit.adapter.js";
 import { PrismaSessionAuthorizationRefreshAdapter } from "./infrastructure/persistence/prisma/prisma-session-authorization-refresh.adapter.js";
 
 @Module({
@@ -25,6 +27,10 @@ import { PrismaSessionAuthorizationRefreshAdapter } from "./infrastructure/persi
     {
       provide: AUTHORIZATION_REPOSITORY_PORT,
       useClass: PrismaAuthorizationRepositoryAdapter,
+    },
+    {
+      provide: AUTHORIZATION_SECURITY_AUDIT_PORT,
+      useClass: PrismaAuthorizationSecurityAuditAdapter,
     },
     {
       provide: BuildAuthorizationContextUseCase,
