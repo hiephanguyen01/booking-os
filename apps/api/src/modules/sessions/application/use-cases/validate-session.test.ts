@@ -38,15 +38,18 @@ test("validates exact host, scope, state, expiry, and authorization snapshot", a
   const lookups: unknown[] = [];
   const touches: unknown[] = [];
   const stored = validStoredSession();
-  const useCase = new ValidateSessionUseCase(createSessionRepository({
-    async findBySelector(input) {
-      lookups.push(input);
-      return stored;
-    },
-    async touchIfDue(input) {
-      touches.push(input);
-    },
-  }), { now: () => NOW, digestKey: DIGEST_KEY });
+  const useCase = new ValidateSessionUseCase(
+    createSessionRepository({
+      async findBySelector(input) {
+        lookups.push(input);
+        return stored;
+      },
+      async touchIfDue(input) {
+        touches.push(input);
+      },
+    }),
+    { now: () => NOW, digestKey: DIGEST_KEY },
+  );
 
   const result = await useCase.execute({
     token: TOKEN,
@@ -86,16 +89,19 @@ test("rejects host, scope, state, and expiry mismatches without touching", async
 
   for (const [index, row] of invalidRows.entries()) {
     let touched = false;
-    const useCase = new ValidateSessionUseCase(createSessionRepository({
-      async findBySelector() {
-        return index === 0
-          ? storedSession({ session: { hostname: "other.example.test" }, token: row.token })
-          : row;
-      },
-      async touchIfDue() {
-        touched = true;
-      },
-    }), { now: () => NOW, digestKey: DIGEST_KEY });
+    const useCase = new ValidateSessionUseCase(
+      createSessionRepository({
+        async findBySelector() {
+          return index === 0
+            ? storedSession({ session: { hostname: "other.example.test" }, token: row.token })
+            : row;
+        },
+        async touchIfDue() {
+          touched = true;
+        },
+      }),
+      { now: () => NOW, digestKey: DIGEST_KEY },
+    );
 
     await assert.rejects(
       useCase.execute({
@@ -112,11 +118,14 @@ test("rejects host, scope, state, and expiry mismatches without touching", async
 });
 
 test("rejects stale authorization snapshots", async () => {
-  const useCase = new ValidateSessionUseCase(createSessionRepository({
-    async findBySelector() {
-      return validStoredSession();
-    },
-  }), { now: () => NOW, digestKey: DIGEST_KEY });
+  const useCase = new ValidateSessionUseCase(
+    createSessionRepository({
+      async findBySelector() {
+        return validStoredSession();
+      },
+    }),
+    { now: () => NOW, digestKey: DIGEST_KEY },
+  );
 
   await assert.rejects(
     useCase.execute({
@@ -133,22 +142,25 @@ test("rejects stale authorization snapshots", async () => {
 test("post-overlap token reuse compromises and revokes the whole family", async () => {
   const compromised: unknown[] = [];
   const stored = validStoredSession();
-  const useCase = new ValidateSessionUseCase(createSessionRepository({
-    async findBySelector() {
-      return {
-        session: stored.session,
-        token: {
-          ...stored.token,
-          replacedAt: new Date("2026-08-06T01:58:00.000Z"),
-          overlapUntil: new Date("2026-08-06T01:58:30.000Z"),
-          successorTokenId: "55555555-5555-4555-8555-555555555555",
-        },
-      };
-    },
-    async markCompromised(input) {
-      compromised.push(input);
-    },
-  }), { now: () => NOW, digestKey: DIGEST_KEY });
+  const useCase = new ValidateSessionUseCase(
+    createSessionRepository({
+      async findBySelector() {
+        return {
+          session: stored.session,
+          token: {
+            ...stored.token,
+            replacedAt: new Date("2026-08-06T01:58:00.000Z"),
+            overlapUntil: new Date("2026-08-06T01:58:30.000Z"),
+            successorTokenId: "55555555-5555-4555-8555-555555555555",
+          },
+        };
+      },
+      async markCompromised(input) {
+        compromised.push(input);
+      },
+    }),
+    { now: () => NOW, digestKey: DIGEST_KEY },
+  );
 
   await assert.rejects(
     useCase.execute({
