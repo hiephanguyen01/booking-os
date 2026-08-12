@@ -1,5 +1,9 @@
 export interface SessionSecurityAuditRecord {
-  readonly eventType: "session.created" | "session.revoked" | "session.compromised";
+  readonly eventType:
+    | "session.created"
+    | "session.rotated"
+    | "session.revoked"
+    | "session.compromised";
   readonly actorUserId: string;
   readonly subjectUserId: string;
   readonly sessionId: string;
