@@ -9,6 +9,7 @@ const NOW = new Date("2026-08-06T02:00:00.000Z");
 const OVERLAP_UNTIL = new Date("2026-08-06T02:00:30.000Z");
 const SESSION_ID = "33333333-3333-4333-8333-333333333333";
 const CURRENT_TOKEN_ID = "44444444-4444-4444-8444-444444444444";
+const USER_ID = "11111111-1111-4111-8111-111111111111";
 
 function successor(id: string, selector: string) {
   return {
@@ -33,21 +34,38 @@ function rotation(successorId: string, selector: string): RotateSessionInput {
     replacedAt: NOW,
     overlapUntil: OVERLAP_UNTIL,
     successor: successor(successorId, selector),
+    audit: {
+      eventType: "session.rotated",
+      actorUserId: USER_ID,
+      subjectUserId: USER_ID,
+      sessionId: SESSION_ID,
+      requestId: "request-rotate",
+      metadata: {
+        hostname: "console.example.test",
+        scopeType: "tenant",
+        tenantId: "22222222-2222-4222-8222-222222222222",
+        result: "success",
+      },
+      occurredAt: NOW,
+    },
   };
 }
 
-test("two concurrent rotations create one successor and return it to the loser", async () => {
+test("two concurrent rotations create one successor and one audit event", async () => {
   let queue = Promise.resolve();
   let replacedAt: Date | null = null;
   let overlapUntil: Date | null = null;
   let successorTokenId: string | null = null;
   const successors = new Map<string, ReturnType<typeof successor>>();
+  const auditWrites: unknown[] = [];
   const transaction = {
     async $queryRawUnsafe() {
       return [
         {
           id: CURRENT_TOKEN_ID,
           sessionId: SESSION_ID,
+          scopeType: "tenant",
+          tenantId: "22222222-2222-4222-8222-222222222222",
           replacedAt,
           overlapUntil,
           successorTokenId,
@@ -70,6 +88,12 @@ test("two concurrent rotations create one successor and return it to the loser",
       },
       async findUnique(input: { readonly where: { readonly id: string } }) {
         return successors.get(input.where.id) ?? null;
+      },
+    },
+    securityAuditEvent: {
+      async create(input: unknown) {
+        auditWrites.push(input);
+        return input;
       },
     },
   };
@@ -96,6 +120,7 @@ test("two concurrent rotations create one successor and return it to the loser",
   ]);
 
   assert.equal(successors.size, 1);
+  assert.equal(auditWrites.length, 1);
   assert.deepEqual([first.status, second.status].sort(), ["existing", "rotated"]);
   const existing = first.status === "existing" ? first : second;
   assert.equal(existing.status, "existing");
@@ -103,4 +128,61 @@ test("two concurrent rotations create one successor and return it to the loser",
     throw new Error("Concurrent rotation did not return the existing successor.");
   }
   assert.equal(existing.successorTokenId, [...successors.keys()][0]);
+});
+
+test("audit failure rolls back a successful rotation transaction", async () => {
+  const operations: string[] = [];
+  const transaction = {
+    async $queryRawUnsafe() {
+      operations.push("lock");
+      return [
+        {
+          id: CURRENT_TOKEN_ID,
+          sessionId: SESSION_ID,
+          scopeType: "tenant",
+          tenantId: "22222222-2222-4222-8222-222222222222",
+          replacedAt: null,
+          overlapUntil: null,
+          successorTokenId: null,
+          reuseDetectedAt: null,
+          revokedAt: null,
+        },
+      ];
+    },
+    authSessionToken: {
+      async create() {
+        operations.push("create_successor");
+      },
+      async update() {
+        operations.push("update_token");
+      },
+    },
+    securityAuditEvent: {
+      async create() {
+        operations.push("audit");
+        throw new Error("audit write failed");
+      },
+    },
+  };
+  const prisma = {
+    async $transaction<T>(callback: (client: typeof transaction) => Promise<T>): Promise<T> {
+      operations.push("begin");
+      try {
+        const result = await callback(transaction);
+        operations.push("commit");
+        return result;
+      } catch (error: unknown) {
+        operations.push("rollback");
+        throw error;
+      }
+    },
+  } as unknown as PrismaService;
+  const adapter = new PrismaSessionRepositoryAdapter(prisma);
+
+  await assert.rejects(
+    adapter.rotateCompareAndSet(rotation("55555555-5555-4555-8555-555555555555", "selector-a")),
+    /audit write failed/,
+  );
+  assert.equal(operations.at(-1), "rollback");
+  assert.equal(operations.includes("commit"), false);
 });
