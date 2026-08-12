@@ -5,7 +5,6 @@ import {
   SessionCompromisedError,
   SessionUnavailableError,
 } from "../../domain/session-errors.js";
-import type { SessionSecurityAuditPort } from "../ports/security-audit.port.js";
 import type {
   SessionRepositoryPort,
   SessionScope,
@@ -59,7 +58,6 @@ export class ValidateSessionUseCase {
 
   constructor(
     private readonly sessions: SessionRepositoryPort,
-    private readonly audit: SessionSecurityAuditPort,
     private readonly options: ValidateSessionOptions,
   ) {
     this.now = options.now ?? (() => new Date());
@@ -101,15 +99,15 @@ export class ValidateSessionUseCase {
         tokenId: stored.token.id,
         compromisedAt: now,
         reason: "token_reuse",
-      });
-      await this.audit.record({
-        eventType: "session.compromised",
-        actorUserId: stored.session.userId,
-        subjectUserId: stored.session.userId,
-        sessionId: stored.session.id,
-        requestId: input.requestId,
-        metadata: { reason: "token_reuse", hostname: input.hostname },
-        occurredAt: now,
+        audit: {
+          eventType: "session.reuse_detected",
+          actorUserId: stored.session.userId,
+          subjectUserId: stored.session.userId,
+          sessionId: stored.session.id,
+          requestId: input.requestId,
+          metadata: { reason: "token_reuse", hostname: input.hostname },
+          occurredAt: now,
+        },
       });
       throw new SessionCompromisedError();
     }
