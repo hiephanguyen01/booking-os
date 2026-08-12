@@ -11,7 +11,6 @@ import type { PasswordDenylistPort } from "./application/ports/password-denylist
 import type { PasswordHasherPort } from "./application/ports/password-hasher.port.js";
 import type { SecurityAuditPort } from "./application/ports/security-audit.port.js";
 import type { SensitiveEnvelopePort } from "./application/ports/sensitive-envelope.port.js";
-import type { SessionRevocationPort } from "./application/ports/session-revocation.port.js";
 import { CompleteActivationUseCase } from "./application/use-cases/complete-activation.js";
 import { CompletePasswordResetUseCase } from "./application/use-cases/complete-password-reset.js";
 import { RequestPasswordResetUseCase } from "./application/use-cases/request-password-reset.js";
@@ -24,7 +23,6 @@ import {
   PASSWORD_HASHER_PORT,
   SECURITY_AUDIT_PORT,
   SENSITIVE_ENVELOPE_PORT,
-  SESSION_REVOCATION_PORT,
 } from "./identity.tokens.js";
 import { AesSensitiveEnvelopeAdapter } from "./infrastructure/crypto/aes-sensitive-envelope.adapter.js";
 import { Argon2PasswordHasherAdapter } from "./infrastructure/crypto/argon2-password-hasher.adapter.js";
@@ -43,10 +41,6 @@ const systemClock: ClockPort = Object.freeze({
 
 const externalPasswordDenylist: PasswordDenylistPort = Object.freeze({
   contains: async (): Promise<boolean> => false,
-});
-
-const preSessionRevocation: SessionRevocationPort = Object.freeze({
-  revokeAllForUser: async (): Promise<void> => undefined,
 });
 
 @Module({
@@ -69,10 +63,6 @@ const preSessionRevocation: SessionRevocationPort = Object.freeze({
     {
       provide: PASSWORD_DENYLIST_PORT,
       useValue: externalPasswordDenylist,
-    },
-    {
-      provide: SESSION_REVOCATION_PORT,
-      useValue: preSessionRevocation,
     },
     {
       provide: SECURITY_AUDIT_PORT,
@@ -117,7 +107,6 @@ const preSessionRevocation: SessionRevocationPort = Object.freeze({
         ONE_TIME_TOKEN_PORT,
         PASSWORD_HASHER_PORT,
         PASSWORD_DENYLIST_PORT,
-        SECURITY_AUDIT_PORT,
         CLOCK_PORT,
       ],
       useFactory: (
@@ -125,17 +114,9 @@ const preSessionRevocation: SessionRevocationPort = Object.freeze({
         tokens: OneTimeTokenPort,
         passwordHasher: PasswordHasherPort,
         passwordDenylist: PasswordDenylistPort,
-        audit: SecurityAuditPort,
         clock: ClockPort,
       ): CompleteActivationUseCase =>
-        new CompleteActivationUseCase(
-          repository,
-          tokens,
-          passwordHasher,
-          passwordDenylist,
-          audit,
-          clock,
-        ),
+        new CompleteActivationUseCase(repository, tokens, passwordHasher, passwordDenylist, clock),
     },
     {
       provide: RequestPasswordResetUseCase,
@@ -164,8 +145,6 @@ const preSessionRevocation: SessionRevocationPort = Object.freeze({
         ONE_TIME_TOKEN_PORT,
         PASSWORD_HASHER_PORT,
         PASSWORD_DENYLIST_PORT,
-        SESSION_REVOCATION_PORT,
-        SECURITY_AUDIT_PORT,
         CLOCK_PORT,
       ],
       useFactory: (
@@ -173,19 +152,9 @@ const preSessionRevocation: SessionRevocationPort = Object.freeze({
         tokens: OneTimeTokenPort,
         passwordHasher: PasswordHasherPort,
         passwordDenylist: PasswordDenylistPort,
-        sessions: SessionRevocationPort,
-        audit: SecurityAuditPort,
         clock: ClockPort,
       ): CompletePasswordResetUseCase =>
-        new CompletePasswordResetUseCase(
-          repository,
-          tokens,
-          passwordHasher,
-          passwordDenylist,
-          sessions,
-          audit,
-          clock,
-        ),
+        new CompletePasswordResetUseCase(repository, tokens, passwordHasher, passwordDenylist, clock),
     },
     {
       provide: IdentityPublicController,
