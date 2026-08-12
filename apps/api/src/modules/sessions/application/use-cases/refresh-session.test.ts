@@ -34,8 +34,9 @@ function currentSession() {
   });
 }
 
-test("rotates through compare-and-set and returns the raw successor only once", async () => {
+test("rotates through compare-and-set and records the approved audit event once", async () => {
   const rotations: unknown[] = [];
+  const auditRecords: SessionSecurityAuditRecord[] = [];
   const ids = [SUCCESSOR_ID];
   const stored = currentSession();
   const useCase = new RefreshSessionUseCase(
@@ -48,7 +49,7 @@ test("rotates through compare-and-set and returns the raw successor only once", 
         return { status: "rotated", successor: input.successor };
       },
     }),
-    createSecurityAudit([]),
+    createSecurityAudit(auditRecords),
     {
       now: () => NOW,
       digestKey: DIGEST_KEY,
@@ -82,6 +83,22 @@ test("rotates through compare-and-set and returns the raw successor only once", 
     /^[0-9a-f]{64}$/,
   );
   assert.equal(JSON.stringify(rotations[0]).includes(parsedSuccessor?.secret ?? "missing"), false);
+  assert.deepEqual(auditRecords, [
+    {
+      eventType: "session.rotated",
+      actorUserId: USER_ID,
+      subjectUserId: USER_ID,
+      sessionId: SESSION_ID,
+      requestId: "request-refresh-session",
+      metadata: {
+        hostname: HOSTNAME,
+        scopeType: "tenant",
+        tenantId: TENANT_ID,
+        result: "success",
+      },
+      occurredAt: NOW,
+    },
+  ]);
 });
 
 test("a concurrent refresh observes the existing successor without minting another secret", async () => {
