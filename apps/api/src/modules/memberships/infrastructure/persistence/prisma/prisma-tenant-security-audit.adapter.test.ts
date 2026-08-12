@@ -27,7 +27,7 @@ function createAdapter(): {
 
 function record(metadata: Readonly<Record<string, unknown>>) {
   return {
-    eventType: "membership.owner.promoted",
+    eventType: "membership.owner_promoted",
     actorUserId: USER_ID,
     subjectUserId: USER_ID,
     requestId: "request-1",
