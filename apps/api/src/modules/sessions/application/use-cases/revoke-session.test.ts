@@ -11,12 +11,15 @@ import {
 
 test("revokes one owned session with the explicit audit reason", async () => {
   const revoked: unknown[] = [];
-  const useCase = new RevokeSessionUseCase(createSessionRepository({
-    async revokeById(input) {
-      revoked.push(input);
-      return true;
-    },
-  }), { now: () => NOW });
+  const useCase = new RevokeSessionUseCase(
+    createSessionRepository({
+      async revokeById(input) {
+        revoked.push(input);
+        return true;
+      },
+    }),
+    { now: () => NOW },
+  );
 
   assert.deepEqual(
     await useCase.execute({
