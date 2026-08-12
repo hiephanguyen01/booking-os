@@ -9,9 +9,7 @@ import {
   UserStatus,
 } from "@prisma/client";
 
-import {
-  type SecurityAuditEventType,
-} from "../common/security/security-audit-events.js";
+import type { SecurityAuditEventType } from "../common/security/security-audit-events.js";
 import { assertSafeSecurityAuditMetadata } from "../common/security/security-audit-metadata.js";
 import type { IdentitySecurityConfig } from "../config/environment.schema.js";
 import {
