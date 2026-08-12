@@ -16,7 +16,6 @@ import { MembershipsModule } from "../memberships/memberships.module.js";
 import type { CredentialVerifierPort } from "./application/ports/credential-verifier.port.js";
 import type { LoginAbuseMetricsPort } from "./application/ports/login-abuse-metrics.port.js";
 import type { LoginAbuseProtectionPort } from "./application/ports/login-abuse-protection.port.js";
-import type { SessionSecurityAuditPort } from "./application/ports/security-audit.port.js";
 import type { SessionRepositoryPort } from "./application/ports/session-repository.port.js";
 import type { SessionSubjectPort } from "./application/ports/session-subject.port.js";
 import { CreateSessionUseCase } from "./application/use-cases/create-session.js";
@@ -111,38 +110,33 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
     },
     {
       provide: CreateSessionUseCase,
-      inject: [SESSION_REPOSITORY_PORT, SESSION_SECURITY_AUDIT_PORT, SESSION_DIGEST_KEY],
+      inject: [SESSION_REPOSITORY_PORT, SESSION_DIGEST_KEY],
       useFactory: (
         repository: SessionRepositoryPort,
-        audit: SessionSecurityAuditPort,
         digestKey: Uint8Array,
-      ): CreateSessionUseCase => new CreateSessionUseCase(repository, audit, { digestKey }),
+      ): CreateSessionUseCase => new CreateSessionUseCase(repository, { digestKey }),
     },
     {
       provide: ValidateSessionUseCase,
-      inject: [SESSION_REPOSITORY_PORT, SESSION_SECURITY_AUDIT_PORT, SESSION_DIGEST_KEY],
+      inject: [SESSION_REPOSITORY_PORT, SESSION_DIGEST_KEY],
       useFactory: (
         repository: SessionRepositoryPort,
-        audit: SessionSecurityAuditPort,
         digestKey: Uint8Array,
-      ): ValidateSessionUseCase => new ValidateSessionUseCase(repository, audit, { digestKey }),
+      ): ValidateSessionUseCase => new ValidateSessionUseCase(repository, { digestKey }),
     },
     {
       provide: RefreshSessionUseCase,
-      inject: [SESSION_REPOSITORY_PORT, SESSION_SECURITY_AUDIT_PORT, SESSION_DIGEST_KEY],
+      inject: [SESSION_REPOSITORY_PORT, SESSION_DIGEST_KEY],
       useFactory: (
         repository: SessionRepositoryPort,
-        audit: SessionSecurityAuditPort,
         digestKey: Uint8Array,
-      ): RefreshSessionUseCase => new RefreshSessionUseCase(repository, audit, { digestKey }),
+      ): RefreshSessionUseCase => new RefreshSessionUseCase(repository, { digestKey }),
     },
     {
       provide: RevokeSessionUseCase,
-      inject: [SESSION_REPOSITORY_PORT, SESSION_SECURITY_AUDIT_PORT],
-      useFactory: (
-        repository: SessionRepositoryPort,
-        audit: SessionSecurityAuditPort,
-      ): RevokeSessionUseCase => new RevokeSessionUseCase(repository, audit),
+      inject: [SESSION_REPOSITORY_PORT],
+      useFactory: (repository: SessionRepositoryPort): RevokeSessionUseCase =>
+        new RevokeSessionUseCase(repository),
     },
     {
       provide: ListSessionsUseCase,
@@ -152,11 +146,9 @@ function deriveKey(purpose: string, secret: string): Uint8Array {
     },
     {
       provide: RevokeOtherSessionsUseCase,
-      inject: [SESSION_REPOSITORY_PORT, SESSION_SECURITY_AUDIT_PORT],
-      useFactory: (
-        repository: SessionRepositoryPort,
-        audit: SessionSecurityAuditPort,
-      ): RevokeOtherSessionsUseCase => new RevokeOtherSessionsUseCase(repository, audit),
+      inject: [SESSION_REPOSITORY_PORT],
+      useFactory: (repository: SessionRepositoryPort): RevokeOtherSessionsUseCase =>
+        new RevokeOtherSessionsUseCase(repository),
     },
     {
       provide: LoginUseCase,
