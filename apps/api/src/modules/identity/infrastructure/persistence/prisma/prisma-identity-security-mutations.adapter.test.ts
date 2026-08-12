@@ -158,7 +158,7 @@ test("activation writes bounded audit metadata inside the token-consumption tran
   ]);
   assert.deepEqual(auditWrite, {
     data: {
-      eventType: "identity.activation.completed",
+      eventType: "identity.user.activated",
       actorUserId: USER_ID,
       subjectUserId: USER_ID,
       requestId: REQUEST_ID,
@@ -268,7 +268,7 @@ test("password reset revokes sessions and audits inside the same transaction", a
   ]);
   assert.deepEqual(auditWrite, {
     data: {
-      eventType: "identity.password_reset.completed",
+      eventType: "identity.password.reset_completed",
       actorUserId: USER_ID,
       subjectUserId: USER_ID,
       requestId: REQUEST_ID,
