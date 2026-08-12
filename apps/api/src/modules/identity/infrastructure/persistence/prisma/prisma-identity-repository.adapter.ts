@@ -330,7 +330,7 @@ export class PrismaIdentityRepositoryAdapter implements IdentityRepositoryPort {
       });
       await transaction.securityAuditEvent.create({
         data: {
-          eventType: "identity.activation.completed",
+          eventType: "identity.user.activated",
           actorUserId: token.userId,
           subjectUserId: token.userId,
           requestId: input.requestId,
@@ -422,7 +422,7 @@ export class PrismaIdentityRepositoryAdapter implements IdentityRepositoryPort {
       });
       await transaction.securityAuditEvent.create({
         data: {
-          eventType: "identity.password_reset.completed",
+          eventType: "identity.password.reset_completed",
           actorUserId: token.userId,
           subjectUserId: token.userId,
           requestId: input.requestId,
