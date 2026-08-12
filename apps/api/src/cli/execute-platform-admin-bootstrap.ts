@@ -9,6 +9,10 @@ import {
   UserStatus,
 } from "@prisma/client";
 
+import {
+  type SecurityAuditEventType,
+} from "../common/security/security-audit-events.js";
+import { assertSafeSecurityAuditMetadata } from "../common/security/security-audit-metadata.js";
 import type { IdentitySecurityConfig } from "../config/environment.schema.js";
 import {
   identityEmailAssociatedData,
@@ -25,6 +29,8 @@ const ACTIVATION_TEMPLATE = "account_activation" as const;
 const PLATFORM_ADMIN_ROLE_KEY = "platform_admin";
 const BOOTSTRAP_LOCK_NAMESPACE = "booking-os";
 const BOOTSTRAP_LOCK_NAME = "platform-admin-bootstrap";
+const BOOTSTRAP_AUDIT_EVENT_TYPE =
+  "platform.bootstrap_admin_created" satisfies SecurityAuditEventType;
 
 export { PlatformAdminAlreadyBootstrappedError } from "./bootstrap-platform-admin.js";
 
@@ -195,13 +201,22 @@ export async function executePlatformAdminBootstrap(
       });
     }
 
+    const auditMetadata = {
+      action: "bootstrap_platform_admin",
+      result: "success",
+      reason: "initial_platform_admin_created",
+      hostname,
+      scopeType: "platform",
+    } as const;
+    assertSafeSecurityAuditMetadata(auditMetadata);
+
     await transaction.securityAuditEvent.create({
       data: {
-        eventType: "identity.platform_admin.bootstrapped",
+        eventType: BOOTSTRAP_AUDIT_EVENT_TYPE,
         actorUserId: user.id,
         subjectUserId: user.id,
         requestId: null,
-        metadata: { hostname, scopeType: "platform" },
+        metadata: auditMetadata,
         occurredAt: now,
       },
     });
