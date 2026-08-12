@@ -53,7 +53,16 @@ export class ProvisionUserUseCase {
 
     if (!user) {
       try {
-        user = await this.repository.createPendingUser({ normalizedEmail, displayEmail, now });
+        user = await this.repository.createPendingUser({
+          normalizedEmail,
+          displayEmail,
+          now,
+          requestedByUserId: command.requestedByUserId,
+          requestId: command.requestId,
+          hostname,
+          scopeType: command.scopeType,
+          tenantId,
+        });
       } catch (error: unknown) {
         if (!(error instanceof IdentityEmailConflictError)) {
           throw error;
