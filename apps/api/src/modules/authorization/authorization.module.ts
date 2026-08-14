@@ -66,6 +66,7 @@ import { PrismaSessionAuthorizationRefreshAdapter } from "./infrastructure/persi
   ],
   exports: [
     AUTHORIZATION_REPOSITORY_PORT,
+    AUTHORIZATION_SECURITY_AUDIT_PORT,
     PROTECTED_REQUEST_AUTHORIZATION_PORT,
     BuildAuthorizationContextUseCase,
     GetCurrentAuthorizationUseCase,
