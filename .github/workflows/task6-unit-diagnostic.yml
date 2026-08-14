@@ -70,11 +70,14 @@ jobs:
       - name: Apply database migrations
         run: pnpm --filter @booking-os/api prisma:migrate:deploy
 
-      - name: Run API unit tests with failure annotations
+      - name: Build API dependency graph
+        run: pnpm exec turbo run build --filter=@booking-os/api
+
+      - name: Run identity outbox unit test with focused failure annotation
         shell: bash
         run: |
           set +e
-          pnpm exec turbo run test --filter=@booking-os/api 2>&1 | tee /tmp/task6-api-unit.log
+          pnpm --filter @booking-os/api exec node --test --test-concurrency=1 --import tsx src/modules/identity/infrastructure/persistence/prisma/prisma-identity-outbox.adapter.test.ts 2>&1 | tee /tmp/task6-identity-outbox.log
           status=${PIPESTATUS[0]}
           set -e
 
@@ -82,45 +85,24 @@ jobs:
             python - <<'PY'
           from pathlib import Path
 
-          lines = Path("/tmp/task6-api-unit.log").read_text(encoding="utf-8", errors="replace").splitlines()
-          primary_markers = (
-              "ERR_MODULE_NOT_FOUND",
-              "ERR_PACKAGE_PATH_NOT_EXPORTED",
-              "ERR_UNKNOWN_FILE_EXTENSION",
-              "Cannot find package",
-              "Cannot find module",
-              "SyntaxError:",
-              "TypeError:",
-              "ReferenceError:",
+          lines = Path("/tmp/task6-identity-outbox.log").read_text(encoding="utf-8", errors="replace").splitlines()
+          markers = (
+              "not ok ",
               "AssertionError",
               "ERR_ASSERTION",
+              "TypeError:",
+              "ReferenceError:",
+              "Error:",
           )
-          secondary_markers = ("not ok ", "ERR_TEST_FAILURE")
-          indexes = [i for i, line in enumerate(lines) if any(marker in line for marker in primary_markers)]
-          if not indexes:
-              indexes = [i for i, line in enumerate(lines) if any(marker in line for marker in secondary_markers)]
-          if not indexes:
-              indexes = [max(0, len(lines) - 60)]
-
-          blocks = []
-          covered = []
-          for index in indexes:
-              start = max(0, index - 30)
-              end = min(len(lines), index + 20)
-              if any(start >= old_start and end <= old_end for old_start, old_end in covered):
-                  continue
-              covered.append((start, end))
-              block = "\n".join(lines[start:end]).strip()
-              if block:
-                  blocks.append(block)
-              if len(blocks) >= 6:
-                  break
-
-          for number, block in enumerate(blocks, start=1):
-              safe = block.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-              if len(safe) > 16000:
-                  safe = safe[:16000] + "..."
-              print(f"::error title=Task 6 unit root-cause probe {number}::{safe}")
+          indexes = [i for i, line in enumerate(lines) if any(marker in line for marker in markers)]
+          index = indexes[0] if indexes else max(0, len(lines) - 80)
+          start = max(0, index - 8)
+          end = min(len(lines), index + 40)
+          excerpt = []
+          for line in lines[start:end]:
+              excerpt.append(line[:1200])
+          safe = "\n".join(excerpt).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print(f"::error title=Task 6 identity outbox root cause::{safe}")
           PY
             exit "$status"
           fi
