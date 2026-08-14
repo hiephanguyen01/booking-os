@@ -23,7 +23,10 @@ test("Task 7 preserves the identity-access gate inside Foundation verification",
 });
 
 test("Task 7 includes a dedicated browser identity-access acceptance spec", async () => {
-  const browserSpec = await readFile(new URL("../e2e/identity-access.spec.ts", import.meta.url), "utf8");
+  const browserSpec = await readFile(
+    new URL("../e2e/identity-access.spec.ts", import.meta.url),
+    "utf8",
+  );
   assert.match(browserSpec, /identity-access browser acceptance/u);
   assert.match(browserSpec, /__Host-booking_session/u);
   assert.match(browserSpec, /token/u);
