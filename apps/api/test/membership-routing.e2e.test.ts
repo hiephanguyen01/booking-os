@@ -19,6 +19,7 @@ import {
   REDIS_READINESS_PROBE_TOKEN,
 } from "../src/dependencies/tokens.js";
 import { BuildAuthorizationContextUseCase } from "../src/modules/authorization/application/use-cases/build-authorization-context.use-case.js";
+import { AUTHORIZATION_SECURITY_AUDIT_PORT } from "../src/modules/authorization/authorization.tokens.js";
 import { BuildTenantAuthorizationContextUseCase } from "../src/modules/memberships/application/use-cases/build-tenant-authorization-context.use-case.js";
 import {
   type ListMembershipsCommand,
@@ -133,6 +134,8 @@ async function createTestApplication(): Promise<{
         return guardAuthorization;
       },
     })
+    .overrideProvider(AUTHORIZATION_SECURITY_AUDIT_PORT)
+    .useValue({ recordDenied: async () => undefined })
     .overrideProvider(BuildTenantAuthorizationContextUseCase)
     .useValue({
       execute: async (authenticated: AuthenticatedRequestContext) => {
