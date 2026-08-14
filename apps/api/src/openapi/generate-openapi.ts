@@ -27,10 +27,7 @@ async function generateOpenApi(): Promise<void> {
     import("./openapi-document.js"),
   ]);
   const outputPath = resolve(process.env.OPENAPI_OUTPUT_PATH ?? canonicalOutputPath);
-  const app = await NestFactory.create(AppModule, {
-    logger: false,
-    abortOnError: false,
-  });
+  const app = await NestFactory.create(AppModule, { logger: false });
 
   try {
     const environment = app.get(EnvironmentService);
