@@ -161,7 +161,7 @@ test("writes password reset token, outbox event, and audit inside one database t
     securityAuditEvent: {
       async create(input: { readonly data: unknown }): Promise<void> {
         operations.push("append-audit");
-        assert.doesNotMatch(JSON.stringify(input.data), /reset-selector|\"b{64}\"/u);
+        assert.doesNotMatch(JSON.stringify(input.data), /reset-selector|"b{64}"/u);
       },
     },
   };
