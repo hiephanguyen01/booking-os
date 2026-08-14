@@ -74,7 +74,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          pnpm --filter @booking-os/api test 2>&1 | tee /tmp/task6-api-unit.log
+          pnpm exec turbo run test --filter=@booking-os/api 2>&1 | tee /tmp/task6-api-unit.log
           status=${PIPESTATUS[0]}
           set -e
 
