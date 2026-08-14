@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -17,8 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout repository
+      - name: Checkout branch
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v6
@@ -32,15 +34,11 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Resolve patched Nano ID and verify audit
+      - name: Apply verified Nano ID patch
         shell: bash
         run: |
           set -euo pipefail
           echo "nanoid version: $(pnpm view nanoid@3.3.18 version)"
-          echo "nanoid integrity: $(pnpm view nanoid@3.3.18 dist.integrity)"
           echo "postcss nanoid range: $(pnpm view postcss@8.5.18 dependencies.nanoid)"
 
           node <<'NODE'
@@ -53,12 +51,18 @@ jobs:
           NODE
 
           pnpm install --lockfile-only
-          git diff -- package.json pnpm-lock.yaml | tee /tmp/nanoid-security.diff
+          pnpm install --frozen-lockfile
           pnpm audit --audit-level high
 
-          python - <<'PY'
-          from pathlib import Path
-          text = Path("/tmp/nanoid-security.diff").read_text(encoding="utf-8", errors="replace")
-          safe = text[:24000].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-          print(f"::notice title=Nano ID patched lockfile diff::{safe}")
-          PY
+          if git diff --quiet -- package.json pnpm-lock.yaml; then
+            echo "Nano ID patch is already committed."
+            exit 0
+          fi
+
+          git diff --check -- package.json pnpm-lock.yaml
+          git diff -- package.json pnpm-lock.yaml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json pnpm-lock.yaml
+          git commit -m "fix(deps): patch nanoid audit vulnerability"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref || github.ref_name }}"
