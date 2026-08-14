@@ -70,11 +70,14 @@ jobs:
       - name: Apply database migrations
         run: pnpm --filter @booking-os/api prisma:migrate:deploy
 
-      - name: Run full API unit suite with focused failure annotation
+      - name: Build API dependency graph
+        run: pnpm exec turbo run build --filter=@booking-os/api
+
+      - name: Run API tests directly and expose failure blocks
         shell: bash
         run: |
           set +e
-          pnpm exec turbo run test --filter=@booking-os/api --output-logs=full 2>&1 | tee /tmp/task6-api-unit.log
+          pnpm --filter @booking-os/api exec node --test --test-concurrency=1 --test-reporter=spec --import tsx "src/**/*.test.ts" "test/**/*.test.ts" 2>&1 | tee /tmp/task6-api-unit.log
           status=${PIPESTATUS[0]}
           set -e
 
@@ -84,6 +87,7 @@ jobs:
 
           lines = Path("/tmp/task6-api-unit.log").read_text(encoding="utf-8", errors="replace").splitlines()
           markers = (
+              "✖",
               "not ok ",
               "ERR_TEST_FAILURE",
               "AssertionError",
@@ -92,14 +96,24 @@ jobs:
               "TypeError:",
               "ReferenceError:",
               "failureType:",
+              "fail ",
           )
           indexes = [i for i, line in enumerate(lines) if any(marker in line for marker in markers)]
-          index = indexes[0] if indexes else max(0, len(lines) - 100)
-          start = max(0, index - 12)
-          end = min(len(lines), index + 55)
-          excerpt = [line[:1200] for line in lines[start:end]]
-          safe = "\n".join(excerpt).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-          print(f"::error title=Task 6 API unit root cause::{safe}")
+          if indexes:
+              starts = []
+              for index in indexes:
+                  start = max(0, index - 8)
+                  if not starts or start > starts[-1] + 70:
+                      starts.append(start)
+              windows = [(start, min(len(lines), start + 80)) for start in starts[:4]]
+          else:
+              start = max(0, len(lines) - 240)
+              windows = [(start + offset, min(len(lines), start + offset + 80)) for offset in range(0, 240, 80) if start + offset < len(lines)]
+
+          for number, (start, end) in enumerate(windows, 1):
+              excerpt = [line[:1400] for line in lines[start:end]]
+              safe = "\n".join(excerpt).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              print(f"::error title=Task 6 API unit failure block {number}::{safe}")
           PY
             exit "$status"
           fi
