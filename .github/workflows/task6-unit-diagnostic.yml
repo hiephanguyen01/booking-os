@@ -12,39 +12,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  api-unit-diagnostic:
-    name: API unit diagnostic
+  dependency-security-diagnostic:
+    name: Dependency security diagnostic
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_USER: booking
-          POSTGRES_PASSWORD: booking
-          POSTGRES_DB: booking_os_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U booking -d booking_os_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      DATABASE_URL: postgresql://booking:booking@127.0.0.1:5432/booking_os_test
-      REDIS_URL: redis://127.0.0.1:6379/1
-      SESSION_SECRET: test-only-session-secret-at-least-32-characters
-      PAYMENT_PROVIDER: mock
-      NODE_ENV: test
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -64,56 +35,30 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Validate Prisma schema
-        run: pnpm --filter @booking-os/api prisma:validate
-
-      - name: Apply database migrations
-        run: pnpm --filter @booking-os/api prisma:migrate:deploy
-
-      - name: Build API dependency graph
-        run: pnpm exec turbo run build --filter=@booking-os/api
-
-      - name: Run API tests directly and expose failure blocks
+      - name: Resolve patched Nano ID and verify audit
         shell: bash
         run: |
-          set +e
-          pnpm --filter @booking-os/api exec node --test --test-concurrency=1 --test-reporter=spec --import tsx "src/**/*.test.ts" "test/**/*.test.ts" 2>&1 | tee /tmp/task6-api-unit.log
-          status=${PIPESTATUS[0]}
-          set -e
+          set -euo pipefail
+          echo "nanoid version: $(pnpm view nanoid@3.3.18 version)"
+          echo "nanoid integrity: $(pnpm view nanoid@3.3.18 dist.integrity)"
+          echo "postcss nanoid range: $(pnpm view postcss@8.5.18 dependencies.nanoid)"
 
-          if [ "$status" -ne 0 ]; then
-            python - <<'PY'
+          node <<'NODE'
+          const fs = require("node:fs");
+          const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
+          packageJson.pnpm ??= {};
+          packageJson.pnpm.overrides ??= {};
+          packageJson.pnpm.overrides.nanoid = "3.3.18";
+          fs.writeFileSync("package.json", `${JSON.stringify(packageJson, null, 2)}\n`);
+          NODE
+
+          pnpm install --lockfile-only
+          git diff -- package.json pnpm-lock.yaml | tee /tmp/nanoid-security.diff
+          pnpm audit --audit-level high
+
+          python - <<'PY'
           from pathlib import Path
-
-          lines = Path("/tmp/task6-api-unit.log").read_text(encoding="utf-8", errors="replace").splitlines()
-          markers = (
-              "✖",
-              "not ok ",
-              "ERR_TEST_FAILURE",
-              "AssertionError",
-              "ERR_ASSERTION",
-              "SyntaxError:",
-              "TypeError:",
-              "ReferenceError:",
-              "failureType:",
-              "fail ",
-          )
-          indexes = [i for i, line in enumerate(lines) if any(marker in line for marker in markers)]
-          if indexes:
-              starts = []
-              for index in indexes:
-                  start = max(0, index - 8)
-                  if not starts or start > starts[-1] + 70:
-                      starts.append(start)
-              windows = [(start, min(len(lines), start + 80)) for start in starts[:4]]
-          else:
-              start = max(0, len(lines) - 240)
-              windows = [(start + offset, min(len(lines), start + offset + 80)) for offset in range(0, 240, 80) if start + offset < len(lines)]
-
-          for number, (start, end) in enumerate(windows, 1):
-              excerpt = [line[:1400] for line in lines[start:end]]
-              safe = "\n".join(excerpt).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-              print(f"::error title=Task 6 API unit failure block {number}::{safe}")
+          text = Path("/tmp/nanoid-security.diff").read_text(encoding="utf-8", errors="replace")
+          safe = text[:24000].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print(f"::notice title=Nano ID patched lockfile diff::{safe}")
           PY
-            exit "$status"
-          fi
