@@ -9,7 +9,10 @@ import { Test } from "@nestjs/testing";
 import request from "supertest";
 
 import { RequestContextStorage } from "../src/common/request-context/request-context.storage.js";
-import { PROTECTED_REQUEST_AUTHORIZATION_PORT } from "../src/modules/authorization/authorization.tokens.js";
+import {
+  AUTHORIZATION_SECURITY_AUDIT_PORT,
+  PROTECTED_REQUEST_AUTHORIZATION_PORT,
+} from "../src/modules/authorization/authorization.tokens.js";
 import { PermissionGuard } from "../src/modules/authorization/infrastructure/http/permission.guard.js";
 import { RequiresPermission } from "../src/modules/authorization/infrastructure/http/requires-permission.decorator.js";
 
@@ -70,6 +73,12 @@ test("authoritative denial occurs before controller or use-case invocation", asy
         provide: PROTECTED_REQUEST_AUTHORIZATION_PORT,
         useValue: {
           execute: async () => ({ status: "current" as const, context: authorization }),
+        },
+      },
+      {
+        provide: AUTHORIZATION_SECURITY_AUDIT_PORT,
+        useValue: {
+          recordDenied: async () => undefined,
         },
       },
     ],
