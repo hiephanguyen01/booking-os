@@ -8,11 +8,11 @@
 
 **Tech Stack:** Node.js 22+, TypeScript 5.9, NestJS 11.1, Prisma 6.19, PostgreSQL 17 FORCE RLS, Redis 7, OpenAPI 3.1, Node test runner, Supertest, Playwright, pnpm 10, GitHub Actions.
 
-## Execution Status — reconciled 2026-08-11
+## Execution Status — reconciled 2026-08-14
 
 Status: IN_PROGRESS  
-Current Task: Task 6 (next; not started)  
-Last implementation-state reconciliation baseline: `f887a838059320d447efc3dbd9e2b749a2d460e8`
+Current Task: Task 7 (next; not started)  
+Last verified implementation-state reconciliation baseline: `2af5fab3163dcd4e54c483b12ebb765bb74e1d0c`
 
 Implementation evidence:
 
@@ -21,7 +21,8 @@ Implementation evidence:
 - Task 3 is **VERIFIED COMPLETE**. `c9a11c7bea153b6f16ea1ab6b738596dbac9740f` introduced authorization session snapshots, membership authorization versioning, attacker-header rejection, and stale-authority reconciliation/rotation. Current `main` also contains the planned `authorization-before-use-case.e2e.test.ts` and `authorization-context-concurrency.e2e.test.ts`; request-context and tenant-transaction tests cover spoofed authority headers plus nested tenant/actor/session/snapshot conflicts; CI #1480 completed Unit/API E2E/RLS successfully with these tests in the `test:e2e` glob.
 - Task 4 is **VERIFIED COMPLETE** at code baseline `991fbeeb710daeada7adb65cc0f9679ca4c9578a`. The branch exposes current-scope-only `GET /auth/me/authorization`, protects authenticated and unauthenticated authorization responses from shared/browser caching, implements exact-host/CSRF/permission-gated platform incident session revocation, persists `platform.security.session.revoke` through an additive migration, and commits regenerated OpenAPI/API-client artifacts. Fresh GitHub evidence on that baseline: CI run #1562 completed Quality, OpenAPI compatibility, Unit/API E2E/RLS, and migration verification successfully; Sprint 0 gates run #1117 completed OpenAPI generated-artifact check, generated-client typecheck, and repository-generator tests successfully.
 - Task 5 is **VERIFIED COMPLETE** at implementation baseline `f887a838059320d447efc3dbd9e2b749a2d460e8`. The implementation enforces the approved API/browser/cache policy across sensitive API and web-console auth surfaces, preserves the `private, no-store` authorization-endpoint exception, rejects unsafe return URLs, bounds recursive redaction with cycle handling, prevents sensitive exception messages/stacks from reaching structured logs, and keeps outbox dead-letter diagnostics bounded without stripping encrypted business payloads. The web-console CSP is request-bound: auth routes receive a fresh nonce, Next.js receives the same request CSP plus `x-nonce`, auth route families render dynamically, static duplicate CSP was removed, and no `unsafe-inline` relaxation is used. A browser-hydration regression was reproduced by Playwright, converted into a real middleware unit regression, and fixed; focused web-console diagnostic run #2 completed successfully after the fix. Standard CI run #1609 on `f887a838059320d447efc3dbd9e2b749a2d460e8` completed Quality, Knowledge validation, OpenAPI compatibility, Docker configuration, Unit/API E2E/RLS, migration verification, Build, Playwright foundation smoke, production configuration guard, dependency audit, and committed-secret scan successfully. Same-head protected workflows API architecture #1098, Sprint 0 gates #1164, and Identity email integration #877 also completed successfully. Direct workflow deletion is blocked by the connector policy, so the temporary CSP diagnostic was converted in `7d1fa581b0501ec5eb77925264d64cb0c17e1667` to a manual-only no-op workflow with no push trigger or diagnostic execution.
-- Tasks 6–8 are **PENDING / EXPECTED_INCOMPLETE**. Task 6 is the next task, but no Task 6 implementation is claimed by this reconciliation.
+- Task 6 is **VERIFIED COMPLETE** at clean implementation baseline `2af5fab3163dcd4e54c483b12ebb765bb74e1d0c`. Security-state mutations now couple their approved audit records to the same Prisma/tenant transaction where required; covered flows include password-reset issuance, session/session-family revocation, membership/role security changes, and authorization denials. Security-audit metadata rejects sensitive nested fields. Auth metrics expose only bounded catalog dimensions (`eventType`, `purpose`, `outcome`, `scope`, `reasonFamily`, `delayBucket`) and do not use raw route/user/tenant identifiers as metric labels. Task 6 diagnostics were removed and the temporary OpenAPI `abortOnError: false` instrumentation was reverted before the final clean-head verification. CI #1717 completed Quality, Knowledge validation, OpenAPI compatibility, Docker configuration, Unit/API E2E/RLS, migration verification, Build, Playwright foundation smoke, production configuration guard, dependency audit, and committed-secret scan successfully. Same-head protected workflows Sprint 0 gates #1272, API architecture #1206, and Identity email integration #985 also completed successfully.
+- Tasks 7–8 are **PENDING / EXPECTED_INCOMPLETE**. Task 7 is next and has not started.
 
 Task 3 evidence details are recorded in `docs/superpowers/checkpoints/2026-08-10-reconciliation-governance-closeout.md`.
 
@@ -163,11 +164,11 @@ interface AuthorizedTenantExecutionContext extends TenantExecutionContext {
 
 **Event catalog:** user provisioned/activated/password change-reset; session created/rotated/revoked/reuse; membership invited/resent/accepted/suspended/revoked/owner promoted-demoted; tenant provisioned/activated; bootstrap admin; authorization denied.
 
-- [ ] Write tests requiring action/result/reason/request/hostname/actor/target/tenant where known and rejecting sensitive fields. Metric labels are limited to purpose/outcome/scope/reason family/delay bucket/event type.
-- [ ] Run `pnpm --filter @booking-os/api test -- prisma-security-audit.adapter.test.ts auth-metrics.adapter.test.ts`; expected FAIL.
-- [ ] Implement transactionally coupled audit for security-state mutations; emit noncritical bounded metrics after commit.
-- [ ] Rerun unit and audit E2E; expected PASS.
-- [ ] Commit: `feat: audit identity access events`.
+- [x] Tests require bounded audit context where known and reject sensitive/nested-sensitive metadata. Metric labels are constrained to the approved bounded catalog: purpose/outcome/scope/reason family/delay bucket/event type.
+- [x] RED evidence was established during Task 6 for missing transactional audit coupling/DI and stale test fixtures; targeted adapter/guard tests were then driven to GREEN without weakening the contracts.
+- [x] Transactionally coupled audit is implemented for DB-backed security-state mutations, including password-reset issuance, session/session-family revocation, membership/role mutations, and authorization-denial recording; noncritical metrics use only bounded dimensions.
+- [x] Unit, audit E2E, API E2E/RLS, architecture, OpenAPI, migration, build, browser smoke, production configuration, dependency audit, and secret-scan gates are GREEN on clean baseline `2af5fab3163dcd4e54c483b12ebb765bb74e1d0c`.
+- [x] Task 6 implementation is committed as a branch commit series; temporary Task 6 diagnostics are removed and diagnostic-only OpenAPI bootstrap behavior is reverted on the clean baseline.
 
 ### Task 7: Acceptance, Security, RLS, Concurrency, and CI Matrix
 
