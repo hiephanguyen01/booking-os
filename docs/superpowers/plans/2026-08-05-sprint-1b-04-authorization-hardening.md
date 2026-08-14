@@ -10,9 +10,9 @@
 
 ## Execution Status — reconciled 2026-08-14
 
-Status: IN_PROGRESS  
-Current Task: Task 8 (next; not started)  
-Last verified implementation-state reconciliation baseline: `38a7b6187ea66ed9c42da8341a7e88073cf8fe81`
+Status: VERIFIED_COMPLETE — REVIEW_HANDOFF_PENDING  
+Current Task: Review handoff; Sprint 1B implementation and Task 8 closeout are verified complete.  
+Last verified implementation/closeout baseline: `e5bb19dfcc42bb29aa04c527642e48942902d5b5`
 
 Implementation evidence:
 
@@ -23,9 +23,9 @@ Implementation evidence:
 - Task 5 is **VERIFIED COMPLETE** at implementation baseline `f887a838059320d447efc3dbd9e2b749a2d460e8`. The implementation enforces the approved API/browser/cache policy across sensitive API and web-console auth surfaces, preserves the `private, no-store` authorization-endpoint exception, rejects unsafe return URLs, bounds recursive redaction with cycle handling, prevents sensitive exception messages/stacks from reaching structured logs, and keeps outbox dead-letter diagnostics bounded without stripping encrypted business payloads. The web-console CSP is request-bound: auth routes receive a fresh nonce, Next.js receives the same request CSP plus `x-nonce`, auth route families render dynamically, static duplicate CSP was removed, and no `unsafe-inline` relaxation is used. A browser-hydration regression was reproduced by Playwright, converted into a real middleware unit regression, and fixed; focused web-console diagnostic run #2 completed successfully after the fix. Standard CI run #1609 on `f887a838059320d447efc3dbd9e2b749a2d460e8` completed Quality, Knowledge validation, OpenAPI compatibility, Docker configuration, Unit/API E2E/RLS, migration verification, Build, Playwright foundation smoke, production configuration guard, dependency audit, and committed-secret scan successfully. Same-head protected workflows API architecture #1098, Sprint 0 gates #1164, and Identity email integration #877 also completed successfully. Direct workflow deletion is blocked by the connector policy, so the temporary CSP diagnostic was converted in `7d1fa581b0501ec5eb77925264d64cb0c17e1667` to a manual-only no-op workflow with no push trigger or diagnostic execution.
 - Task 6 is **VERIFIED COMPLETE** at clean implementation baseline `2af5fab3163dcd4e54c483b12ebb765bb74e1d0c`. Security-state mutations now couple their approved audit records to the same Prisma/tenant transaction where required; covered flows include password-reset issuance, session/session-family revocation, membership/role security changes, and authorization denials. Security-audit metadata rejects sensitive nested fields. Auth metrics expose only bounded catalog dimensions (`eventType`, `purpose`, `outcome`, `scope`, `reasonFamily`, `delayBucket`) and do not use raw route/user/tenant identifiers as metric labels. Task 6 diagnostics were removed and the temporary OpenAPI `abortOnError: false` instrumentation was reverted before the final clean-head verification. CI #1717 completed Quality, Knowledge validation, OpenAPI compatibility, Docker configuration, Unit/API E2E/RLS, migration verification, Build, Playwright foundation smoke, production configuration guard, dependency audit, and committed-secret scan successfully. Same-head protected workflows Sprint 0 gates #1272, API architecture #1206, and Identity email integration #985 also completed successfully.
 - Task 7 is **VERIFIED COMPLETE** at implementation baseline `38a7b6187ea66ed9c42da8341a7e88073cf8fe81`. The security/RLS/concurrency matrices name and cover `S1B-AC01` through `S1B-AC15`; `verify:identity-access` executes the three matrix suites after API build/migration, CI runs a dedicated `Identity access acceptance` job before Build, and Foundation now includes the identity-access gate. Browser acceptance is committed in `e2e/identity-access.spec.ts`, proving identity-token fragment scrubbing and that failed login does not mint `__Host-booking_session` or render raw password/token material. CI #1728 completed Quality, Knowledge validation, OpenAPI compatibility, Docker configuration, Unit/API E2E/RLS, migration verification, the dedicated identity-access acceptance job, Build, Playwright foundation smoke, production configuration guard, dependency audit, and committed-secret scan successfully. Same-head protected workflows Sprint 0 gates #1283, API architecture #1217, and Identity email integration #996 also completed successfully.
-- Task 8 is **PENDING / EXPECTED_INCOMPLETE** and is the next task. It has not started in this reconciliation.
+- Task 8 is **VERIFIED COMPLETE** at closeout baseline `e5bb19dfcc42bb29aa04c527642e48942902d5b5`. TDD RED began with `eb810a9b00a3f80a94ba60f1c273a3d0b1e8dcc7`, where Sprint 0 #1285 proved repository validation did not enforce Sprint 1B closeout knowledge. `f20f01c9bfd42cad66a21b4394abe9f2ce280f2b` added minimal Genesis closeout rules; Sprint 0 #1286 moved tooling tests GREEN and produced the expected repository-validation RED for the missing feature/pattern/runbooks/checkpoint/owners. `e5bb19dfcc42bb29aa04c527642e48942902d5b5` committed the active feature, host-bound session pattern, two operational runbooks, closeout checkpoint, domain ownership, architecture/deployment baseline, 90-day plan, README, and Pilot checkpoint. CI #1732 completed Quality, Knowledge validation, OpenAPI compatibility, Docker configuration, Unit/API E2E/RLS, migration verification, Identity access acceptance, Build, Playwright foundation smoke, production configuration guard, dependency audit, and committed-secret scan successfully. Same-head Sprint 0 #1287, API architecture #1221, and Identity email #1000 also completed successfully.
 
-Task 3 evidence details are recorded in `docs/superpowers/checkpoints/2026-08-10-reconciliation-governance-closeout.md`.
+Task 3 evidence details are recorded in `docs/superpowers/checkpoints/2026-08-10-reconciliation-governance-closeout.md`. Task 8 closeout evidence is recorded in `docs/superpowers/checkpoints/2026-08-05-sprint-1b-closeout.md`.
 
 The task checkboxes below are the original execution recipe/evidence checklist. They are not, by themselves, canonical proof of current progress. Before resuming work, inspect current repository evidence and follow `docs/governance/DELIVERY-RECONCILIATION.md`.
 
@@ -193,20 +193,20 @@ interface AuthorizedTenantExecutionContext extends TenantExecutionContext {
 - Create `docs/superpowers/checkpoints/2026-08-05-sprint-1b-closeout.md`
 - Modify domain owners, architecture baseline/deployment units, 90-day execution plan, README, Pilot gates.
 
-- [ ] Write docs-validation expectations: active feature, resolvable links to design/four plans, exact commands without secrets, owners for identity/sessions/memberships/authorization.
-- [ ] Run `pnpm genesis:validate`; expected FAIL until docs/registries are current.
-- [ ] Document bootstrap/recovery, key rotation, lost-device/compromise, user suspension, SMTP/Redis outage, final-owner recovery, audit queries, phased additive rollout and rollback.
-- [ ] Run Genesis, check:ci, architecture, migrations, identity-access, Foundation, OpenAPI, build, browser E2E; expected PASS.
-- [ ] Commit: `docs: close Sprint 1B identity access`.
+- [x] Wrote repository validation expectations first: active feature, resolvable design/four-plan links, exact operational commands without command-line secrets, and assigned Identity/Sessions/Memberships/Authorization ownership. Sprint 0 #1285 captured RED before validator support existed.
+- [x] Added the minimal Sprint 1B repository rules in `f20f01c9bfd42cad66a21b4394abe9f2ce280f2b`; Sprint 0 #1286 proved tooling tests GREEN while `genesis:validate` still failed exactly on the missing Task 8 artifacts/owners.
+- [x] Documented bootstrap/recovery, host-bound session policy, key rotation, lost-device/session compromise, password reset, user/membership suspension, SMTP/Redis outage, final-owner recovery, bounded audit queries, phased additive rollout, forward-fix migration policy, and schema-compatible rollback.
+- [x] Closeout baseline `e5bb19dfcc42bb29aa04c527642e48942902d5b5` passes Genesis, Quality/check:ci-equivalent gates, architecture, OpenAPI compatibility, Unit/API E2E/RLS, migrations, dedicated identity-access acceptance, Build, Playwright browser smoke, production configuration guard, dependency audit, and committed-secret scan in CI #1732; Sprint 0 #1287, API architecture #1221, and Identity email #1000 are also GREEN.
+- [x] Task 8 closeout is committed as `e5bb19dfcc42bb29aa04c527642e48942902d5b5` — `docs: close Sprint 1B identity access`.
 
 ## Plan 4 Completion Gate
 
-- [ ] Eight scoped commits exist.
-- [ ] All protected routes use authoritative permission/resource policy and stale authority cannot execute logic.
-- [ ] `/auth/me/authorization` is current-scope-only/no-store.
-- [ ] RLS remains final tenant boundary.
-- [ ] Headers/CORS/CSRF/redirect/cache/logging meet invariants.
-- [ ] Audit/metrics contain no secrets/high-cardinality identity labels.
-- [ ] `S1B-AC01`–`S1B-AC15` and all CI/security gates pass.
-- [ ] Feature/pattern/runbooks/owners/baseline/Pilot checkpoint are committed.
-- [ ] Open draft PR `feat: complete Sprint 1B identity access core`, request code review, and do not mark ready or merge without explicit instruction.
+- [x] Eight scoped task histories exist across Tasks 1–8; continuation/debug commits remain bounded to the same task acceptance criteria.
+- [x] All protected routes use authoritative permission/resource policy and stale authority cannot execute logic.
+- [x] `/auth/me/authorization` is current-scope-only/no-store.
+- [x] RLS remains final tenant boundary.
+- [x] Headers/CORS/CSRF/redirect/cache/logging meet invariants.
+- [x] Audit/metrics contain no secrets/high-cardinality identity labels.
+- [x] `S1B-AC01`–`S1B-AC15` and all CI/security gates pass on verified closeout baseline `e5bb19dfcc42bb29aa04c527642e48942902d5b5`.
+- [x] Feature/pattern/runbooks/owners/baseline/Pilot checkpoint are committed and Genesis-validated.
+- [ ] Draft PR #31 remains open/draft/unmerged for `feat: complete Sprint 1B identity access core`; code-review request is pending a valid external reviewer because the repository currently exposes no CODEOWNERS/reviewer routing beyond the PR author. Do not mark ready or merge without explicit instruction.
