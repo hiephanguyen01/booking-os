@@ -2,9 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const packageJson = JSON.parse(
-  await readFile(new URL("../package.json", import.meta.url), "utf8"),
-);
+const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const ciWorkflow = await readFile(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
 
 test("Task 7 exposes the dedicated identity-access verification command", () => {
