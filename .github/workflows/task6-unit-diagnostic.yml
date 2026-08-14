@@ -83,40 +83,44 @@ jobs:
           from pathlib import Path
 
           lines = Path("/tmp/task6-api-unit.log").read_text(encoding="utf-8", errors="replace").splitlines()
-          markers = (
-              "not ok ",
-              "AssertionError",
-              "ERR_ASSERTION",
-              "ERR_TEST_FAILURE",
+          primary_markers = (
+              "ERR_MODULE_NOT_FOUND",
+              "ERR_PACKAGE_PATH_NOT_EXPORTED",
+              "ERR_UNKNOWN_FILE_EXTENSION",
+              "Cannot find package",
+              "Cannot find module",
+              "SyntaxError:",
               "TypeError:",
               "ReferenceError:",
-              "Error:",
+              "AssertionError",
+              "ERR_ASSERTION",
           )
-          indexes = [i for i, line in enumerate(lines) if any(marker in line for marker in markers)]
-
+          secondary_markers = ("not ok ", "ERR_TEST_FAILURE")
+          indexes = [i for i, line in enumerate(lines) if any(marker in line for marker in primary_markers)]
           if not indexes:
-              indexes = [max(0, len(lines) - 25)]
+              indexes = [i for i, line in enumerate(lines) if any(marker in line for marker in secondary_markers)]
+          if not indexes:
+              indexes = [max(0, len(lines) - 60)]
 
           blocks = []
-          seen = set()
+          covered = []
           for index in indexes:
-              start = max(0, index - 3)
-              end = min(len(lines), index + 14)
-              key = (start, end)
-              if key in seen:
+              start = max(0, index - 30)
+              end = min(len(lines), index + 20)
+              if any(start >= old_start and end <= old_end for old_start, old_end in covered):
                   continue
-              seen.add(key)
+              covered.append((start, end))
               block = "\n".join(lines[start:end]).strip()
               if block:
                   blocks.append(block)
-              if len(blocks) >= 8:
+              if len(blocks) >= 6:
                   break
 
           for number, block in enumerate(blocks, start=1):
               safe = block.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-              if len(safe) > 12000:
-                  safe = safe[:12000] + "..."
-              print(f"::error title=Task 6 unit diagnostic {number}::{safe}")
+              if len(safe) > 16000:
+                  safe = safe[:16000] + "..."
+              print(f"::error title=Task 6 unit root-cause probe {number}::{safe}")
           PY
             exit "$status"
           fi
