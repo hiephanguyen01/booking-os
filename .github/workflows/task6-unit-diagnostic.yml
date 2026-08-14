@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -17,10 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout branch
+      - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v6
@@ -34,35 +32,8 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      - name: Apply verified Nano ID patch
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "nanoid version: $(pnpm view nanoid@3.3.18 version)"
-          echo "postcss nanoid range: $(pnpm view postcss@8.5.18 dependencies.nanoid)"
+      - name: Install dependencies from committed lockfile
+        run: pnpm install --frozen-lockfile
 
-          node <<'NODE'
-          const fs = require("node:fs");
-          const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
-          packageJson.pnpm ??= {};
-          packageJson.pnpm.overrides ??= {};
-          packageJson.pnpm.overrides.nanoid = "3.3.18";
-          fs.writeFileSync("package.json", `${JSON.stringify(packageJson, null, 2)}\n`);
-          NODE
-
-          pnpm install --lockfile-only
-          pnpm install --frozen-lockfile
-          pnpm audit --audit-level high
-
-          if git diff --quiet -- package.json pnpm-lock.yaml; then
-            echo "Nano ID patch is already committed."
-            exit 0
-          fi
-
-          git diff --check -- package.json pnpm-lock.yaml
-          git diff -- package.json pnpm-lock.yaml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json pnpm-lock.yaml
-          git commit -m "fix(deps): patch nanoid audit vulnerability"
-          git push origin "HEAD:${{ github.event.pull_request.head.ref || github.ref_name }}"
+      - name: Verify high-severity dependency audit
+        run: pnpm audit --audit-level high
