@@ -1,0 +1,122 @@
+name: Task 6 unit diagnostic
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api-unit-diagnostic:
+    name: API unit diagnostic
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: booking
+          POSTGRES_PASSWORD: booking
+          POSTGRES_DB: booking_os_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U booking -d booking_os_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://booking:booking@127.0.0.1:5432/booking_os_test
+      REDIS_URL: redis://127.0.0.1:6379/1
+      SESSION_SECRET: test-only-session-secret-at-least-32-characters
+      PAYMENT_PROVIDER: mock
+      NODE_ENV: test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Prisma schema
+        run: pnpm --filter @booking-os/api prisma:validate
+
+      - name: Apply database migrations
+        run: pnpm --filter @booking-os/api prisma:migrate:deploy
+
+      - name: Run API unit tests with failure annotations
+        shell: bash
+        run: |
+          set +e
+          pnpm --filter @booking-os/api test 2>&1 | tee /tmp/task6-api-unit.log
+          status=${PIPESTATUS[0]}
+          set -e
+
+          if [ "$status" -ne 0 ]; then
+            python - <<'PY'
+          from pathlib import Path
+
+          lines = Path("/tmp/task6-api-unit.log").read_text(encoding="utf-8", errors="replace").splitlines()
+          markers = (
+              "not ok ",
+              "AssertionError",
+              "ERR_ASSERTION",
+              "ERR_TEST_FAILURE",
+              "TypeError:",
+              "ReferenceError:",
+              "Error:",
+          )
+          indexes = [i for i, line in enumerate(lines) if any(marker in line for marker in markers)]
+
+          if not indexes:
+              indexes = [max(0, len(lines) - 25)]
+
+          blocks = []
+          seen = set()
+          for index in indexes:
+              start = max(0, index - 3)
+              end = min(len(lines), index + 14)
+              key = (start, end)
+              if key in seen:
+                  continue
+              seen.add(key)
+              block = "\n".join(lines[start:end]).strip()
+              if block:
+                  blocks.append(block)
+              if len(blocks) >= 8:
+                  break
+
+          for number, block in enumerate(blocks, start=1):
+              safe = block.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              if len(safe) > 12000:
+                  safe = safe[:12000] + "..."
+              print(f"::error title=Task 6 unit diagnostic {number}::{safe}")
+          PY
+            exit "$status"
+          fi
