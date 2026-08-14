@@ -27,7 +27,7 @@
     "verify:migrations": "node scripts/verify-migrations.mjs",
     "verify:identity-access": "node scripts/verify-identity-access.mjs",
     "verify:production-config": "node scripts/assert-production-config.mjs",
-    "verify:foundation": "pnpm check:ci && pnpm verify:architecture && pnpm verify:frontend-libraries && pnpm lint && pnpm typecheck && pnpm --filter @booking-os/api prisma:migrate:deploy && pnpm test && pnpm test:e2e:api && pnpm verify:migrations && pnpm build && pnpm test:e2e && pnpm verify:production-config",
+    "verify:foundation": "pnpm check:ci && pnpm verify:architecture && pnpm verify:frontend-libraries && pnpm lint && pnpm typecheck && pnpm --filter @booking-os/api prisma:migrate:deploy && pnpm test && pnpm test:e2e:api && pnpm verify:migrations && pnpm verify:identity-access && pnpm build && pnpm test:e2e && pnpm verify:production-config",
     "format": "biome format --write .",
     "check": "biome check .",
     "check:ci": "biome ci .",
