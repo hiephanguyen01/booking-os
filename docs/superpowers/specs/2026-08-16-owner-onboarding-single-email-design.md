@@ -58,7 +58,7 @@ The page then performs the following sequence:
 
 1. user chooses a password;
 2. activation completes using the activation token;
-3. the web console automatically signs the user in using the email identity and the password just entered;
+3. the web console automatically signs the user in using the server-derived email identity and the password just entered;
 4. the API creates an `invitation_pending` tenant session;
 5. the browser navigates to `/invite/accept#token=<INVITATION_TOKEN>`;
 6. the invitation page consumes and strips the invitation token from the fragment;
@@ -138,7 +138,7 @@ For onboarding links, the client:
 1. consumes `activation` and `invitation` from the URL fragment;
 2. strips the fragment from browser history before network submission;
 3. submits activation with the chosen password;
-4. uses the same email identity associated with the onboarding flow plus the password still held in component memory to call the normal login BFF;
+4. uses the server-derived continuation email plus the password still held in component memory to call the normal login BFF;
 5. on successful login, navigates to `/invite/accept#token=<invitation>`.
 
 No new API authentication shortcut is introduced.
@@ -147,11 +147,24 @@ No new API authentication shortcut is introduced.
 
 The browser must not trust an editable email value derived from the link.
 
-The activation completion response for a tenant onboarding activation should expose only the minimum continuation metadata needed by the first-party BFF/UI, specifically the canonical display email or normalized email associated with the consumed activation token. The server derives this from the consumed activation record/user; it is not accepted from client input.
+When an activation token is linked to a tenant owner invitation, activation completion returns the minimum continuation metadata needed by the first-party BFF/UI:
 
-The response remains `no-store` and must not expose the invitation token or other account data.
+```ts
+{
+  completed: true,
+  continuationEmail: string
+}
+```
 
-Normal activation consumers may ignore this additional response field.
+`continuationEmail` is derived on the server from the user associated with the consumed activation record. It is never accepted from client input.
+
+For platform activation or any activation token that is not linked to a tenant owner invitation, the response remains the normal shape and omits `continuationEmail`:
+
+```ts
+{ completed: true }
+```
+
+All activation completion responses remain `no-store` and must not expose the invitation token or other account data.
 
 ### Login and invitation acceptance
 
@@ -180,11 +193,11 @@ Provide:
 
 The login page consumes and strips that fragment immediately, preserves the invitation token only in in-memory client state, and after a successful login navigates to `/invite/accept#token=<INVITATION_TOKEN>`.
 
-If the page is refreshed after the fragment has been stripped and the in-memory continuation is lost, the user may use the owner-invitation resend flow to receive a fresh onboarding/invitation message. No token is persisted in localStorage or sessionStorage.
+If the page is refreshed after the fragment has been stripped and the in-memory continuation is lost, the owner does not receive a token-recovery shortcut. A platform administrator must use the existing owner-invitation resend action to issue a fresh onboarding/invitation message. No token is persisted in localStorage or sessionStorage.
 
 ### Invitation expires before acceptance
 
-The existing invitation error handling remains authoritative. The platform administrator can resend the owner invitation; for a still-pending identity, resend produces a new single onboarding email, otherwise a normal invitation email.
+The existing invitation error handling remains authoritative. A platform administrator can resend the owner invitation; for a still-pending identity, resend produces a new single onboarding email, otherwise a normal invitation email.
 
 ## Security Properties
 
@@ -225,7 +238,7 @@ Required test coverage:
 4. owner-invitation resend follows the same pending-vs-active email rule;
 5. worker renders one onboarding message with both fragment values and never logs raw tokens;
 6. activation UI consumes both fragment values and strips browser history before submission;
-7. onboarding activation returns server-derived email continuation metadata;
+7. onboarding activation returns server-derived `continuationEmail`, while platform/non-owner activation omits it;
 8. successful activation performs normal password login and receives `invitation_pending` state;
 9. successful auto-login routes to invitation review without accepting it;
 10. failed auto-login supports retry and sign-in continuation without storing the invitation token persistently;
