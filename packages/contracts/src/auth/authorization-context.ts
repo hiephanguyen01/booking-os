@@ -15,6 +15,16 @@ export const AUTHORIZATION_PERMISSION_KEYS = [
   "tenant.membership.owner.demote",
   "tenant.security.session.read",
   "tenant.security.session.revoke",
+  "tenant.rbac.permission.read",
+  "tenant.rbac.role.read",
+  "tenant.rbac.role.create",
+  "tenant.rbac.role.update",
+  "tenant.rbac.role.archive",
+  "tenant.rbac.role.permission.grant",
+  "tenant.rbac.role.permission.revoke",
+  "tenant.rbac.assignment.read",
+  "tenant.rbac.assignment.grant",
+  "tenant.rbac.assignment.revoke",
 ] as const;
 
 export type AuthorizationPermissionKey = (typeof AUTHORIZATION_PERMISSION_KEYS)[number];
