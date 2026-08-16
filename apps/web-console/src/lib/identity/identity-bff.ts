@@ -52,9 +52,6 @@ function publicRequestOrigin(request: Request): string | null {
     ?.split(",", 1)[0]
     ?.trim()
     .toLowerCase();
-  // Caddy replaces this header with the browser-facing TLS scheme before it
-  // reaches the host-running Next server. Without it, Next reports the
-  // loopback HTTP scheme and rejects a valid HTTPS browser Origin.
   const protocol =
     forwardedProtocol === "http" || forwardedProtocol === "https"
       ? `${forwardedProtocol}:`
@@ -104,6 +101,19 @@ function parseCsrfBody(value: unknown): CsrfResponseBody | null {
   }
   const csrfToken = (value as { csrfToken?: unknown }).csrfToken;
   return typeof csrfToken === "string" && csrfToken.length > 0 ? { csrfToken } : null;
+}
+
+function activationSuccessBody(value: unknown): Readonly<Record<string, true | string>> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return Object.freeze({ completed: true });
+  }
+  const continuationEmail = (value as Record<string, unknown>).continuationEmail;
+  return Object.freeze({
+    completed: true,
+    ...(typeof continuationEmail === "string" && continuationEmail.length > 0
+      ? { continuationEmail }
+      : {}),
+  });
 }
 
 function extractPreAuthCookie(setCookie: string | null): string | null {
@@ -206,6 +216,11 @@ export function createIdentityBffHandlers(options: IdentityBffOptions): Identity
 
       if (!upstream.ok) {
         return upstreamUnavailableResponse();
+      }
+
+      if (command.purpose === "activation") {
+        const upstreamBody = await upstream.json().catch(() => null);
+        return jsonResponse(command.successStatus, activationSuccessBody(upstreamBody));
       }
 
       return jsonResponse(command.successStatus, command.successBody);
