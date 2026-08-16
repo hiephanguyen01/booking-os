@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createCipheriv } from "node:crypto";
 import test from "node:test";
 
 import { IdentityEmailDispatcher } from "../src/identity-email/identity-email-dispatcher.js";
@@ -7,12 +8,24 @@ import {
   NodeSmtpTransport,
   SmtpIdentityEmailAdapter,
 } from "../src/identity-email/smtp-identity-email.adapter.js";
-import { createIdentityEmailJob, TOKEN } from "../src/identity-email/test-fixtures.js";
+import {
+  createIdentityEmailJob,
+  EVENT_ID,
+  KEY,
+  KEY_ID,
+  TOKEN,
+  USER_ID,
+} from "../src/identity-email/test-fixtures.js";
 
 const MAILPIT_API_URL = process.env.MAILPIT_API_URL ?? "http://127.0.0.1:8025";
 const MAILPIT_SMTP_HOST = process.env.MAILPIT_SMTP_HOST ?? "127.0.0.1";
 const MAILPIT_SMTP_PORT = Number(process.env.MAILPIT_SMTP_PORT ?? "1025");
 const SMTP_FROM = "no-reply@booking.test";
+const ONBOARDING_TENANT_ID = "33333333-3333-4333-8333-333333333333";
+const ONBOARDING_INVITATION_ID = "55555555-5555-4555-8555-555555555555";
+const ONBOARDING_HOSTNAME = "acme.booking.localhost";
+const ONBOARDING_RECIPIENT = "new-owner@example.test";
+const INVITATION_TOKEN = `${"c".repeat(22)}.${"d".repeat(43)}`;
 
 interface MailpitMessageSummary {
   readonly ID: string;
@@ -82,6 +95,61 @@ function createDispatcher(port = MAILPIT_SMTP_PORT): IdentityEmailDispatcher {
   return new IdentityEmailDispatcher(sender, createIdentityEmailJob().keyring);
 }
 
+function createOwnerOnboardingJob() {
+  const iv = Buffer.alloc(12, 9);
+  const cipher = createCipheriv("aes-256-gcm", KEY, iv, { authTagLength: 16 });
+  cipher.setAAD(
+    Buffer.from(
+      [
+        "booking-os:owner-onboarding-email:v1",
+        "membership.owner_onboarding.requested.v1",
+        EVENT_ID,
+        ONBOARDING_TENANT_ID,
+        ONBOARDING_INVITATION_ID,
+        USER_ID,
+        ONBOARDING_HOSTNAME,
+        ONBOARDING_RECIPIENT,
+      ].join("\0"),
+      "utf8",
+    ),
+  );
+  const ciphertext = Buffer.concat([
+    cipher.update(
+      Buffer.from(
+        JSON.stringify({ activationToken: TOKEN, invitationToken: INVITATION_TOKEN }),
+        "utf8",
+      ),
+    ),
+    cipher.final(),
+  ]);
+
+  return {
+    name: "membership.owner_onboarding.requested.v1",
+    data: {
+      eventId: EVENT_ID,
+      tenantId: ONBOARDING_TENANT_ID,
+      aggregateType: "membership_invitation",
+      aggregateId: ONBOARDING_INVITATION_ID,
+      payload: {
+        version: 1,
+        recipient: ONBOARDING_RECIPIENT,
+        hostname: ONBOARDING_HOSTNAME,
+        purpose: "initial_owner_onboarding",
+        tenantId: ONBOARDING_TENANT_ID,
+        invitationId: ONBOARDING_INVITATION_ID,
+        userId: USER_ID,
+        envelope: {
+          version: 1,
+          keyId: KEY_ID,
+          iv: iv.toString("base64url"),
+          ciphertext: ciphertext.toString("base64url"),
+          tag: cipher.getAuthTag().toString("base64url"),
+        },
+      },
+    },
+  } as const;
+}
+
 test("delivers activation and reset emails through Mailpit with tokens only in URL fragments", async () => {
   await clearMailbox();
   const dispatcher = createDispatcher();
@@ -123,6 +191,37 @@ test("delivers activation and reset emails through Mailpit with tokens only in U
     assert.doesNotMatch(raw, /<img|tracking/iu);
     assert.equal(raw.includes(ciphertext), false);
   }
+});
+
+test("delivers exactly one initial owner onboarding message with both tokens in the fragment", async () => {
+  await clearMailbox();
+  const dispatcher = createDispatcher();
+  const onboarding = createOwnerOnboardingJob();
+
+  await dispatcher.dispatch(onboarding.name, onboarding.data);
+
+  const messages = await waitForMessages(1);
+  const message = messages[0];
+  assert.ok(message);
+  assert.equal(message.Subject, "Set up your Booking OS workspace");
+
+  const rawResponse = await mailpit(`/api/v1/message/${encodeURIComponent(message.ID)}/raw`);
+  const raw = await rawResponse.text();
+  const encodedActivation = encodeURIComponent(TOKEN);
+  const encodedInvitation = encodeURIComponent(INVITATION_TOKEN);
+
+  assert.match(raw, /From: no-reply@booking\.test/u);
+  assert.match(raw, /To: new-owner@example\.test/u);
+  assert.match(raw, /Content-Type: text\/plain; charset=UTF-8/u);
+  assert.match(
+    raw,
+    new RegExp(
+      `https://acme\\.booking\\.localhost/activate#activation=${encodedActivation}&invitation=${encodedInvitation}`,
+      "u",
+    ),
+  );
+  assert.doesNotMatch(raw, /\?activation=|\?invitation=/u);
+  assert.equal(raw.includes(onboarding.data.payload.envelope.ciphertext), false);
 });
 
 test("real network failures preserve retry classification without exposing token material", async () => {
