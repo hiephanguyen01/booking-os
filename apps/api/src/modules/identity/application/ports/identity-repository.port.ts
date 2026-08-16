@@ -53,6 +53,11 @@ export interface ConsumeActivationInput {
   readonly requestId: string | null;
 }
 
+export interface ActivationConsumptionResult extends GlobalUser {
+  readonly invitationId?: string | null;
+  readonly intendedRoleKey?: string | null;
+}
+
 export interface CompleteResetInput {
   readonly selector: string;
   readonly tokenHash: string;
@@ -74,6 +79,6 @@ export interface IdentityRepositoryPort {
   storePasswordCredential(input: PasswordCredentialInput): Promise<void>;
   issueActivationToken(input: StoredActivationToken): Promise<void>;
   issuePasswordResetToken(input: StoredResetToken): Promise<void>;
-  consumeActivationToken(input: ConsumeActivationInput): Promise<GlobalUser>;
+  consumeActivationToken(input: ConsumeActivationInput): Promise<ActivationConsumptionResult>;
   replacePasswordAndConsumeReset(input: CompleteResetInput): Promise<PasswordResetResult>;
 }
