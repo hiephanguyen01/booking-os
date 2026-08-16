@@ -1,7 +1,7 @@
 import {
   getPermissionCatalogEntry,
-  SYSTEM_ROLES,
   type PermissionKey,
+  SYSTEM_ROLES,
   type SystemRole,
 } from "@booking-os/auth";
 
