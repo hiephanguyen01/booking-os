@@ -78,6 +78,39 @@ test("sets the password and activates the account atomically without creating a 
   });
 });
 
+test("returns server-derived continuation email for an owner-linked tenant activation", async () => {
+  const tenantId = "30000000-0000-4000-8000-000000000001";
+  const useCase = new CompleteActivationUseCase(
+    createIdentityRepository({
+      async consumeActivationToken() {
+        return {
+          ...createUser({ status: "active", activatedAt: NOW }),
+          invitationId: "50000000-0000-4000-8000-000000000001",
+          intendedRoleKey: "tenant_owner",
+        } as never;
+      },
+    }),
+    createOneTimeTokenPort(),
+    createPasswordHasher(),
+    createPasswordDenylist(),
+    fixedClock,
+  );
+
+  const result = await useCase.execute({
+    hostname: HOSTNAME,
+    token: SERIALIZED_TOKEN,
+    newPassword: NORMALIZED_PASSWORD,
+    scopeType: "tenant",
+    tenantId,
+    requestId: "request-owner-activation",
+  });
+
+  assert.deepEqual(result, {
+    userId: USER_ID,
+    continuationEmail: "owner@example.com",
+  });
+});
+
 test("maps malformed activation material to the generic token error before hashing", async () => {
   let hashed = false;
   const useCase = new CompleteActivationUseCase(
