@@ -44,7 +44,7 @@ const INPUT: ProvisionPlatformTenantInput = Object.freeze({
 
 test("delivers pending owner activation and invitation in one encrypted onboarding event", async () => {
   const outboxEvents: Record<string, unknown>[] = [];
-  let storedActivation: Record<string, unknown> | null = null;
+  const storedActivations: Record<string, unknown>[] = [];
 
   const session = {
     tenants: {
@@ -118,7 +118,7 @@ test("delivers pending owner activation and invitation in one encrypted onboardi
             return { userId: OWNER_USER_ID, status: "pending_activation", created: true };
           },
           async issueTenantActivation(input) {
-            storedActivation = input as unknown as Record<string, unknown>;
+            storedActivations.push(input as unknown as Record<string, unknown>);
           },
         },
         async runTenant<T>(
@@ -192,8 +192,8 @@ test("delivers pending owner activation and invitation in one encrypted onboardi
   const serializedEvent = JSON.stringify(outboxEvents[0]);
   assert.equal(serializedEvent.includes(RAW_INVITATION_TOKEN), false);
   assert.equal(serializedEvent.includes(RAW_ACTIVATION_TOKEN), false);
-  assert.ok(storedActivation);
-  assert.equal(storedActivation.selector, ACTIVATION_SELECTOR);
-  assert.equal(storedActivation.tokenHash, ACTIVATION_TOKEN_HASH);
-  assert.equal(storedActivation.invitationId, OWNER_INVITATION_ID);
+  assert.equal(storedActivations.length, 1);
+  assert.equal(storedActivations[0]?.selector, ACTIVATION_SELECTOR);
+  assert.equal(storedActivations[0]?.tokenHash, ACTIVATION_TOKEN_HASH);
+  assert.equal(storedActivations[0]?.invitationId, OWNER_INVITATION_ID);
 });
