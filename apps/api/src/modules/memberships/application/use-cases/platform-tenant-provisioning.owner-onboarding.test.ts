@@ -148,6 +148,13 @@ test("pending initial owner emits one owner-onboarding email event", async () =>
         return SEALED;
       },
     },
+    ownerOnboardingEnvelope: {
+      seal(input) {
+        assert.equal(input.activationToken, "activation-token");
+        assert.equal(input.invitationToken, "invite-token");
+        return SEALED;
+      },
+    },
   });
 
   await workflow.provision({
