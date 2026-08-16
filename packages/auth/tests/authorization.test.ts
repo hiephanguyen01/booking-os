@@ -92,7 +92,10 @@ test("tenant administrator receives RBAC read permissions but no RBAC mutation p
     PERMISSION_KEYS.tenantRbacRoleRead,
     PERMISSION_KEYS.tenantRbacAssignmentRead,
   ]);
-  assert.equal(hasPermission(SYSTEM_ROLES.tenantAdmin, PERMISSION_KEYS.tenantRbacRoleCreate), false);
+  assert.equal(
+    hasPermission(SYSTEM_ROLES.tenantAdmin, PERMISSION_KEYS.tenantRbacRoleCreate),
+    false,
+  );
   assert.equal(
     hasPermission(SYSTEM_ROLES.tenantAdmin, PERMISSION_KEYS.tenantRbacAssignmentGrant),
     false,
