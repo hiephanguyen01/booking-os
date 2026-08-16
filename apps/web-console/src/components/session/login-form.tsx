@@ -1,6 +1,8 @@
 "use client";
 
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
+
+import { consumeInvitationContinuationFragment } from "../../lib/identity/fragment-token";
 
 interface LoginFormProps {
   readonly onAuthenticated?: (returnPath: string) => void;
@@ -37,13 +39,21 @@ export function resolveSafeReturnPath(value: string | null): string {
 export function LoginForm({
   onAuthenticated = (returnPath) => window.location.assign(returnPath),
 }: LoginFormProps) {
+  const consumedContinuation = useRef(false);
   const [hydrated, setHydrated] = useState(false);
+  const [invitationToken, setInvitationToken] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    if (!consumedContinuation.current) {
+      consumedContinuation.current = true;
+      setInvitationToken(
+        consumeInvitationContinuationFragment(window.location, window.history),
+      );
+    }
     setHydrated(true);
   }, []);
 
@@ -69,6 +79,11 @@ export function LoginForm({
 
       if (!response.ok) {
         setError(GENERIC_LOGIN_ERROR);
+        return;
+      }
+
+      if (invitationToken) {
+        onAuthenticated(`/invite/accept#token=${encodeURIComponent(invitationToken)}`);
         return;
       }
 
