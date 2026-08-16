@@ -156,8 +156,10 @@ test("permission mappings enforce same-tenant role ownership, tenant permission 
   const platformPermission = await prisma.$queryRaw<readonly { id: string }[]>`
     SELECT "id" FROM "permissions" WHERE "key" = 'platform.tenants.provision'
   `;
-  assert.ok(tenantPermission[0]?.id);
-  assert.ok(platformPermission[0]?.id);
+  const tenantPermissionId = tenantPermission[0]?.id;
+  const platformPermissionId = platformPermission[0]?.id;
+  assert.ok(tenantPermissionId);
+  assert.ok(platformPermissionId);
 
   await runAsTenant(tenantAId, async (transaction) => {
     await transaction.$executeRaw`
@@ -181,7 +183,7 @@ test("permission mappings enforce same-tenant role ownership, tenant permission 
       INSERT INTO "tenant_custom_role_permissions" (
         "tenant_id", "role_id", "permission_id", "created_at"
       ) VALUES (
-        ${tenantAId}::uuid, ${roleId}::uuid, ${tenantPermission[0].id}::uuid, CURRENT_TIMESTAMP
+        ${tenantAId}::uuid, ${roleId}::uuid, ${tenantPermissionId}::uuid, CURRENT_TIMESTAMP
       )
     `;
   });
@@ -193,7 +195,7 @@ test("permission mappings enforce same-tenant role ownership, tenant permission 
         INSERT INTO "tenant_custom_role_permissions" (
           "tenant_id", "role_id", "permission_id", "created_at"
         ) VALUES (
-          ${tenantBId}::uuid, ${roleId}::uuid, ${tenantPermission[0].id}::uuid, CURRENT_TIMESTAMP
+          ${tenantBId}::uuid, ${roleId}::uuid, ${tenantPermissionId}::uuid, CURRENT_TIMESTAMP
         )
       `,
     ),
@@ -205,7 +207,7 @@ test("permission mappings enforce same-tenant role ownership, tenant permission 
         INSERT INTO "tenant_custom_role_permissions" (
           "tenant_id", "role_id", "permission_id", "created_at"
         ) VALUES (
-          ${tenantAId}::uuid, ${roleId}::uuid, ${platformPermission[0].id}::uuid, CURRENT_TIMESTAMP
+          ${tenantAId}::uuid, ${roleId}::uuid, ${platformPermissionId}::uuid, CURRENT_TIMESTAMP
         )
       `,
     ),
@@ -217,7 +219,7 @@ test("permission mappings enforce same-tenant role ownership, tenant permission 
         INSERT INTO "tenant_custom_role_permissions" (
           "tenant_id", "role_id", "permission_id", "created_at"
         ) VALUES (
-          ${tenantAId}::uuid, ${archivedRoleId}::uuid, ${tenantPermission[0].id}::uuid,
+          ${tenantAId}::uuid, ${archivedRoleId}::uuid, ${tenantPermissionId}::uuid,
           CURRENT_TIMESTAMP
         )
       `,
