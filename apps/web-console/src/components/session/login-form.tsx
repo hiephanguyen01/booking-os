@@ -50,9 +50,7 @@ export function LoginForm({
   useEffect(() => {
     if (!consumedContinuation.current) {
       consumedContinuation.current = true;
-      setInvitationToken(
-        consumeInvitationContinuationFragment(window.location, window.history),
-      );
+      setInvitationToken(consumeInvitationContinuationFragment(window.location, window.history));
     }
     setHydrated(true);
   }, []);
