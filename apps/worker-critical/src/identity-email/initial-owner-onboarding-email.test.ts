@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import test from "node:test";
 import { createCipheriv } from "node:crypto";
+import test from "node:test";
 
 import type { IdentityEmailMessage, IdentityEmailSender } from "./identity-email-dispatcher.js";
 import { IdentityEmailDispatcher } from "./identity-email-dispatcher.js";
@@ -38,7 +38,9 @@ function createOnboardingJob() {
   );
   const ciphertext = Buffer.concat([
     cipher.update(
-      Buffer.from(JSON.stringify({ activationToken: ACTIVATION_TOKEN, invitationToken: INVITATION_TOKEN })),
+      Buffer.from(
+        JSON.stringify({ activationToken: ACTIVATION_TOKEN, invitationToken: INVITATION_TOKEN }),
+      ),
     ),
     cipher.final(),
   ]);
