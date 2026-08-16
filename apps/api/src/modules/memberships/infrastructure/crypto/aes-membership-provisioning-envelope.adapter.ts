@@ -1,6 +1,11 @@
 import { encryptSensitiveEnvelope } from "@booking-os/auth";
 
 import type {
+  InitialOwnerOnboardingEnvelopePort,
+  InitialOwnerOnboardingEnvelopeValue,
+  SealInitialOwnerOnboardingInput,
+} from "../../application/ports/initial-owner-onboarding-envelope.port.js";
+import type {
   MembershipInvitationEnvelopePort,
   MembershipInvitationEnvelopeValue,
   SealMembershipInvitationInput,
@@ -12,6 +17,8 @@ import type {
 } from "../../application/ports/tenant-activation-envelope.port.js";
 
 const encoder = new TextEncoder();
+
+type EnvelopeValue = MembershipInvitationEnvelopeValue;
 
 class AesEnvelope {
   private readonly keyring: Readonly<Record<string, Uint8Array>>;
@@ -31,10 +38,7 @@ class AesEnvelope {
     this.keyring = Object.freeze(copiedKeyring);
   }
 
-  protected sealEnvelope(
-    associatedData: string,
-    serializedToken: string,
-  ): MembershipInvitationEnvelopeValue {
+  protected sealEnvelope(associatedData: string, plaintext: unknown): EnvelopeValue {
     const key = this.keyring[this.activeKeyId];
 
     if (!key) {
@@ -44,7 +48,7 @@ class AesEnvelope {
     return encryptSensitiveEnvelope({
       keyId: this.activeKeyId,
       key,
-      plaintext: encoder.encode(JSON.stringify({ token: serializedToken })),
+      plaintext: encoder.encode(JSON.stringify(plaintext)),
       aad: encoder.encode(associatedData),
     });
   }
@@ -67,7 +71,31 @@ export class AesMembershipInvitationEnvelopeAdapter
         input.normalizedEmail,
         input.intendedRoleKey,
       ].join("\0"),
-      input.serializedToken,
+      { token: input.serializedToken },
+    );
+  }
+}
+
+export class AesInitialOwnerOnboardingEnvelopeAdapter
+  extends AesEnvelope
+  implements InitialOwnerOnboardingEnvelopePort
+{
+  seal(input: SealInitialOwnerOnboardingInput): InitialOwnerOnboardingEnvelopeValue {
+    return super.sealEnvelope(
+      [
+        "booking-os:owner-onboarding-email:v1",
+        "membership.owner_onboarding.requested.v1",
+        input.eventId,
+        input.tenantId,
+        input.invitationId,
+        input.userId,
+        input.hostname,
+        input.recipient,
+      ].join("\0"),
+      {
+        activationToken: input.activationToken,
+        invitationToken: input.invitationToken,
+      },
     );
   }
 }
@@ -87,7 +115,7 @@ export class AesTenantActivationEnvelopeAdapter
         input.recipient,
         "account_activation",
       ].join("\0"),
-      input.serializedToken,
+      { token: input.serializedToken },
     );
   }
 }
