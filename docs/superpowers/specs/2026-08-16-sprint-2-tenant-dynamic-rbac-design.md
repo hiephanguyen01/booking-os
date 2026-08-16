@@ -188,7 +188,7 @@ For Sprint 2:
 - `name` — display name
 - `normalizedName` — canonical value used only for active-name uniqueness
 - `description` — nullable bounded text
-- `version` — positive integer, starts at 1 and increments on authority-affecting permission-set changes and archive
+- `version` — positive optimistic-concurrency version; starts at 1 and increments exactly once for every persisted role mutation that changes metadata, permission mappings, or archive state
 - `archivedAt` — nullable timestamp
 - `createdAt`
 - `updatedAt`
@@ -218,8 +218,8 @@ Rules:
 - the row also carries `tenantId` so FORCE RLS applies without joining through the role table.
 - database constraints bind `(roleId, tenantId)` to the owning custom role.
 - only permissions with `scopeLevel = tenant` may be referenced.
-- only code-seeded Permission Catalog V2 rows may be referenced.
-- non-delegable permissions are rejected by policy before mutation and again by a persistence-level invariant/verification path where practical.
+- only seeded Permission Catalog V2 rows may be referenced.
+- code-owned grant policy must reject non-delegable permissions before any mapping write. Delegability is determined only by the code-owned catalog metadata; it is never inferred from tenant-authored database state.
 - deleting a permission mapping never deletes the global permission row.
 
 ### TenantCustomRoleAssignment
@@ -276,14 +276,14 @@ Required database invariants include:
 - same-tenant membership/role assignment ownership;
 - one active custom-role assignment per membership/role pair;
 - tenant-only permission scope for custom-role permission mappings;
-- archived roles cannot gain new mappings or assignments through the repository path;
-- permission rows themselves remain global seeded catalog rows and are never tenant-created.
+- a database trigger or equivalent transaction-time constraint rejects new active mappings/assignments for an archived custom role;
+- permission rows themselves remain global seeded catalog rows and are never tenant-created through tenant RBAC paths.
 
 ## Permission Catalog V2 Extension
 
 Sprint 2 appends only the capabilities needed to operate the RBAC foundation.
 
-Proposed keys:
+Sprint 2 keys:
 
 ```text
 tenant.rbac.permission.read
@@ -327,7 +327,7 @@ The following classes are non-delegable to tenant custom roles in Sprint 2:
 
 Read-only RBAC permissions may be delegable if they are present in the actor's effective permission set and catalog metadata permits it.
 
-The code-owned permission catalog therefore gains metadata in addition to the stable permission key, for example conceptual fields such as:
+The code-owned permission catalog therefore gains metadata in addition to the stable permission key, with fields equivalent to:
 
 ```ts
 {
@@ -481,7 +481,19 @@ A stale `expectedVersion` returns a conflict and makes no partial mutation.
 
 ### Name/description update
 
-A metadata-only update does not alter effective authority and therefore does not bump membership authorization versions. The role row may update `updatedAt`, but its authority `version` remains unchanged unless the implementation chooses a separate metadata concurrency token. If one shared optimistic version is preferred during implementation planning, the plan must distinguish metadata concurrency from authority invalidation so membership versions still change only when authority changes.
+The metadata-update API requires `expectedVersion`.
+
+Inside one tenant transaction:
+
+1. lock the active role;
+2. verify `role.version == expectedVersion`;
+3. normalize/validate changed metadata;
+4. if persisted metadata is unchanged, return success without version changes;
+5. persist metadata changes and increment `role.version` exactly once;
+6. write the metadata audit event;
+7. commit.
+
+Metadata-only updates never bump membership authorization versions because effective authority did not change.
 
 ### Archive
 
@@ -491,7 +503,7 @@ Inside one tenant transaction:
 2. reject stale expected version;
 3. mark the role archived;
 4. revoke every active assignment for that role;
-5. increment the role authority version;
+5. increment `role.version` exactly once;
 6. increment each affected active membership authorization version exactly once;
 7. retain permission mappings and revoked assignments for historical/audit reconstruction;
 8. write audit event;
@@ -527,7 +539,7 @@ Repository/application boundaries must make this ordering deterministic in tests
 
 All tenant RBAC routes execute only on the resolved tenant hostname under a valid tenant session and the existing CSRF/origin protections for unsafe methods.
 
-Proposed routes:
+Sprint 2 routes are:
 
 ```text
 GET    /tenant/rbac/permissions
@@ -543,7 +555,7 @@ POST   /tenant/rbac/memberships/:membershipId/roles/:roleId
 DELETE /tenant/rbac/memberships/:membershipId/roles/:roleId
 ```
 
-Route naming may be adjusted during implementation planning only to align with existing API conventions; resource semantics and security boundaries in this design are normative.
+These route shapes and resource semantics are normative for the implementation plan.
 
 ### Create role
 
@@ -559,6 +571,7 @@ Creation with an initial permission set is atomic. If any requested permission i
 
 Input:
 
+- `expectedVersion`
 - `name` and/or `description`
 
 Metadata update cannot change permission mappings.
@@ -613,7 +626,7 @@ Validation errors must not echo secrets or internal SQL/Prisma details.
 
 All authority-changing RBAC mutations write to the existing tenant security-audit path inside the same transaction as the authorization change.
 
-Proposed bounded event types:
+Event types:
 
 ```text
 tenant.rbac.role.created
@@ -629,7 +642,7 @@ Audit metadata may contain bounded identifiers and permission keys required for 
 - custom role UUID;
 - target membership UUID for assignment changes;
 - added/removed permission keys;
-- prior/new role authority version.
+- prior/new role version.
 
 Audit metadata must not include:
 
@@ -679,6 +692,7 @@ Sprint 2 follows RED -> GREEN -> REFACTOR and introduces focused unit, integrati
 - owner-governed grant policy;
 - actor-cannot-grant-more-than-self matrix;
 - permission-set diff behavior;
+- metadata optimistic concurrency;
 - archive rules;
 - idempotent assignment/revoke decisions;
 - stable error mapping.
@@ -689,6 +703,7 @@ Sprint 2 follows RED -> GREEN -> REFACTOR and introduces focused unit, integrati
 - active-name partial uniqueness;
 - same-tenant composite ownership constraints;
 - permission scope enforcement;
+- archived-role mapping/assignment rejection;
 - FORCE RLS read/write/update/delete denial across tenants;
 - missing `app.tenant_id` denial;
 - policy-manifest and migration-verifier coverage.
@@ -696,6 +711,7 @@ Sprint 2 follows RED -> GREEN -> REFACTOR and introduces focused unit, integrati
 ### Concurrency coverage
 
 - duplicate role-name creation;
+- metadata update expected-version conflict;
 - concurrent permission-set replace;
 - duplicate assignment grant;
 - duplicate assignment revoke;
@@ -724,7 +740,7 @@ The implementation plan must produce named evidence for at least the following c
 - `S2-RBAC04` tenant RBAC APIs cannot mutate seeded system roles.
 - `S2-RBAC05` unknown, platform-scoped, or non-delegable permission keys are rejected atomically.
 - `S2-RBAC06` owner cannot grant a delegable permission that is absent from the owner's current authoritative permission set.
-- `S2-RBAC07` atomic permission-set replace changes role authority version once and bumps every active holder membership version once.
+- `S2-RBAC07` atomic permission-set replace changes role version once and bumps every active holder membership version once.
 - `S2-RBAC08` stale expected role version causes conflict with no partial permission or membership-version change.
 - `S2-RBAC09` grant/revoke custom role targets only active same-tenant membership and bumps its authority version once per real change.
 - `S2-RBAC10` duplicate concurrent grant/revoke converges to one active/revoked state without duplicate version increments.
@@ -737,13 +753,13 @@ The implementation plan must produce named evidence for at least the following c
 
 ## CI and Verification
 
-Sprint 2 adds a dedicated repository command such as:
+Sprint 2 adds the dedicated repository command:
 
 ```text
 pnpm verify:dynamic-rbac
 ```
 
-The exact script name is finalized in the implementation plan, but the dedicated gate must cover the Sprint 2 acceptance matrix and must be invoked by the repository's protected Foundation/CI path before Sprint 2 closeout.
+`pnpm verify:dynamic-rbac` must cover the Sprint 2 acceptance matrix and must be invoked by the repository's protected Foundation/CI path before Sprint 2 closeout.
 
 Closeout verification must include at minimum:
 
