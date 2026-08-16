@@ -21,7 +21,8 @@ async function loadPolicy(): Promise<TenantRbacGrantPolicyModule | null> {
   try {
     return (await import("./tenant-rbac-grant-policy.js")) as TenantRbacGrantPolicyModule;
   } catch (error: unknown) {
-    if (error instanceof Error && /Cannot find module|ERR_MODULE_NOT_FOUND/.test(error.message)) return null;
+    if (error instanceof Error && /Cannot find module|ERR_MODULE_NOT_FOUND/.test(error.message))
+      return null;
     throw error;
   }
 }
