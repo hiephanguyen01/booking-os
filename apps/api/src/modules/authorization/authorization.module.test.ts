@@ -7,6 +7,7 @@ import { AppModule } from "../../app.module.js";
 import { AuthorizationModule } from "./authorization.module.js";
 import {
   AUTHORIZATION_REPOSITORY_PORT,
+  AUTHORIZATION_SECURITY_AUDIT_PORT,
   PROTECTED_REQUEST_AUTHORIZATION_PORT,
   SESSION_AUTHORIZATION_REFRESH_PORT,
 } from "./authorization.tokens.js";
@@ -14,6 +15,7 @@ import {
 test("authorization integration tokens are distinct symbols", () => {
   const tokens = [
     AUTHORIZATION_REPOSITORY_PORT,
+    AUTHORIZATION_SECURITY_AUDIT_PORT,
     PROTECTED_REQUEST_AUTHORIZATION_PORT,
     SESSION_AUTHORIZATION_REFRESH_PORT,
   ];
@@ -28,4 +30,10 @@ test("AppModule composes the AuthorizationModule boundary", () => {
   const imports = Reflect.getMetadata("imports", AppModule) as readonly unknown[];
 
   assert.ok(imports.includes(AuthorizationModule));
+});
+
+test("AuthorizationModule exports the security audit port required by exported guards", () => {
+  const exports = Reflect.getMetadata("exports", AuthorizationModule) as readonly unknown[];
+
+  assert.ok(exports.includes(AUTHORIZATION_SECURITY_AUDIT_PORT));
 });

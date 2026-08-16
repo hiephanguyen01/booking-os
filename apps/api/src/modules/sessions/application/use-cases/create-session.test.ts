@@ -2,11 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { parseSessionToken } from "@booking-os/auth";
-import type { SessionSecurityAuditRecord } from "../ports/security-audit.port.js";
 import type { CreateSessionRecord } from "../ports/session-repository.port.js";
 import { CreateSessionUseCase } from "./create-session.js";
 import {
-  createSecurityAudit,
   createSessionRepository,
   DIGEST_KEY,
   HOSTNAME,
@@ -20,7 +18,6 @@ import {
 
 test("creates a host-bound tenant session while persisting only the token digest", async () => {
   const created: CreateSessionRecord[] = [];
-  const auditRecords: SessionSecurityAuditRecord[] = [];
   const ids = [SESSION_ID, TOKEN_ID];
   const useCase = new CreateSessionUseCase(
     createSessionRepository({
@@ -29,7 +26,6 @@ test("creates a host-bound tenant session while persisting only the token digest
         return input;
       },
     }),
-    createSecurityAudit(auditRecords),
     {
       now: () => NOW,
       digestKey: DIGEST_KEY,
@@ -61,20 +57,18 @@ test("creates a host-bound tenant session while persisting only the token digest
   assert.equal(created[0]?.token.selector, parsed?.selector);
   assert.match(created[0]?.token.tokenHash ?? "", /^[0-9a-f]{64}$/);
   assert.equal(JSON.stringify(created[0]).includes(parsed?.secret ?? "missing"), false);
-  assert.deepEqual(auditRecords, [
-    {
-      eventType: "session.created",
-      actorUserId: USER_ID,
-      subjectUserId: USER_ID,
-      sessionId: SESSION_ID,
-      requestId: "request-create-session",
-      metadata: {
-        hostname: HOSTNAME,
-        scopeType: "tenant",
-        tenantId: TENANT_ID,
-        state: "active",
-      },
-      occurredAt: NOW,
+  assert.deepEqual(created[0]?.audit, {
+    eventType: "session.created",
+    actorUserId: USER_ID,
+    subjectUserId: USER_ID,
+    sessionId: SESSION_ID,
+    requestId: "request-create-session",
+    metadata: {
+      hostname: HOSTNAME,
+      scopeType: "tenant",
+      tenantId: TENANT_ID,
+      state: "active",
     },
-  ]);
+    occurredAt: NOW,
+  });
 });

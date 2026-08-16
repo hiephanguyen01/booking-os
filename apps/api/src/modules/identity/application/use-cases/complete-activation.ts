@@ -5,7 +5,6 @@ import type { IdentityRepositoryPort } from "../ports/identity-repository.port.j
 import type { OneTimeTokenPort } from "../ports/one-time-token.port.js";
 import type { PasswordDenylistPort } from "../ports/password-denylist.port.js";
 import type { PasswordHasherPort } from "../ports/password-hasher.port.js";
-import type { SecurityAuditPort } from "../ports/security-audit.port.js";
 import {
   identityTokenPurpose,
   normalizeHostname,
@@ -32,7 +31,6 @@ export class CompleteActivationUseCase {
     private readonly tokens: OneTimeTokenPort,
     private readonly passwordHasher: PasswordHasherPort,
     private readonly passwordDenylist: PasswordDenylistPort,
-    private readonly audit: SecurityAuditPort,
     private readonly clock: ClockPort,
   ) {}
 
@@ -60,15 +58,7 @@ export class CompleteActivationUseCase {
       tenantId,
       passwordHash,
       now,
-    });
-
-    await this.audit.record({
-      eventType: "identity.activation.completed",
-      actorUserId: user.id,
-      subjectUserId: user.id,
       requestId: command.requestId,
-      metadata: { scopeType: command.scopeType, hostname },
-      occurredAt: now,
     });
 
     return Object.freeze({ userId: user.id });

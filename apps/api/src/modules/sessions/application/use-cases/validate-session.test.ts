@@ -8,9 +8,7 @@ import {
   SessionCompromisedError,
   SessionUnavailableError,
 } from "../../domain/session-errors.js";
-import type { SessionSecurityAuditRecord } from "../ports/security-audit.port.js";
 import {
-  createSecurityAudit,
   createSessionRepository,
   DIGEST_KEY,
   HOSTNAME,
@@ -50,7 +48,6 @@ test("validates exact host, scope, state, expiry, and authorization snapshot", a
         touches.push(input);
       },
     }),
-    createSecurityAudit([]),
     { now: () => NOW, digestKey: DIGEST_KEY },
   );
 
@@ -103,7 +100,6 @@ test("rejects host, scope, state, and expiry mismatches without touching", async
           touched = true;
         },
       }),
-      createSecurityAudit([]),
       { now: () => NOW, digestKey: DIGEST_KEY },
     );
 
@@ -128,7 +124,6 @@ test("rejects stale authorization snapshots", async () => {
         return validStoredSession();
       },
     }),
-    createSecurityAudit([]),
     { now: () => NOW, digestKey: DIGEST_KEY },
   );
 
@@ -146,7 +141,6 @@ test("rejects stale authorization snapshots", async () => {
 
 test("post-overlap token reuse compromises and revokes the whole family", async () => {
   const compromised: unknown[] = [];
-  const auditRecords: SessionSecurityAuditRecord[] = [];
   const stored = validStoredSession();
   const useCase = new ValidateSessionUseCase(
     createSessionRepository({
@@ -165,7 +159,6 @@ test("post-overlap token reuse compromises and revokes the whole family", async 
         compromised.push(input);
       },
     }),
-    createSecurityAudit(auditRecords),
     { now: () => NOW, digestKey: DIGEST_KEY },
   );
 
@@ -185,17 +178,15 @@ test("post-overlap token reuse compromises and revokes the whole family", async 
       tokenId: stored.token.id,
       compromisedAt: NOW,
       reason: "token_reuse",
-    },
-  ]);
-  assert.deepEqual(auditRecords, [
-    {
-      eventType: "session.compromised",
-      actorUserId: USER_ID,
-      subjectUserId: USER_ID,
-      sessionId: SESSION_ID,
-      requestId: "request-reused-token",
-      metadata: { reason: "token_reuse", hostname: HOSTNAME },
-      occurredAt: NOW,
+      audit: {
+        eventType: "session.reuse_detected",
+        actorUserId: USER_ID,
+        subjectUserId: USER_ID,
+        sessionId: SESSION_ID,
+        requestId: "request-reused-token",
+        metadata: { reason: "token_reuse", hostname: HOSTNAME },
+        occurredAt: NOW,
+      },
     },
   ]);
 });

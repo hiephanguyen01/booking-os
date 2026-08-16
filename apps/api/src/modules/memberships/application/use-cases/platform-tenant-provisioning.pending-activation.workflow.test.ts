@@ -335,6 +335,7 @@ test("uses a distinct activation token and encrypted activation outbox for a pen
     "activation:seal",
     "outbox:activation",
     "audit:append",
+    "audit:append",
     "identity:activation",
     "idempotency:complete",
   ]);

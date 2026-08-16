@@ -4,10 +4,8 @@ import test from "node:test";
 import { deriveSessionSecretDigest, parseSessionToken } from "@booking-os/auth";
 
 import { SessionCompromisedError } from "../../domain/session-errors.js";
-import type { SessionSecurityAuditRecord } from "../ports/security-audit.port.js";
 import { RefreshSessionUseCase } from "./refresh-session.js";
 import {
-  createSecurityAudit,
   createSessionRepository,
   DIGEST_KEY,
   HOSTNAME,
@@ -34,7 +32,7 @@ function currentSession() {
   });
 }
 
-test("rotates through compare-and-set and returns the raw successor only once", async () => {
+test("rotates through compare-and-set with the approved audit event", async () => {
   const rotations: unknown[] = [];
   const ids = [SUCCESSOR_ID];
   const stored = currentSession();
@@ -48,7 +46,6 @@ test("rotates through compare-and-set and returns the raw successor only once", 
         return { status: "rotated", successor: input.successor };
       },
     }),
-    createSecurityAudit([]),
     {
       now: () => NOW,
       digestKey: DIGEST_KEY,
@@ -82,6 +79,20 @@ test("rotates through compare-and-set and returns the raw successor only once", 
     /^[0-9a-f]{64}$/,
   );
   assert.equal(JSON.stringify(rotations[0]).includes(parsedSuccessor?.secret ?? "missing"), false);
+  assert.deepEqual((rotations[0] as { audit: unknown }).audit, {
+    eventType: "session.rotated",
+    actorUserId: USER_ID,
+    subjectUserId: USER_ID,
+    sessionId: SESSION_ID,
+    requestId: "request-refresh-session",
+    metadata: {
+      hostname: HOSTNAME,
+      scopeType: "tenant",
+      tenantId: TENANT_ID,
+      result: "success",
+    },
+    occurredAt: NOW,
+  });
 });
 
 test("a concurrent refresh observes the existing successor without minting another secret", async () => {
@@ -95,7 +106,6 @@ test("a concurrent refresh observes the existing successor without minting anoth
         return { status: "existing", successorTokenId: SUCCESSOR_ID };
       },
     }),
-    createSecurityAudit([]),
     {
       now: () => NOW,
       digestKey: DIGEST_KEY,
@@ -116,9 +126,8 @@ test("a concurrent refresh observes the existing successor without minting anoth
   );
 });
 
-test("a compare-and-set reuse result compromises the family and records security audit", async () => {
+test("a compare-and-set reuse result compromises the family with canonical audit", async () => {
   const compromised: unknown[] = [];
-  const auditRecords: SessionSecurityAuditRecord[] = [];
   const stored = currentSession();
   const useCase = new RefreshSessionUseCase(
     createSessionRepository({
@@ -132,7 +141,6 @@ test("a compare-and-set reuse result compromises the family and records security
         compromised.push(input);
       },
     }),
-    createSecurityAudit(auditRecords),
     {
       now: () => NOW,
       digestKey: DIGEST_KEY,
@@ -157,8 +165,15 @@ test("a compare-and-set reuse result compromises the family and records security
       tokenId: stored.token.id,
       compromisedAt: NOW,
       reason: "token_reuse",
+      audit: {
+        eventType: "session.reuse_detected",
+        actorUserId: USER_ID,
+        subjectUserId: USER_ID,
+        sessionId: SESSION_ID,
+        requestId: "request-refresh-reuse",
+        metadata: { reason: "token_reuse", hostname: HOSTNAME },
+        occurredAt: NOW,
+      },
     },
   ]);
-  assert.equal(auditRecords[0]?.eventType, "session.compromised");
-  assert.equal(auditRecords[0]?.actorUserId, USER_ID);
 });

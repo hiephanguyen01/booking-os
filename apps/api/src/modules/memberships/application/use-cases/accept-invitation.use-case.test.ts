@@ -53,6 +53,7 @@ const invitedMembership: TenantMembership = Object.freeze({
 
 function createHarness() {
   const events: string[] = [];
+  const auditEvents: unknown[] = [];
   const transactionContexts: TenantExecutionContext[] = [];
   let insideTransaction = false;
 
@@ -129,18 +130,7 @@ function createHarness() {
     },
     audit: {
       append: async (input: unknown) => {
-        assert.deepEqual(input, {
-          eventType: "membership.invitation.accepted",
-          actorUserId: USER_ID,
-          subjectUserId: USER_ID,
-          requestId: "request-accept-invitation",
-          metadata: {
-            membershipId: MEMBERSHIP_ID,
-            invitationId: INVITATION_ID,
-            intendedRoleKey: "tenant_owner",
-          },
-          occurredAt: NOW,
-        });
+        auditEvents.push(input);
         await transactional("audit.append", undefined);
       },
     },
@@ -174,6 +164,7 @@ function createHarness() {
 
   return {
     events,
+    auditEvents,
     tokenCalls,
     transactionContexts,
     useCase: new AcceptInvitationUseCase(transactions, tokens, () => NOW),
@@ -212,6 +203,32 @@ test("accepts a bound owner invitation and elevates the pending session atomical
       intendedRoleKey: "tenant_owner",
     },
   ]);
+  assert.deepEqual(harness.auditEvents, [
+    {
+      eventType: "membership.accepted",
+      actorUserId: USER_ID,
+      subjectUserId: USER_ID,
+      requestId: "request-accept-invitation",
+      metadata: {
+        membershipId: MEMBERSHIP_ID,
+        invitationId: INVITATION_ID,
+        intendedRoleKey: "tenant_owner",
+      },
+      occurredAt: NOW,
+    },
+    {
+      eventType: "tenant.activated",
+      actorUserId: USER_ID,
+      subjectUserId: USER_ID,
+      requestId: "request-accept-invitation",
+      metadata: {
+        tenantId: TENANT_ID,
+        membershipId: MEMBERSHIP_ID,
+        reason: "owner_invitation_accepted",
+      },
+      occurredAt: NOW,
+    },
+  ]);
   assert.deepEqual(harness.events, [
     "invitation.lock",
     "membership.find",
@@ -222,6 +239,7 @@ test("accepts a bound owner invitation and elevates the pending session atomical
     "tenant.activate",
     "invitation.accept",
     "session.elevate",
+    "audit.append",
     "audit.append",
   ]);
   assert.deepEqual(result, {

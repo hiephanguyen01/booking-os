@@ -340,6 +340,7 @@ test("provisions an existing owner inside one target-tenant scope before complet
     "invitation:seal",
     "outbox:append",
     "audit:append",
+    "audit:append",
     "idempotency:complete",
   ]);
 });

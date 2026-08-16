@@ -1,6 +1,5 @@
 import { createSessionToken, deriveSessionSecretDigest, parseSessionToken } from "@booking-os/auth";
 
-import type { SessionSecurityAuditPort } from "../ports/security-audit.port.js";
 import type {
   SessionRepositoryPort,
   SessionScope,
@@ -34,7 +33,6 @@ export class CreateSessionUseCase {
 
   constructor(
     private readonly sessions: SessionRepositoryPort,
-    private readonly audit: SessionSecurityAuditPort,
     private readonly options: CreateSessionOptions,
   ) {
     this.now = options.now ?? (() => new Date());
@@ -88,24 +86,23 @@ export class CreateSessionUseCase {
         reuseDetectedAt: null,
         revokedAt: null,
       },
+      audit: {
+        eventType: "session.created",
+        actorUserId: input.userId,
+        subjectUserId: input.userId,
+        sessionId,
+        requestId: input.requestId,
+        metadata: {
+          hostname: input.hostname,
+          scopeType: input.scope.type,
+          ...(input.scope.type === "tenant" ? { tenantId: input.scope.tenantId } : {}),
+          state: input.state,
+        },
+        occurredAt: now,
+      },
     } as const;
 
     const created = await this.sessions.create(record);
-    await this.audit.record({
-      eventType: "session.created",
-      actorUserId: input.userId,
-      subjectUserId: input.userId,
-      sessionId,
-      requestId: input.requestId,
-      metadata: {
-        hostname: input.hostname,
-        scopeType: input.scope.type,
-        ...(input.scope.type === "tenant" ? { tenantId: input.scope.tenantId } : {}),
-        state: input.state,
-      },
-      occurredAt: now,
-    });
-
     return { token, session: created.session };
   }
 }

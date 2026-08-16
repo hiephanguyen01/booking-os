@@ -1,0 +1,13 @@
+name: Task 5 web CSP diagnostic (disabled)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  no-op:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Temporary Task 5 CSP diagnostics are disabled."

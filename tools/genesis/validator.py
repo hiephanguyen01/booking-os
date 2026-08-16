@@ -20,6 +20,47 @@ FORBIDDEN_PLACEHOLDERS: tuple[tuple[str, re.Pattern[str]], ...] = (
 )
 SECTION_PATTERN = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
 HTML_COMMENT_PATTERN = re.compile(r"<!--.*?-->", re.DOTALL)
+MARKDOWN_LINK_PATTERN = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+
+SPRINT_1B_MARKER = Path(
+    "docs/superpowers/plans/2026-08-05-sprint-1b-04-authorization-hardening.md"
+)
+SPRINT_1B_FEATURE = Path("docs/features/FEATURE-0002-identity-access-core.md")
+SPRINT_1B_PATTERN = Path("docs/patterns/PATTERN-0003-host-bound-opaque-session.md")
+SPRINT_1B_RECOVERY_RUNBOOK = Path("docs/runbooks/identity-access-recovery.md")
+SPRINT_1B_BOOTSTRAP_RUNBOOK = Path("docs/runbooks/platform-admin-bootstrap.md")
+SPRINT_1B_CHECKPOINT = Path(
+    "docs/superpowers/checkpoints/2026-08-05-sprint-1b-closeout.md"
+)
+DOMAIN_OWNERS_PATH = Path("docs/ownership/DOMAIN-OWNERS.md")
+SPRINT_1B_REQUIRED_ARTIFACTS = (
+    SPRINT_1B_FEATURE,
+    SPRINT_1B_PATTERN,
+    SPRINT_1B_RECOVERY_RUNBOOK,
+    SPRINT_1B_BOOTSTRAP_RUNBOOK,
+    SPRINT_1B_CHECKPOINT,
+)
+SPRINT_1B_FEATURE_REFERENCES = (
+    "../superpowers/specs/2026-08-05-identity-membership-authorization-core-design.md",
+    "../superpowers/plans/2026-08-05-sprint-1b-01-identity-foundation.md",
+    "../superpowers/plans/2026-08-05-sprint-1b-02-session-kernel.md",
+    "../superpowers/plans/2026-08-05-sprint-1b-03-membership-provisioning.md",
+    "../superpowers/plans/2026-08-05-sprint-1b-04-authorization-hardening.md",
+)
+SPRINT_1B_BOOTSTRAP_COMMAND = "pnpm --filter @booking-os/api identity:bootstrap-platform-admin"
+SPRINT_1B_RECOVERY_COMMANDS = (
+    "pnpm genesis:validate",
+    "pnpm check:ci",
+    "pnpm verify:architecture",
+    "pnpm verify:migrations",
+    "pnpm verify:identity-access",
+    "pnpm verify:foundation",
+)
+SPRINT_1B_OWNER_DOMAINS = ("Identity", "Sessions", "Memberships", "Authorization")
+RUNBOOK_SECRET_SAFETY_SENTENCE = "never place secret values on the command line"
+INLINE_SECRET_PATTERN = re.compile(
+    r"(?i)\b(?:password|token|secret|cookie)\b\s*=\s*(?![\"']?\$|<|REDACTED\b|YOUR_)[^\s`]+"
+)
 
 
 @dataclass(frozen=True, order=True)
@@ -148,6 +189,119 @@ def validate_template(root: Path, definition: ArtifactDefinition) -> list[Valida
     return failures
 
 
+def _read_required_text(root: Path, path: Path) -> str | None:
+    absolute = root / path
+    if not absolute.is_file():
+        return None
+    try:
+        return absolute.read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+
+def _validate_runbook_commands(
+    root: Path,
+    path: Path,
+    commands: tuple[str, ...],
+) -> list[ValidationFailure]:
+    text = _read_required_text(root, path)
+    if text is None:
+        return []
+
+    failures: list[ValidationFailure] = []
+    for command in commands:
+        if command not in text:
+            failures.append(ValidationFailure(path, f"missing required command: {command}"))
+
+    if RUNBOOK_SECRET_SAFETY_SENTENCE not in text.lower():
+        failures.append(
+            ValidationFailure(
+                path,
+                "runbook must state that operators never place secret values on the command line",
+            )
+        )
+    if INLINE_SECRET_PATTERN.search(text):
+        failures.append(
+            ValidationFailure(path, "runbook contains an inline credential/token/secret/cookie value")
+        )
+    return failures
+
+
+def _validate_sprint_1b_closeout(root: Path) -> list[ValidationFailure]:
+    if not (root / SPRINT_1B_MARKER).is_file():
+        return []
+
+    failures: list[ValidationFailure] = []
+    for path in SPRINT_1B_REQUIRED_ARTIFACTS:
+        if not (root / path).is_file():
+            failures.append(
+                ValidationFailure(path, "missing required Sprint 1B closeout artifact")
+            )
+
+    feature_text = _read_required_text(root, SPRINT_1B_FEATURE)
+    if feature_text is not None:
+        try:
+            feature = parse_frontmatter(feature_text)
+        except FrontmatterError:
+            feature = None
+        if feature is not None and feature.metadata.get("status") != "active":
+            failures.append(
+                ValidationFailure(SPRINT_1B_FEATURE, "Sprint 1B feature must have status: active")
+            )
+
+        link_targets = {
+            match.group(1).strip().split("#", 1)[0]
+            for match in MARKDOWN_LINK_PATTERN.finditer(feature_text)
+        }
+        for reference in SPRINT_1B_FEATURE_REFERENCES:
+            if reference not in link_targets:
+                failures.append(
+                    ValidationFailure(
+                        SPRINT_1B_FEATURE,
+                        f"missing required Sprint 1B reference: {reference}",
+                    )
+                )
+                continue
+            resolved = (root / SPRINT_1B_FEATURE.parent / reference).resolve()
+            if not resolved.is_file():
+                failures.append(
+                    ValidationFailure(
+                        SPRINT_1B_FEATURE,
+                        f"Sprint 1B reference target does not exist: {reference}",
+                    )
+                )
+
+    failures.extend(
+        _validate_runbook_commands(
+            root,
+            SPRINT_1B_BOOTSTRAP_RUNBOOK,
+            (SPRINT_1B_BOOTSTRAP_COMMAND,),
+        )
+    )
+    failures.extend(
+        _validate_runbook_commands(root, SPRINT_1B_RECOVERY_RUNBOOK, SPRINT_1B_RECOVERY_COMMANDS)
+    )
+
+    owners_text = _read_required_text(root, DOMAIN_OWNERS_PATH)
+    for domain in SPRINT_1B_OWNER_DOMAINS:
+        if owners_text is None:
+            failures.append(ValidationFailure(DOMAIN_OWNERS_PATH, f"{domain} domain owner must be assigned"))
+            continue
+        match = re.search(
+            rf"^\|\s*{re.escape(domain)}\s*\|\s*([^|]+)\|",
+            owners_text,
+            re.MULTILINE,
+        )
+        if match is None:
+            failures.append(ValidationFailure(DOMAIN_OWNERS_PATH, f"{domain} domain owner must be assigned"))
+            continue
+        owner = match.group(1).strip().strip("`")
+        if not owner or owner == "unassigned":
+            failures.append(ValidationFailure(DOMAIN_OWNERS_PATH, f"{domain} domain owner must be assigned"))
+
+    return failures
+
+
 def validate_repository(root: Path) -> list[ValidationFailure]:
     failures: list[ValidationFailure] = []
     ids: dict[str, Path] = {}
@@ -186,4 +340,5 @@ def validate_repository(root: Path) -> list[ValidationFailure]:
             else:
                 ids[artifact_id] = relative_path
 
+    failures.extend(_validate_sprint_1b_closeout(root))
     return sorted(failures, key=lambda failure: (failure.path.as_posix(), failure.message))

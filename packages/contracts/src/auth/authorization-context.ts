@@ -4,6 +4,7 @@ export type AuthorizationRoleKey = (typeof AUTHORIZATION_ROLE_KEYS)[number];
 
 export const AUTHORIZATION_PERMISSION_KEYS = [
   "platform.security.audit.read",
+  "platform.security.session.revoke",
   "platform.tenants.provision",
   "platform.users.provision",
   "tenant.membership.read",

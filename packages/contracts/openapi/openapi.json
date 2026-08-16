@@ -36,6 +36,82 @@
         ],
         "type": "object"
       },
+      "AuthorizationContextResponseDto": {
+        "properties": {
+          "membershipAuthorizationVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "membershipId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "membershipStatus": {
+            "enum": [
+              "active"
+            ],
+            "type": "string"
+          },
+          "permissionKeys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "roleKeys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/AuthorizationScopeDto"
+          },
+          "sessionId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "userAuthorizationVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "userId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "sessionId",
+          "scope",
+          "roleKeys",
+          "permissionKeys",
+          "userAuthorizationVersion"
+        ],
+        "type": "object"
+      },
+      "AuthorizationScopeDto": {
+        "properties": {
+          "tenantId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "tenantSlug": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "platform",
+              "tenant"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
       "CompletedResponseDto": {
         "properties": {
           "completed": {
@@ -227,6 +303,36 @@
         },
         "required": [
           "accepted"
+        ],
+        "type": "object"
+      },
+      "PlatformSessionRevocationRequestDto": {
+        "properties": {
+          "reason": {
+            "maxLength": 160,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
+      "PlatformSessionRevocationResponseDto": {
+        "properties": {
+          "revokedSessionCount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "userId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "revokedSessionCount"
         ],
         "type": "object"
       },
@@ -759,6 +865,28 @@
         ]
       }
     },
+    "/api/auth/me/authorization": {
+      "get": {
+        "operationId": "getCurrentAuthorization",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationContextResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "authorization"
+        ]
+      }
+    },
     "/api/auth/password/forgot": {
       "post": {
         "operationId": "requestPasswordReset",
@@ -1239,6 +1367,48 @@
         "summary": "",
         "tags": [
           "memberships"
+        ]
+      }
+    },
+    "/api/platform/security/users/{userId}/sessions/revoke": {
+      "post": {
+        "operationId": "revokePlatformUserSessions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformSessionRevocationRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformSessionRevocationResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "platform-security"
         ]
       }
     },

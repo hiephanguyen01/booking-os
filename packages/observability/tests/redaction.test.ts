@@ -1,0 +1,157 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { redactSensitiveData } from "../src/index.js";
+
+const REDACTED = "[REDACTED]";
+
+test("recursively redacts sensitive fields without hiding safe authorization metadata", () => {
+  const input = {
+    requestId: "req-1",
+    authorizationVersion: 7,
+    tokenCount: 2,
+    errorCode: "identity_email.smtp_temporary",
+    credentials: {
+      password: "correct-horse-battery-staple",
+      accessToken: "access-token",
+      refresh_token: "refresh-token",
+      clientSecret: "client-secret",
+      nested: [
+        {
+          authorization: "Bearer secret",
+          cookie: "session=opaque",
+          "set-cookie": "session=opaque; HttpOnly",
+          otp: "123456",
+        },
+      ],
+    },
+  };
+
+  assert.deepEqual(redactSensitiveData(input), {
+    requestId: "req-1",
+    authorizationVersion: 7,
+    tokenCount: 2,
+    errorCode: "identity_email.smtp_temporary",
+    credentials: {
+      password: REDACTED,
+      accessToken: REDACTED,
+      refresh_token: REDACTED,
+      clientSecret: REDACTED,
+      nested: [
+        {
+          authorization: REDACTED,
+          cookie: REDACTED,
+          "set-cookie": REDACTED,
+          otp: REDACTED,
+        },
+      ],
+    },
+  });
+});
+
+test("redacts transport headers and message envelopes as bounded sensitive containers", () => {
+  const input = {
+    trace: {
+      requestHeaders: {
+        authorization: "Bearer access-token",
+        "x-request-id": "req-1",
+      },
+      responseHeaders: {
+        "set-cookie": "session=opaque; HttpOnly",
+      },
+    },
+    deadLetter: {
+      envelope: {
+        to: "customer@example.com",
+        subject: "Activate your account",
+        html: '<a href="https://example.test/activate?token=raw-secret">Activate</a>',
+      },
+      retryCount: 3,
+    },
+    error: {
+      emailBody: "Reset code: 123456",
+      code: "smtp_rejected",
+    },
+  };
+
+  assert.deepEqual(redactSensitiveData(input), {
+    trace: {
+      requestHeaders: REDACTED,
+      responseHeaders: REDACTED,
+    },
+    deadLetter: {
+      envelope: REDACTED,
+      retryCount: 3,
+    },
+    error: {
+      emailBody: REDACTED,
+      code: "smtp_rejected",
+    },
+  });
+});
+
+test("does not mutate the original value", () => {
+  const input = {
+    nested: {
+      password: "secret",
+      safe: "visible",
+    },
+  };
+
+  const result = redactSensitiveData(input);
+
+  assert.notEqual(result, input);
+  assert.equal(input.nested.password, "secret");
+  assert.equal(input.nested.safe, "visible");
+});
+
+test("bounds recursive traversal before arbitrarily deep data can reach diagnostics", () => {
+  const input: Record<string, unknown> = {};
+  let cursor = input;
+
+  for (let index = 0; index < 64; index += 1) {
+    const next: Record<string, unknown> = {};
+    cursor.next = next;
+    cursor = next;
+  }
+  cursor.password = "deep-secret";
+
+  const result = redactSensitiveData(input);
+  let value: unknown = result;
+  let hops = 0;
+
+  while (value !== REDACTED && value !== null && typeof value === "object" && "next" in value) {
+    value = (value as Record<string, unknown>).next;
+    hops += 1;
+    assert.ok(hops < 64, "redaction traversal must stop before the full input depth");
+  }
+
+  assert.equal(value, REDACTED);
+  assert.doesNotMatch(JSON.stringify(result), /deep-secret/u);
+});
+
+test("redacts circular references instead of recursing forever", () => {
+  type CircularPayload = {
+    safe: string;
+    self?: CircularPayload;
+    nested?: {
+      password: string;
+      parent?: CircularPayload;
+    };
+  };
+
+  const input: CircularPayload = { safe: "visible" };
+  input.self = input;
+  input.nested = { password: "cycle-secret", parent: input };
+
+  const result = redactSensitiveData(input);
+
+  assert.deepEqual(result, {
+    safe: "visible",
+    self: REDACTED,
+    nested: {
+      password: REDACTED,
+      parent: REDACTED,
+    },
+  });
+});

@@ -1,5 +1,6 @@
 import type { SessionScope, StoredSession } from "../../domain/auth-session.js";
 import type { StoredSessionToken } from "../../domain/auth-session-token.js";
+import type { SessionSecurityAuditRecord } from "./security-audit.port.js";
 
 export type {
   SessionScope,
@@ -13,7 +14,9 @@ export interface StoredSessionWithToken {
   readonly token: StoredSessionToken;
 }
 
-export interface CreateSessionRecord extends StoredSessionWithToken {}
+export interface CreateSessionRecord extends StoredSessionWithToken {
+  readonly audit: SessionSecurityAuditRecord;
+}
 
 export interface FindSessionInput {
   readonly selector: string;
@@ -33,6 +36,7 @@ export interface MarkSessionCompromisedInput {
   readonly tokenId: string;
   readonly compromisedAt: Date;
   readonly reason: "token_reuse";
+  readonly audit: SessionSecurityAuditRecord;
 }
 
 export interface RotateSessionInput {
@@ -41,6 +45,7 @@ export interface RotateSessionInput {
   readonly replacedAt: Date;
   readonly overlapUntil: Date;
   readonly successor: StoredSessionToken;
+  readonly audit: SessionSecurityAuditRecord;
 }
 
 export type RotationResult =
@@ -54,6 +59,7 @@ export interface RevokeSessionInput {
   readonly userId: string;
   readonly revokedAt: Date;
   readonly reason: string;
+  readonly audit: SessionSecurityAuditRecord;
 }
 
 export interface RevokeOtherSessionsInput {
@@ -61,6 +67,14 @@ export interface RevokeOtherSessionsInput {
   readonly exceptSessionId: string;
   readonly revokedAt: Date;
   readonly reason: string;
+  readonly audit: SessionSecurityAuditRecord;
+}
+
+export interface RevokeAllSessionsInput {
+  readonly userId: string;
+  readonly revokedAt: Date;
+  readonly reason: string;
+  readonly audit: SessionSecurityAuditRecord;
 }
 
 export interface RevokeTenantSessionsForUserInput {
@@ -74,17 +88,13 @@ export interface TenantSessionRevocationPort {
 }
 
 export interface SessionRepositoryPort {
-  create(input: CreateSessionRecord): Promise<CreateSessionRecord>;
+  create(input: CreateSessionRecord): Promise<StoredSessionWithToken>;
   findBySelector(input: FindSessionInput): Promise<StoredSessionWithToken | null>;
   rotateCompareAndSet(input: RotateSessionInput): Promise<RotationResult>;
   markCompromised(input: MarkSessionCompromisedInput): Promise<void>;
   touchIfDue(input: TouchSessionInput): Promise<void>;
   revokeById(input: RevokeSessionInput): Promise<boolean>;
-  revokeAllForUser(input: {
-    readonly userId: string;
-    readonly revokedAt: Date;
-    readonly reason: string;
-  }): Promise<number>;
+  revokeAllForUser(input: RevokeAllSessionsInput): Promise<number>;
   revokeOthersForUser(input: RevokeOtherSessionsInput): Promise<number>;
   listForUser(input: { readonly userId: string }): Promise<readonly StoredSession[]>;
 }

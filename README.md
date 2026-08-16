@@ -30,6 +30,19 @@ pnpm genesis:validate
 
 ADR bắt đầu ở trạng thái `proposed`; Feature và Pattern bắt đầu ở trạng thái `draft`. Các trạng thái nháp được phép có section chưa hoàn chỉnh và `owner: unassigned`. Artifact `accepted`, `active` hoặc trạng thái lịch sử phải có owner được gán, nội dung thực trong mọi section bắt buộc và không chứa `TODO`, `TBD` hoặc placeholder template.
 
+## Sprint 1B identity access
+
+Platform/Tenant identity-access core đã được chuẩn hóa thành shared kernel thay vì các auth system song song. Canonical feature là [`FEATURE-0002 Identity Access Core`](docs/features/FEATURE-0002-identity-access-core.md), với host-bound opaque-session pattern tại [`PATTERN-0003`](docs/patterns/PATTERN-0003-host-bound-opaque-session.md).
+
+Các invariant chính: Global User dùng chung giữa tenant, opaque session bind exact host/scope, browser không giữ API access token, `__Host-` session cookie + CSRF/Origin, authoritative permission/resource policy + authorization-version reconciliation, transactional security audit, bounded metrics và PostgreSQL FORCE RLS là final tenant boundary. Customer/Partner identity trong các sprint sau phải mở rộng kernel này thay vì tạo hệ thống đăng nhập riêng.
+
+Runbook vận hành:
+
+- [`docs/runbooks/identity-access-recovery.md`](docs/runbooks/identity-access-recovery.md): compromised session, reset/suspension, SMTP/Redis outage, envelope-key rotation, final-owner recovery, audit queries và phased rollout/rollback.
+- [`docs/runbooks/platform-admin-bootstrap.md`](docs/runbooks/platform-admin-bootstrap.md): controlled first Platform administrator bootstrap, activation và disable-after-use procedure.
+
+Gate Sprint 1B được chạy bằng `pnpm verify:identity-access` và được nối vào `pnpm verify:foundation`/protected CI.
+
 ## Monorepo runtime
 
 ### Deployment units
@@ -338,13 +351,14 @@ Các check chính:
 - `API architecture boundaries`: fail-closed Hexagonal dependency verification.
 - `Build`: workspace production builds.
 - `Playwright foundation smoke`: storefront, console và API critical smoke.
-- `Production configuration guard`: từ chối mock payment trong production.
+- `Production configuration guard`: từ chối mock payments trong production.
 - `Security`: dependency audit và committed-secret scanning.
 - `Knowledge validation`: validation artifact hiện hữu.
 - `Docker Compose configuration`: Compose interpolation và schema validation.
 - `Genesis tooling`: Python unit tests cùng repository validation.
 - `OpenAPI contract`: deterministic regeneration, zero-diff, generated-client typecheck và generator tests.
 - `OpenAPI compatibility`: fixture verification bằng `oasdiff` thật và fail-closed comparison với contract tại pull-request base SHA.
+- `Identity access acceptance`: `S1B-AC01`–`S1B-AC15` security/RLS/concurrency matrices before Build.
 
 Dependency audit chặn advisory `high` và `critical`. Gitleaks quét committed history mà không đăng PR comment hoặc upload SARIF artifact.
 
@@ -363,6 +377,7 @@ pnpm genesis:validate
 pnpm api:check-generated
 pnpm api:verify-compatibility-fixtures
 MIGRATION_DATABASE_URL="$DATABASE_URL" pnpm verify:migrations
+pnpm verify:identity-access
 pnpm verify:foundation
 pnpm build
 pnpm audit --audit-level high

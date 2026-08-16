@@ -4,6 +4,7 @@ import { SYSTEM_ROLES, type SystemRole } from "./roles.js";
 export const ROLE_PERMISSIONS: Readonly<Record<SystemRole, readonly PermissionKey[]>> = {
   [SYSTEM_ROLES.platformAdmin]: [
     PERMISSION_KEYS.platformSecurityAuditRead,
+    PERMISSION_KEYS.platformSecuritySessionRevoke,
     PERMISSION_KEYS.platformTenantsProvision,
     PERMISSION_KEYS.platformUsersProvision,
   ],

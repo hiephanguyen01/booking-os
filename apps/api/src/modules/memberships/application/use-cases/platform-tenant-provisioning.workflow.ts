@@ -180,6 +180,18 @@ export class PlatformTenantProvisioningWorkflow {
         }
 
         await session.audit.append({
+          eventType: "tenant.provisioned",
+          actorUserId: input.actorUserId,
+          subjectUserId: ownerIdentity.userId,
+          requestId: input.requestId,
+          metadata: {
+            tenantId,
+            status: tenant.status,
+            reason: "platform_provisioning",
+          },
+          occurredAt: input.now,
+        });
+        await session.audit.append({
           eventType: "membership.invited",
           actorUserId: input.actorUserId,
           subjectUserId: ownerIdentity.userId,
@@ -348,7 +360,7 @@ export class PlatformTenantProvisioningWorkflow {
         }
 
         await session.audit.append({
-          eventType: "membership.invitation.resent",
+          eventType: "membership.invitation_resent",
           actorUserId: input.actorUserId,
           subjectUserId: ownerIdentity.userId,
           requestId: input.requestId,

@@ -1,0 +1,25 @@
+export const SECURITY_AUDIT_EVENT_TYPES = [
+  "identity.user.provisioned",
+  "identity.user.activated",
+  "identity.password.changed",
+  "identity.password.reset_requested",
+  "identity.password.reset_completed",
+  "identity.user.suspended",
+  "session.created",
+  "session.rotated",
+  "session.revoked",
+  "session.reuse_detected",
+  "membership.invited",
+  "membership.invitation_resent",
+  "membership.accepted",
+  "membership.suspended",
+  "membership.revoked",
+  "membership.owner_promoted",
+  "membership.owner_demoted",
+  "tenant.provisioned",
+  "tenant.activated",
+  "platform.bootstrap_admin_created",
+  "authorization.denied",
+] as const;
+
+export type SecurityAuditEventType = (typeof SECURITY_AUDIT_EVENT_TYPES)[number];

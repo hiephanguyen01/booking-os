@@ -69,6 +69,9 @@ test("stores the activation password before consuming the token and activating t
         };
       },
     },
+    securityAuditEvent: {
+      async create(): Promise<void> {},
+    },
   };
   const adapter = new PrismaIdentityRepositoryAdapter(createTransactionPrisma(transaction));
 
@@ -80,6 +83,7 @@ test("stores the activation password before consuming the token and activating t
     tenantId: null,
     passwordHash: PASSWORD_HASH,
     now: NOW,
+    requestId: null,
   });
 
   assert.equal(user.id, USER_ID);
@@ -112,6 +116,22 @@ test("returns the reset subject after replacing the password atomically", async 
       },
     },
     user: { async update(): Promise<void> {} },
+    authSession: {
+      async findMany(): Promise<never[]> {
+        return [];
+      },
+      async updateMany(): Promise<{ count: number }> {
+        return { count: 0 };
+      },
+    },
+    authSessionToken: {
+      async updateMany(): Promise<{ count: number }> {
+        return { count: 0 };
+      },
+    },
+    securityAuditEvent: {
+      async create(): Promise<void> {},
+    },
   };
   const adapter = new PrismaIdentityRepositoryAdapter(createTransactionPrisma(transaction));
 
@@ -123,6 +143,7 @@ test("returns the reset subject after replacing the password atomically", async 
     tenantId: null,
     passwordHash: PASSWORD_HASH,
     now: NOW,
+    requestId: null,
   });
 
   assert.deepEqual(result, { userId: USER_ID });

@@ -1,5 +1,9 @@
+import type { SecurityAuditEventType } from "../../../../common/security/security-audit-events.js";
+
+export type SessionSecurityAuditEventType = Extract<SecurityAuditEventType, `session.${string}`>;
+
 export interface SessionSecurityAuditRecord {
-  readonly eventType: "session.created" | "session.revoked" | "session.compromised";
+  readonly eventType: SessionSecurityAuditEventType;
   readonly actorUserId: string;
   readonly subjectUserId: string;
   readonly sessionId: string;

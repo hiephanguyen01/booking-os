@@ -77,6 +77,11 @@ test("creates a pending global user and commits a 24-hour encrypted activation e
       normalizedEmail: "owner@example.com",
       displayEmail: "Owner@Example.com",
       now: NOW,
+      requestedByUserId: REQUESTED_BY_USER_ID,
+      requestId: "request-provision",
+      hostname: HOSTNAME,
+      scopeType: "platform",
+      tenantId: null,
     },
   ]);
   assert.deepEqual(purposes, [`identity.activation.v1:platform:-:${HOSTNAME}`]);

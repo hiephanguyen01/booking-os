@@ -4,6 +4,11 @@ export interface PendingUserInput {
   readonly normalizedEmail: string;
   readonly displayEmail: string;
   readonly now: Date;
+  readonly requestedByUserId: string;
+  readonly requestId: string | null;
+  readonly hostname: string;
+  readonly scopeType: IdentityScopeType;
+  readonly tenantId: string | null;
 }
 
 export interface PasswordCredentialInput {
@@ -45,6 +50,7 @@ export interface ConsumeActivationInput {
   readonly tenantId: string | null;
   readonly passwordHash: string;
   readonly now: Date;
+  readonly requestId: string | null;
 }
 
 export interface CompleteResetInput {
@@ -55,6 +61,7 @@ export interface CompleteResetInput {
   readonly tenantId: string | null;
   readonly passwordHash: string;
   readonly now: Date;
+  readonly requestId: string | null;
 }
 
 export interface PasswordResetResult {

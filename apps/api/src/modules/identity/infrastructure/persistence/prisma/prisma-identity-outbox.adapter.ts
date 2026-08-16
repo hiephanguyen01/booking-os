@@ -1,6 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { Prisma } from "@prisma/client";
 
+import { assertSafeSecurityAuditMetadata } from "../../../../../common/security/security-audit-metadata.js";
 import { PrismaService } from "../../../../../database/prisma.service.js";
 import { OutboxRepository } from "../../../../../reliability/outbox.repository.js";
 import type {
@@ -43,6 +44,8 @@ export class PrismaIdentityOutboxAdapter implements IdentityOutboxPort {
   }
 
   async issuePasswordReset(input: IssuePasswordResetEmailInput): Promise<void> {
+    assertSafeSecurityAuditMetadata(input.audit.metadata);
+
     await this.prisma.$transaction(async (transaction) => {
       await transaction.passwordResetToken.updateMany({
         where: {
@@ -64,6 +67,16 @@ export class PrismaIdentityOutboxAdapter implements IdentityOutboxPort {
         aggregateId: input.event.aggregateId,
         payload: input.event.payload as unknown as Prisma.InputJsonValue,
         occurredAt: input.event.occurredAt,
+      });
+      await transaction.securityAuditEvent.create({
+        data: {
+          eventType: input.audit.eventType,
+          actorUserId: input.audit.actorUserId,
+          subjectUserId: input.audit.subjectUserId,
+          requestId: input.audit.requestId,
+          metadata: { ...input.audit.metadata } as Prisma.InputJsonObject,
+          occurredAt: input.audit.occurredAt,
+        },
       });
     });
   }

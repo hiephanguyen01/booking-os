@@ -108,7 +108,8 @@ export class AcceptInvitationUseCase {
           now,
         });
 
-        if (invitation.intendedRoleKey === "tenant_owner") {
+        const tenantActivated = invitation.intendedRoleKey === "tenant_owner";
+        if (tenantActivated) {
           const tenant = await session.tenants.lockCurrent();
           if (!tenant || tenant.id !== command.tenantId || tenant.status !== "provisioning") {
             throw new InvitationInvalidOrExpiredError();
@@ -122,7 +123,7 @@ export class AcceptInvitationUseCase {
           now,
         });
         await session.audit.append({
-          eventType: "membership.invitation.accepted",
+          eventType: "membership.accepted",
           actorUserId: command.userId,
           subjectUserId: command.userId,
           requestId: command.requestId,
@@ -133,6 +134,20 @@ export class AcceptInvitationUseCase {
           },
           occurredAt: now,
         });
+        if (tenantActivated) {
+          await session.audit.append({
+            eventType: "tenant.activated",
+            actorUserId: command.userId,
+            subjectUserId: command.userId,
+            requestId: command.requestId,
+            metadata: {
+              tenantId: command.tenantId,
+              membershipId: lockedMembership.id,
+              reason: "owner_invitation_accepted",
+            },
+            occurredAt: now,
+          });
+        }
 
         return Object.freeze({
           accepted: true as const,

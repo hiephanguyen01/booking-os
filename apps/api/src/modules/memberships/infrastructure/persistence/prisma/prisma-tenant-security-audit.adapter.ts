@@ -1,3 +1,4 @@
+import { assertSafeSecurityAuditMetadata } from "../../../../../common/security/security-audit-metadata.js";
 import type {
   TenantSecurityAuditInput,
   TenantSecurityAuditPort,
@@ -11,6 +12,8 @@ export class PrismaTenantSecurityAuditAdapter implements TenantSecurityAuditPort
   ) {}
 
   async append(input: TenantSecurityAuditInput): Promise<void> {
+    assertSafeSecurityAuditMetadata(input.metadata);
+
     await this.transaction.$executeRawUnsafe(
       `INSERT INTO "tenant_security_audit_events" (
          "id", "tenant_id", "event_type", "actor_user_id", "subject_user_id",

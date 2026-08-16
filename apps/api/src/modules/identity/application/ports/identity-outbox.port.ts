@@ -1,4 +1,5 @@
 import type { StoredActivationToken, StoredResetToken } from "./identity-repository.port.js";
+import type { SecurityAuditRecord } from "./security-audit.port.js";
 import type { SensitiveEnvelopeValue } from "./sensitive-envelope.port.js";
 
 export type IdentityEmailTemplate = "account_activation" | "password_reset";
@@ -33,6 +34,7 @@ export interface IssuePasswordResetEmailInput {
   readonly event: IdentityEmailOutboxEvent & {
     readonly type: "identity.password_reset.requested.v1";
   };
+  readonly audit: SecurityAuditRecord;
 }
 
 export type IssueIdentityEmailInput = IssueActivationEmailInput | IssuePasswordResetEmailInput;

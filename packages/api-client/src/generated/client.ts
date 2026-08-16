@@ -70,6 +70,11 @@ export interface SuspendTenantMembershipParameters {
   readonly path: operations["suspendTenantMembership"]["parameters"]["path"];
 }
 
+export interface RevokePlatformUserSessionsParameters {
+  readonly path: operations["revokePlatformUserSessions"]["parameters"]["path"];
+  readonly body: operations["revokePlatformUserSessions"]["requestBody"]["content"]["application/json"];
+}
+
 export interface ProvisionPlatformTenantParameters {
   readonly headers: operations["provisionPlatformTenant"]["parameters"]["header"];
   readonly body: operations["provisionPlatformTenant"]["requestBody"]["content"]["application/json"];
@@ -89,6 +94,7 @@ export interface GeneratedClient {
   readonly loginSession: (parameters: LoginSessionParameters, options?: GeneratedRequestOptions) => Promise<operations["loginSession"]["responses"][200]["content"]["application/json"]>;
   readonly logoutSession: (options?: GeneratedRequestOptions) => Promise<operations["logoutSession"]["responses"][200]["content"]["application/json"]>;
   readonly getCurrentSession: (options?: GeneratedRequestOptions) => Promise<operations["getCurrentSession"]["responses"][200]["content"]["application/json"]>;
+  readonly getCurrentAuthorization: (options?: GeneratedRequestOptions) => Promise<operations["getCurrentAuthorization"]["responses"][200]["content"]["application/json"]>;
   readonly requestPasswordReset: (parameters: RequestPasswordResetParameters, options?: GeneratedRequestOptions) => Promise<operations["requestPasswordReset"]["responses"][202]["content"]["application/json"]>;
   readonly completePasswordReset: (parameters: CompletePasswordResetParameters, options?: GeneratedRequestOptions) => Promise<operations["completePasswordReset"]["responses"][200]["content"]["application/json"]>;
   readonly getSessionCsrf: (options?: GeneratedRequestOptions) => Promise<operations["getSessionCsrf"]["responses"][200]["content"]["application/json"]>;
@@ -106,6 +112,7 @@ export interface GeneratedClient {
   readonly promoteTenantMembershipOwner: (parameters: PromoteTenantMembershipOwnerParameters, options?: GeneratedRequestOptions) => Promise<operations["promoteTenantMembershipOwner"]["responses"][200]["content"]["application/json"]>;
   readonly revokeTenantMembership: (parameters: RevokeTenantMembershipParameters, options?: GeneratedRequestOptions) => Promise<operations["revokeTenantMembership"]["responses"][200]["content"]["application/json"]>;
   readonly suspendTenantMembership: (parameters: SuspendTenantMembershipParameters, options?: GeneratedRequestOptions) => Promise<operations["suspendTenantMembership"]["responses"][200]["content"]["application/json"]>;
+  readonly revokePlatformUserSessions: (parameters: RevokePlatformUserSessionsParameters, options?: GeneratedRequestOptions) => Promise<operations["revokePlatformUserSessions"]["responses"][200]["content"]["application/json"]>;
   readonly provisionPlatformTenant: (parameters: ProvisionPlatformTenantParameters, options?: GeneratedRequestOptions) => Promise<operations["provisionPlatformTenant"]["responses"][200]["content"]["application/json"]>;
   readonly getPlatformTenantProvisioning: (parameters: GetPlatformTenantProvisioningParameters, options?: GeneratedRequestOptions) => Promise<operations["getPlatformTenantProvisioning"]["responses"][200]["content"]["application/json"]>;
   readonly resendPlatformTenantOwnerInvitation: (parameters: ResendPlatformTenantOwnerInvitationParameters, options?: GeneratedRequestOptions) => Promise<operations["resendPlatformTenantOwnerInvitation"]["responses"][202]["content"]["application/json"]>;
@@ -145,6 +152,12 @@ export function createGeneratedClient(transport: GeneratedTransport): GeneratedC
       return transport<operations["getCurrentSession"]["responses"][200]["content"]["application/json"]>({
       method: "GET",
       path: "/api/auth/me",
+      }, options);
+    },
+    async getCurrentAuthorization(options) {
+      return transport<operations["getCurrentAuthorization"]["responses"][200]["content"]["application/json"]>({
+      method: "GET",
+      path: "/api/auth/me/authorization",
       }, options);
     },
     async requestPasswordReset(parameters, options) {
@@ -251,6 +264,13 @@ export function createGeneratedClient(transport: GeneratedTransport): GeneratedC
       return transport<operations["suspendTenantMembership"]["responses"][200]["content"]["application/json"]>({
       method: "POST",
       path: `/api/memberships/${encodeURIComponent(String(parameters.path.membershipId))}/suspend`,
+      }, options);
+    },
+    async revokePlatformUserSessions(parameters, options) {
+      return transport<operations["revokePlatformUserSessions"]["responses"][200]["content"]["application/json"]>({
+      method: "POST",
+      path: `/api/platform/security/users/${encodeURIComponent(String(parameters.path.userId))}/sessions/revoke`,
+      body: parameters.body,
       }, options);
     },
     async provisionPlatformTenant(parameters, options) {

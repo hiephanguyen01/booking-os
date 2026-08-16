@@ -193,17 +193,36 @@ export class PrismaIdentityRepositoryAdapter implements IdentityRepositoryPort {
 
   async createPendingUser(input: PendingUserInput): Promise<GlobalUser> {
     try {
-      const row = await this.prisma.user.create({
-        data: {
-          normalizedEmail: input.normalizedEmail,
-          displayEmail: input.displayEmail,
-          status: "pendingActivation",
-          authorizationVersion: 1,
-          createdAt: input.now,
-          updatedAt: input.now,
-        },
+      return await this.prisma.$transaction(async (transaction) => {
+        const row = await transaction.user.create({
+          data: {
+            normalizedEmail: input.normalizedEmail,
+            displayEmail: input.displayEmail,
+            status: "pendingActivation",
+            authorizationVersion: 1,
+            createdAt: input.now,
+            updatedAt: input.now,
+          },
+        });
+        await transaction.securityAuditEvent.create({
+          data: {
+            eventType: "identity.user.provisioned",
+            actorUserId: input.requestedByUserId,
+            subjectUserId: row.id,
+            requestId: input.requestId,
+            metadata: {
+              action: "provision_user",
+              result: "success",
+              reason: "user_created",
+              hostname: input.hostname,
+              scopeType: input.scopeType,
+              tenantId: input.tenantId,
+            },
+            occurredAt: input.now,
+          },
+        });
+        return mapUser(row);
       });
-      return mapUser(row);
     } catch (error: unknown) {
       if (isUniqueConstraintError(error)) {
         throw new IdentityEmailConflictError();
@@ -309,6 +328,23 @@ export class PrismaIdentityRepositoryAdapter implements IdentityRepositoryPort {
           updatedAt: input.now,
         },
       });
+      await transaction.securityAuditEvent.create({
+        data: {
+          eventType: "identity.user.activated",
+          actorUserId: token.userId,
+          subjectUserId: token.userId,
+          requestId: input.requestId,
+          metadata: {
+            action: "activate_user",
+            result: "success",
+            reason: "activation_token_consumed",
+            hostname: token.hostname,
+            scopeType: token.scopeType,
+            tenantId: token.tenantId,
+          },
+          occurredAt: input.now,
+        },
+      });
 
       return mapUser(user);
     });
@@ -363,6 +399,43 @@ export class PrismaIdentityRepositoryAdapter implements IdentityRepositoryPort {
         data: {
           authorizationVersion: { increment: 1 },
           updatedAt: input.now,
+        },
+      });
+
+      const sessions = await transaction.authSession.findMany({
+        where: { userId: token.userId, state: "active" },
+        select: { id: true },
+      });
+      const sessionIds = sessions.map((session) => session.id);
+      await transaction.authSession.updateMany({
+        where: { id: { in: sessionIds }, state: "active" },
+        data: {
+          state: "revoked",
+          revokedAt: input.now,
+          revocationReason: "password_reset",
+          version: { increment: 1 },
+        },
+      });
+      await transaction.authSessionToken.updateMany({
+        where: { sessionId: { in: sessionIds }, revokedAt: null },
+        data: { revokedAt: input.now },
+      });
+      await transaction.securityAuditEvent.create({
+        data: {
+          eventType: "identity.password.reset_completed",
+          actorUserId: token.userId,
+          subjectUserId: token.userId,
+          requestId: input.requestId,
+          metadata: {
+            action: "reset_password",
+            result: "success",
+            reason: "password_reset_token_consumed",
+            hostname: token.hostname,
+            scopeType: token.scopeType,
+            tenantId: token.tenantId,
+            revokedSessionCount: sessions.length,
+          },
+          occurredAt: input.now,
         },
       });
 

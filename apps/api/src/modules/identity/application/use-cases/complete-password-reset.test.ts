@@ -2,16 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { IdentityTokenInvalidError } from "../../domain/identity-errors.js";
 import type { CompleteResetInput } from "../ports/identity-repository.port.js";
-import type { SecurityAuditRecord } from "../ports/security-audit.port.js";
-import type { SessionRevocationPort } from "../ports/session-revocation.port.js";
 import { CompletePasswordResetUseCase } from "./complete-password-reset.js";
 import {
   createIdentityRepository,
   createOneTimeTokenPort,
   createPasswordDenylist,
   createPasswordHasher,
-  createSecurityAudit,
-  createSessionRevocation,
   fixedClock,
   HOSTNAME,
   NOW,
@@ -22,21 +18,11 @@ import {
 
 const PASSWORD = "Reset secure phrase 2026";
 
-test("replaces the password, revokes every session, and records one security event", async () => {
-  const operations: string[] = [];
+test("replaces the password with atomic session revocation and audit context", async () => {
   const completed: CompleteResetInput[] = [];
-  const revoked: Array<{ readonly userId: string; readonly revokedAt: Date }> = [];
-  const auditRecords: SecurityAuditRecord[] = [];
-  const sessionRevocation: SessionRevocationPort = {
-    async revokeAllForUser(userId, revokedAt) {
-      operations.push("revoke-sessions");
-      revoked.push({ userId, revokedAt });
-    },
-  };
   const useCase = new CompletePasswordResetUseCase(
     createIdentityRepository({
       async replacePasswordAndConsumeReset(input) {
-        operations.push("replace-password");
         completed.push(input);
         return { userId: USER_ID };
       },
@@ -54,13 +40,6 @@ test("replaces the password, revokes every session, and records one security eve
       },
     }),
     createPasswordDenylist(),
-    sessionRevocation,
-    createSecurityAudit(auditRecords, {
-      async record(record) {
-        operations.push("audit");
-        auditRecords.push(record);
-      },
-    }),
     fixedClock,
   );
 
@@ -82,27 +61,21 @@ test("replaces the password, revokes every session, and records one security eve
       tenantId: null,
       passwordHash: "$argon2id$v=19$m=65536,t=3,p=1$test$reset",
       now: NOW,
-    },
-  ]);
-  assert.deepEqual(revoked, [{ userId: USER_ID, revokedAt: NOW }]);
-  assert.deepEqual(operations, ["replace-password", "revoke-sessions", "audit"]);
-  assert.deepEqual(auditRecords, [
-    {
-      eventType: "identity.password_reset.completed",
-      actorUserId: USER_ID,
-      subjectUserId: USER_ID,
       requestId: "request-complete-reset",
-      metadata: { scopeType: "platform", hostname: HOSTNAME },
-      occurredAt: NOW,
     },
   ]);
 });
 
-test("rejects malformed reset material before hashing or revoking sessions", async () => {
+test("rejects malformed reset material before hashing or mutating security state", async () => {
   let hashed = false;
-  const revoked: Array<{ readonly userId: string; readonly revokedAt: Date }> = [];
+  let mutated = false;
   const useCase = new CompletePasswordResetUseCase(
-    createIdentityRepository(),
+    createIdentityRepository({
+      async replacePasswordAndConsumeReset() {
+        mutated = true;
+        return { userId: USER_ID };
+      },
+    }),
     createOneTimeTokenPort({
       derive() {
         return null;
@@ -115,8 +88,6 @@ test("rejects malformed reset material before hashing or revoking sessions", asy
       },
     }),
     createPasswordDenylist(),
-    createSessionRevocation(revoked),
-    createSecurityAudit([]),
     fixedClock,
   );
 
@@ -131,5 +102,5 @@ test("rejects malformed reset material before hashing or revoking sessions", asy
     (error: unknown) => error instanceof IdentityTokenInvalidError,
   );
   assert.equal(hashed, false);
-  assert.deepEqual(revoked, []);
+  assert.equal(mutated, false);
 });

@@ -13,8 +13,15 @@ import { Reflector } from "@nestjs/core";
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import type { AuthenticatedRequestContext } from "../../../../common/request-context/request-context.types.js";
 import { isAuthorizationReadyRequestContext } from "../../../../common/request-context/request-context.types.js";
+import type {
+  AuthorizationDenialReason,
+  AuthorizationSecurityAuditPort,
+} from "../../application/ports/authorization-security-audit.port.js";
 import type { ProtectedRequestAuthorizationPort } from "../../application/ports/protected-request-authorization.port.js";
-import { PROTECTED_REQUEST_AUTHORIZATION_PORT } from "../../authorization.tokens.js";
+import {
+  AUTHORIZATION_SECURITY_AUDIT_PORT,
+  PROTECTED_REQUEST_AUTHORIZATION_PORT,
+} from "../../authorization.tokens.js";
 import {
   AuthorizationAuthorityInvalidError,
   AuthorizationSessionIneligibleError,
@@ -75,6 +82,13 @@ function isAllowed(
   );
 }
 
+function denialReason(error: unknown): AuthorizationDenialReason | null {
+  if (error instanceof AuthorizationAuthorityInvalidError) return "authority_invalid";
+  if (error instanceof AuthorizationSessionIneligibleError) return "session_ineligible";
+  if (error instanceof AuthorizationSubjectInactiveError) return "subject_inactive";
+  return null;
+}
+
 export function authorizationContextFromRequest(request: object): AuthorizationContext {
   const authorization = (request as AuthorizedRequest)[AUTHORIZATION_CONTEXT_REQUEST_KEY];
   if (!authorization) {
@@ -90,7 +104,28 @@ export class PermissionGuard implements CanActivate {
     @Inject(RequestContextStorage) private readonly requestContext: RequestContextStorage,
     @Inject(PROTECTED_REQUEST_AUTHORIZATION_PORT)
     private readonly authorization: ProtectedRequestAuthorizationPort,
+    @Inject(AUTHORIZATION_SECURITY_AUDIT_PORT)
+    private readonly audit: AuthorizationSecurityAuditPort,
   ) {}
+
+  private async recordDenial(
+    authenticated: AuthenticatedRequestContext,
+    permission: PermissionKey,
+    reason: AuthorizationDenialReason,
+  ): Promise<void> {
+    await this.audit.recordDenied({
+      eventType: "authorization.denied",
+      actorUserId: authenticated.actorId,
+      subjectUserId: authenticated.actorId,
+      sessionId: authenticated.sessionId,
+      requestId: authenticated.requestId,
+      permission,
+      scopeType: authenticated.authScope.type,
+      tenantId: authenticated.authScope.type === "tenant" ? authenticated.authScope.tenantId : null,
+      reason,
+      occurredAt: new Date(),
+    });
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const permission = this.reflector.getAllAndOverride<PermissionKey>(
@@ -109,9 +144,11 @@ export class PermissionGuard implements CanActivate {
     const authenticated = this.requestContext.getAuthenticated();
     if (!authenticated) throw new UnauthorizedException("Authentication is required.");
     if (authenticated.sessionState !== "active") {
+      await this.recordDenial(authenticated, permission, "session_inactive");
       throw new ForbiddenException("An active session is required.");
     }
     if (!isAuthorizationReadyRequestContext(authenticated)) {
+      await this.recordDenial(authenticated, permission, "authorization_snapshot_missing");
       throw new ForbiddenException("Authorization snapshots are required.");
     }
     const request = context.switchToHttp().getRequest<PermissionRequest>();
@@ -131,16 +168,15 @@ export class PermissionGuard implements CanActivate {
           .setHeader("Set-Cookie", serializeSessionCookie(result.successorToken));
       }
     } catch (error: unknown) {
-      if (
-        error instanceof AuthorizationAuthorityInvalidError ||
-        error instanceof AuthorizationSessionIneligibleError ||
-        error instanceof AuthorizationSubjectInactiveError
-      ) {
+      const reason = denialReason(error);
+      if (reason) {
+        await this.recordDenial(authenticated, permission, reason);
         throw new ForbiddenException("Authoritative permission is required.");
       }
       throw error;
     }
     if (!isAllowed(authenticated, authorization, permission, reconciled)) {
+      await this.recordDenial(authenticated, permission, "authority_mismatch");
       throw new ForbiddenException("Authoritative permission is required.");
     }
 

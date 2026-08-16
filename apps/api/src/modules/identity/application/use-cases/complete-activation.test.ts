@@ -2,14 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { IdentityTokenInvalidError } from "../../domain/identity-errors.js";
 import type { ConsumeActivationInput } from "../ports/identity-repository.port.js";
-import type { SecurityAuditRecord } from "../ports/security-audit.port.js";
 import { CompleteActivationUseCase } from "./complete-activation.js";
 import {
   createIdentityRepository,
   createOneTimeTokenPort,
   createPasswordDenylist,
   createPasswordHasher,
-  createSecurityAudit,
   createUser,
   fixedClock,
   HOSTNAME,
@@ -27,7 +25,6 @@ test("sets the password and activates the account atomically without creating a 
   const hashed: string[] = [];
   const denylistChecks: string[] = [];
   const consumed: ConsumeActivationInput[] = [];
-  const auditRecords: SecurityAuditRecord[] = [];
   const useCase = new CompleteActivationUseCase(
     createIdentityRepository({
       async consumeActivationToken(input) {
@@ -53,7 +50,6 @@ test("sets the password and activates the account atomically without creating a 
         return false;
       },
     }),
-    createSecurityAudit(auditRecords),
     fixedClock,
   );
 
@@ -78,17 +74,8 @@ test("sets the password and activates the account atomically without creating a 
     tenantId: null,
     passwordHash: "$argon2id$v=19$m=65536,t=3,p=1$test$activation",
     now: NOW,
+    requestId: "request-activation",
   });
-  assert.deepEqual(auditRecords, [
-    {
-      eventType: "identity.activation.completed",
-      actorUserId: USER_ID,
-      subjectUserId: USER_ID,
-      requestId: "request-activation",
-      metadata: { scopeType: "platform", hostname: HOSTNAME },
-      occurredAt: NOW,
-    },
-  ]);
 });
 
 test("maps malformed activation material to the generic token error before hashing", async () => {
@@ -107,7 +94,6 @@ test("maps malformed activation material to the generic token error before hashi
       },
     }),
     createPasswordDenylist(),
-    createSecurityAudit([]),
     fixedClock,
   );
 

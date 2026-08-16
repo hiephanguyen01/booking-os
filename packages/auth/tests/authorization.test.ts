@@ -16,6 +16,7 @@ test("system role catalog contains only the approved immutable roles", () => {
 test("permission catalog contains only approved identity-access keys", () => {
   assert.deepEqual(PERMISSION_KEYS, {
     platformSecurityAuditRead: "platform.security.audit.read",
+    platformSecuritySessionRevoke: "platform.security.session.revoke",
     platformTenantsProvision: "platform.tenants.provision",
     platformUsersProvision: "platform.users.provision",
     tenantMembershipRead: "tenant.membership.read",
@@ -32,6 +33,7 @@ test("permission catalog contains only approved identity-access keys", () => {
 test("platform administrator receives only platform permissions", () => {
   assert.deepEqual(getPermissions(SYSTEM_ROLES.platformAdmin), [
     PERMISSION_KEYS.platformSecurityAuditRead,
+    PERMISSION_KEYS.platformSecuritySessionRevoke,
     PERMISSION_KEYS.platformTenantsProvision,
     PERMISSION_KEYS.platformUsersProvision,
   ]);

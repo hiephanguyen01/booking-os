@@ -39,7 +39,7 @@ function createTransactionPrisma(transaction: object): PrismaService {
 
 test("maps concurrent normalized-email collisions to a stable domain error", async () => {
   let created = false;
-  const prisma = {
+  const transaction = {
     user: {
       async create(): Promise<typeof userRow> {
         await Promise.resolve();
@@ -53,12 +53,20 @@ test("maps concurrent normalized-email collisions to a stable domain error", asy
         return userRow;
       },
     },
-  } as unknown as PrismaService;
-  const adapter = new PrismaIdentityRepositoryAdapter(prisma);
+    securityAuditEvent: {
+      async create(): Promise<void> {},
+    },
+  };
+  const adapter = new PrismaIdentityRepositoryAdapter(createTransactionPrisma(transaction));
   const input = {
     normalizedEmail: userRow.normalizedEmail,
     displayEmail: userRow.displayEmail,
     now: NOW,
+    requestedByUserId: USER_ID,
+    requestId: null,
+    hostname: HOSTNAME,
+    scopeType: "platform" as const,
+    tenantId: null,
   };
 
   const results = await Promise.allSettled([
@@ -166,6 +174,9 @@ test("locks and consumes a valid activation token before activating the user", a
         return activatedUser;
       },
     },
+    securityAuditEvent: {
+      async create(): Promise<void> {},
+    },
   };
   const adapter = new PrismaIdentityRepositoryAdapter(createTransactionPrisma(transaction));
 
@@ -177,6 +188,7 @@ test("locks and consumes a valid activation token before activating the user", a
     tenantId: null,
     passwordHash: PASSWORD_HASH,
     now: NOW,
+    requestId: null,
   });
 
   assert.equal(result.status, "active");
@@ -246,6 +258,7 @@ test("rejects activation token binding and lifecycle failures with one generic e
         tenantId: null,
         passwordHash: PASSWORD_HASH,
         now: NOW,
+        requestId: null,
       }),
       (error: unknown) =>
         error instanceof IdentityTokenInvalidError && error.code === "identity.token_invalid",
@@ -292,6 +305,22 @@ test("replaces the password, consumes reset state, and increments authorization 
         operations.push({ name: "version", input });
       },
     },
+    authSession: {
+      async findMany(): Promise<never[]> {
+        return [];
+      },
+      async updateMany(): Promise<{ count: number }> {
+        return { count: 0 };
+      },
+    },
+    authSessionToken: {
+      async updateMany(): Promise<{ count: number }> {
+        return { count: 0 };
+      },
+    },
+    securityAuditEvent: {
+      async create(): Promise<void> {},
+    },
   };
   const adapter = new PrismaIdentityRepositoryAdapter(createTransactionPrisma(transaction));
 
@@ -303,6 +332,7 @@ test("replaces the password, consumes reset state, and increments authorization 
     tenantId: null,
     passwordHash: PASSWORD_HASH,
     now: NOW,
+    requestId: null,
   });
 
   assert.deepEqual(result, { userId: USER_ID });
