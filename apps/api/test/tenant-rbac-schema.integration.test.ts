@@ -15,7 +15,7 @@ async function runAsTenant<T>(
 ): Promise<T> {
   return prisma.$transaction(async (transaction) => {
     await transaction.$executeRawUnsafe("SET LOCAL ROLE booking_app");
-    await transaction.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
+    await transaction.$executeRaw`SELECT set_config('app.current_tenant_id', ${tenantId}, true)`;
     return work(transaction);
   });
 }
