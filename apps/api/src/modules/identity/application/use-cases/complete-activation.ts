@@ -64,9 +64,7 @@ export class CompleteActivationUseCase {
 
     return Object.freeze({
       userId: user.id,
-      ...(command.scopeType === "tenant" && user.invitationId
-        ? { continuationEmail: user.normalizedEmail }
-        : {}),
+      ...(command.scopeType === "tenant" ? { continuationEmail: user.normalizedEmail } : {}),
     });
   }
 }
