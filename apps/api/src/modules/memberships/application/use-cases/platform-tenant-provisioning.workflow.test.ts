@@ -345,7 +345,7 @@ test("provisions an existing owner inside one target-tenant scope before complet
   ]);
 });
 
-test("replaces a pending owner invitation and persists the same activation token that was delivered", async () => {
+test("replaces a pending owner invitation with one onboarding event and persists its activation", async () => {
   const calls: string[] = [];
   let tenantScopeDepth = 0;
   const replacementId = "50000000-0000-4000-8000-000000000099";
@@ -439,24 +439,25 @@ test("replaces a pending owner invitation and persists the same activation token
               outbox: {
                 async append(input: Record<string, unknown>) {
                   calls.push("outbox:append");
-                  if (input.type === "membership.owner_invitation.requested.v1") {
-                    assert.deepEqual(input, {
-                      id: OUTBOX_EVENT_ID,
-                      type: "membership.owner_invitation.requested.v1",
-                      aggregateType: "membership_invitation",
-                      aggregateId: replacementId,
-                      payload: {
-                        version: 1,
-                        recipient: INPUT.normalizedOwnerEmail,
-                        hostname: INPUT.tenantHostname,
-                        purpose: "membership_invitation",
-                        userId: OWNER_USER_ID,
-                        intendedRoleKey: "tenant_owner",
-                        envelope: SEALED_INVITATION,
-                      },
-                      occurredAt: NOW,
-                    });
-                  }
+                  assert.deepEqual(input, {
+                    id: OUTBOX_EVENT_ID,
+                    type: "membership.owner_onboarding.requested.v1",
+                    aggregateType: "membership_invitation",
+                    aggregateId: replacementId,
+                    payload: {
+                      version: 1,
+                      recipient: INPUT.normalizedOwnerEmail,
+                      hostname: INPUT.tenantHostname,
+                      purpose: "initial_owner_onboarding",
+                      tenantId: TENANT_ID,
+                      invitationId: replacementId,
+                      userId: OWNER_USER_ID,
+                      envelope: SEALED_INVITATION,
+                    },
+                    occurredAt: NOW,
+                  });
+                  assert.equal(JSON.stringify(input).includes(activation.serialized), false);
+                  assert.equal(JSON.stringify(input).includes(RAW_INVITATION_TOKEN), false);
                 },
               },
               audit: {
@@ -484,7 +485,21 @@ test("replaces a pending owner invitation and persists the same activation token
     },
     invitationEnvelope: { seal: () => SEALED_INVITATION },
     activationTokens: { issue: () => activation },
-    activationEnvelope: { seal: () => SEALED_INVITATION },
+    ownerOnboardingEnvelope: {
+      seal(input) {
+        assert.deepEqual(input, {
+          eventId: OUTBOX_EVENT_ID,
+          tenantId: TENANT_ID,
+          invitationId: replacementId,
+          userId: OWNER_USER_ID,
+          hostname: INPUT.tenantHostname,
+          recipient: INPUT.normalizedOwnerEmail,
+          activationToken: activation.serialized,
+          invitationToken: RAW_INVITATION_TOKEN,
+        });
+        return SEALED_INVITATION;
+      },
+    },
   });
 
   const result = await workflow.resendOwnerInvitation({
@@ -506,7 +521,6 @@ test("replaces a pending owner invitation and persists the same activation token
     "invitation:lock",
     "invitation:revoke",
     "invitation:create",
-    "outbox:append",
     "outbox:append",
     "audit:append",
     "tenant:exit",
