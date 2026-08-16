@@ -7,16 +7,20 @@ export const MEMBERSHIP_ADMIN_INVITATION_EVENT =
   "membership.admin_invitation.requested.v1" as const;
 export const MEMBERSHIP_OWNER_INVITATION_EVENT =
   "membership.owner_invitation.requested.v1" as const;
+export const MEMBERSHIP_OWNER_ONBOARDING_EVENT =
+  "membership.owner_onboarding.requested.v1" as const;
 
 export type IdentityEmailEventType =
   | typeof IDENTITY_ACTIVATION_EVENT
   | typeof IDENTITY_PASSWORD_RESET_EVENT
   | typeof MEMBERSHIP_ADMIN_INVITATION_EVENT
-  | typeof MEMBERSHIP_OWNER_INVITATION_EVENT;
+  | typeof MEMBERSHIP_OWNER_INVITATION_EVENT
+  | typeof MEMBERSHIP_OWNER_ONBOARDING_EVENT;
 export type IdentityEmailTemplate =
   | "account_activation"
   | "password_reset"
-  | "membership_invitation";
+  | "membership_invitation"
+  | "initial_owner_onboarding";
 
 export interface IdentityEmailEnvelope {
   readonly version: 1;
@@ -60,13 +64,15 @@ export function isIdentityEmailEventType(value: string): value is IdentityEmailE
     value === IDENTITY_ACTIVATION_EVENT ||
     value === IDENTITY_PASSWORD_RESET_EVENT ||
     value === MEMBERSHIP_ADMIN_INVITATION_EVENT ||
-    value === MEMBERSHIP_OWNER_INVITATION_EVENT
+    value === MEMBERSHIP_OWNER_INVITATION_EVENT ||
+    value === MEMBERSHIP_OWNER_ONBOARDING_EVENT
   );
 }
 
 function expectedTemplate(eventType: IdentityEmailEventType): IdentityEmailTemplate {
   if (eventType === IDENTITY_ACTIVATION_EVENT) return "account_activation";
   if (eventType === IDENTITY_PASSWORD_RESET_EVENT) return "password_reset";
+  if (eventType === MEMBERSHIP_OWNER_ONBOARDING_EVENT) return "initial_owner_onboarding";
   return "membership_invitation";
 }
 
@@ -101,6 +107,32 @@ export function parseIdentityEmailEvent(
     return invalidEvent();
   }
   const envelope = parseEnvelope(data.payload.envelope);
+
+  if (name === MEMBERSHIP_OWNER_ONBOARDING_EVENT) {
+    if (data.aggregateType !== "membership_invitation") return invalidEvent();
+    const tenantId = nonEmptyString(data.tenantId);
+    const invitationId = nonEmptyString(data.aggregateId);
+    const userId = nonEmptyString(data.payload.userId);
+    if (
+      data.payload.purpose !== "initial_owner_onboarding" ||
+      (data.payload.tenantId !== undefined && data.payload.tenantId !== tenantId) ||
+      (data.payload.invitationId !== undefined && data.payload.invitationId !== invitationId)
+    ) {
+      return invalidEvent();
+    }
+    return Object.freeze({
+      eventId,
+      eventType: name,
+      userId,
+      recipient,
+      hostname,
+      template: "initial_owner_onboarding",
+      envelope,
+      tenantId,
+      invitationId,
+      intendedRoleKey: "tenant_owner",
+    });
+  }
 
   if (name === MEMBERSHIP_ADMIN_INVITATION_EVENT || name === MEMBERSHIP_OWNER_INVITATION_EVENT) {
     if (data.aggregateType !== "membership_invitation") return invalidEvent();
