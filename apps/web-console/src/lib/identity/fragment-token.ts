@@ -37,7 +37,7 @@ export function consumeIdentityTokenFragment(
   history: IdentityTokenHistory,
 ): string | null {
   const entries = consumeFragmentEntries(location, history);
-  if (!entries || entries.length !== 1 || entries[0]?.[0] !== "token") return null;
+  if (entries?.length !== 1 || entries[0]?.[0] !== "token") return null;
   return entries[0]?.[1] || null;
 }
 
@@ -74,6 +74,6 @@ export function consumeInvitationContinuationFragment(
   history: IdentityTokenHistory,
 ): string | null {
   const entries = consumeFragmentEntries(location, history);
-  if (!entries || entries.length !== 1 || entries[0]?.[0] !== "invitation") return null;
+  if (entries?.length !== 1 || entries[0]?.[0] !== "invitation") return null;
   return entries[0]?.[1] || null;
 }
