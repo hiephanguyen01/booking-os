@@ -90,6 +90,11 @@ interface EnvelopePayload {
   readonly envelope: SensitiveEnvelope;
 }
 
+interface OwnerOnboardingMaterial {
+  readonly activationToken: string;
+  readonly invitationToken: string;
+}
+
 let app: INestApplication;
 let prisma: PrismaService;
 let createSession: CreateSessionUseCase;
@@ -142,6 +147,29 @@ function decryptOutboxToken(payload: unknown, associatedData: readonly string[])
   assert.match(decrypted.token as string, /^[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}$/u);
   assert.equal(JSON.stringify(payload).includes(decrypted.token as string), false);
   return decrypted.token as string;
+}
+
+function decryptOwnerOnboardingMaterial(
+  payload: unknown,
+  associatedData: readonly string[],
+): OwnerOnboardingMaterial {
+  const { envelope } = requireEnvelopePayload(payload);
+  const plaintext = decryptSensitiveEnvelope({
+    envelope,
+    keyring: { [ENVELOPE_KEY_ID]: ENVELOPE_KEY },
+    aad: new TextEncoder().encode(associatedData.join("\0")),
+  });
+  const decrypted = requireRecord(JSON.parse(new TextDecoder().decode(plaintext)));
+  assert.equal(typeof decrypted.activationToken, "string");
+  assert.equal(typeof decrypted.invitationToken, "string");
+  assert.match(decrypted.activationToken as string, /^[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}$/u);
+  assert.match(decrypted.invitationToken as string, /^[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}$/u);
+  assert.equal(JSON.stringify(payload).includes(decrypted.activationToken as string), false);
+  assert.equal(JSON.stringify(payload).includes(decrypted.invitationToken as string), false);
+  return {
+    activationToken: decrypted.activationToken as string,
+    invitationToken: decrypted.invitationToken as string,
+  };
 }
 
 function key(suffix: string): string {
@@ -516,7 +544,7 @@ test("POST provisions an existing owner and GET returns its database-backed stat
     .expect(409);
 });
 
-test("POST provisions a pending owner with activation artifacts and resend replaces them", async () => {
+test("POST provisions a pending owner with one onboarding event and resend rotates both artifacts", async () => {
   assert.equal(await prisma.user.count({ where: { normalizedEmail: PENDING_OWNER_EMAIL } }), 0);
 
   const response = await authenticatedPost("/api/platform/tenants", adminSession, pendingOwnerBody)
@@ -549,41 +577,25 @@ test("POST provisions a pending owner with activation artifacts and resend repla
     where: { tenantId: result.tenantId },
     orderBy: { id: "asc" },
   });
-  assert.deepEqual(originalEvents.map(({ type }) => type).sort(), [
-    "identity.activation.requested.v1",
-    "membership.owner_invitation.requested.v1",
+  assert.deepEqual(originalEvents.map(({ type }) => type), [
+    "membership.owner_onboarding.requested.v1",
   ]);
-  const invitationEvent = originalEvents.find(
-    ({ type }) => type === "membership.owner_invitation.requested.v1",
-  );
-  const activationEvent = originalEvents.find(
-    ({ type }) => type === "identity.activation.requested.v1",
-  );
-  assert.ok(invitationEvent);
-  assert.ok(activationEvent);
-  const invitationToken = decryptOutboxToken(invitationEvent.payload, [
-    "booking-os:membership-email:v1",
-    "membership.owner_invitation.requested.v1",
-    invitationEvent.id,
+  const originalOnboardingEvent = originalEvents[0];
+  assert.ok(originalOnboardingEvent);
+  assert.equal(originalOnboardingEvent.aggregateId, originalInvitation.id);
+  const originalMaterial = decryptOwnerOnboardingMaterial(originalOnboardingEvent.payload, [
+    "booking-os:owner-onboarding-email:v1",
+    "membership.owner_onboarding.requested.v1",
+    originalOnboardingEvent.id,
     result.tenantId,
     originalInvitation.id,
     pendingOwner.id,
     originalInvitation.hostname,
     PENDING_OWNER_EMAIL,
-    "tenant_owner",
   ]);
-  const activationToken = decryptOutboxToken(activationEvent.payload, [
-    "booking-os:identity-email:v1",
-    "identity.activation.requested.v1",
-    activationEvent.id,
-    pendingOwner.id,
-    originalInvitation.hostname,
-    PENDING_OWNER_EMAIL,
-    "account_activation",
-  ]);
-  assert.ok(invitationToken.startsWith(`${originalInvitation.selector}.`));
-  assert.ok(activationToken.startsWith(`${originalActivation.selector}.`));
-  assert.notEqual(invitationToken, activationToken);
+  assert.ok(originalMaterial.invitationToken.startsWith(`${originalInvitation.selector}.`));
+  assert.ok(originalMaterial.activationToken.startsWith(`${originalActivation.selector}.`));
+  assert.notEqual(originalMaterial.invitationToken, originalMaterial.activationToken);
 
   const resend = await authenticatedPost(
     `/api/platform/tenants/${result.tenantId}/owner-invitation/resend`,
@@ -624,35 +636,40 @@ test("POST provisions a pending owner with activation artifacts and resend repla
   const replacementEvents = await prisma.outboxEvent.findMany({
     where: { tenantId: result.tenantId },
   });
-  assert.equal(replacementEvents.length, 4);
+  assert.equal(replacementEvents.length, 2);
   assert.equal(
-    replacementEvents.filter(({ type }) => type === "membership.owner_invitation.requested.v1")
+    replacementEvents.filter(({ type }) => type === "membership.owner_onboarding.requested.v1")
       .length,
     2,
   );
   assert.equal(
-    replacementEvents.filter(({ type }) => type === "identity.activation.requested.v1").length,
-    2,
+    replacementEvents.filter(
+      ({ type }) =>
+        type === "membership.owner_invitation.requested.v1" ||
+        type === "identity.activation.requested.v1",
+    ).length,
+    0,
   );
-  const replacementInvitationEvent = replacementEvents.find(
+  const replacementOnboardingEvent = replacementEvents.find(
     ({ aggregateId, type }) =>
-      type === "membership.owner_invitation.requested.v1" &&
+      type === "membership.owner_onboarding.requested.v1" &&
       aggregateId === replacementInvitation.id,
   );
-  assert.ok(replacementInvitationEvent);
-  const replacementInvitationToken = decryptOutboxToken(replacementInvitationEvent.payload, [
-    "booking-os:membership-email:v1",
-    "membership.owner_invitation.requested.v1",
-    replacementInvitationEvent.id,
+  assert.ok(replacementOnboardingEvent);
+  const replacementMaterial = decryptOwnerOnboardingMaterial(replacementOnboardingEvent.payload, [
+    "booking-os:owner-onboarding-email:v1",
+    "membership.owner_onboarding.requested.v1",
+    replacementOnboardingEvent.id,
     result.tenantId,
     replacementInvitation.id,
     pendingOwner.id,
     replacementInvitation.hostname,
     PENDING_OWNER_EMAIL,
-    "tenant_owner",
   ]);
-  assert.ok(replacementInvitationToken.startsWith(`${replacementInvitation.selector}.`));
-  assert.notEqual(replacementInvitationToken, invitationToken);
+  assert.ok(replacementMaterial.invitationToken.startsWith(`${replacementInvitation.selector}.`));
+  assert.ok(replacementMaterial.activationToken.startsWith(`${replacementActivation.selector}.`));
+  assert.notEqual(replacementMaterial.invitationToken, originalMaterial.invitationToken);
+  assert.notEqual(replacementMaterial.activationToken, originalMaterial.activationToken);
 });
 
 test("POST rejects a matching in-progress idempotency claim", async () => {
