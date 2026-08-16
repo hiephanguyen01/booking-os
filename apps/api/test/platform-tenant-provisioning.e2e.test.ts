@@ -577,9 +577,10 @@ test("POST provisions a pending owner with one onboarding event and resend rotat
     where: { tenantId: result.tenantId },
     orderBy: { id: "asc" },
   });
-  assert.deepEqual(originalEvents.map(({ type }) => type), [
-    "membership.owner_onboarding.requested.v1",
-  ]);
+  assert.deepEqual(
+    originalEvents.map(({ type }) => type),
+    ["membership.owner_onboarding.requested.v1"],
+  );
   const originalOnboardingEvent = originalEvents[0];
   assert.ok(originalOnboardingEvent);
   assert.equal(originalOnboardingEvent.aggregateId, originalInvitation.id);
