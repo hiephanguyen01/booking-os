@@ -7,8 +7,8 @@ import type { User as PrismaUser } from "@prisma/client";
 import { PrismaService } from "../../../../../database/prisma.service.js";
 import type {
   CompleteResetInput,
-  ConsumedActivationUser,
   ConsumeActivationInput,
+  ConsumedActivationUser,
   IdentityRepositoryPort,
   PasswordCredentialInput,
   PasswordResetResult,
