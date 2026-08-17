@@ -3,8 +3,8 @@ import test from "node:test";
 
 import { Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
-import { Test } from "@nestjs/testing";
 import type { OpenAPIObject, ResponseObject, SchemaObject } from "@nestjs/swagger";
+import { Test } from "@nestjs/testing";
 
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import { EnvironmentService } from "../../../../config/environment.service.js";
@@ -36,10 +36,7 @@ const CORE_CONTROLLER_STUB = {
 })
 class IdentityOwnerContinuationOpenApiTestModule {}
 
-function responseSchema(
-  document: OpenAPIObject,
-  path: string,
-): SchemaObject {
+function responseSchema(document: OpenAPIObject, path: string): SchemaObject {
   const response = document.paths[path]?.post?.responses?.["200"] as ResponseObject | undefined;
   const schema = response?.content?.["application/json"]?.schema as SchemaObject | undefined;
   assert.ok(schema, `expected a 200 application/json schema for ${path}`);
