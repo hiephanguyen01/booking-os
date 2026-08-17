@@ -7,6 +7,7 @@ import type { User as PrismaUser } from "@prisma/client";
 import { PrismaService } from "../../../../../database/prisma.service.js";
 import type {
   CompleteResetInput,
+  ConsumedActivationUser,
   ConsumeActivationInput,
   IdentityRepositoryPort,
   PasswordCredentialInput,
@@ -22,6 +23,7 @@ import {
 import type { GlobalUser, IdentityScopeType } from "../../../domain/user.js";
 
 const HEX_DIGEST_PATTERN = /^[a-f0-9]{64}$/i;
+const APPLICATION_DATABASE_ROLE = "booking_app";
 
 const LOCK_ACTIVATION_TOKEN_SQL = `
   SELECT
@@ -85,6 +87,10 @@ interface LockedTokenRow {
   readonly consumedAt: Date | null;
   readonly revokedAt: Date | null;
   readonly createdAt: Date;
+}
+
+interface LockedActivationTokenRow extends LockedTokenRow {
+  readonly invitationId: string | null;
 }
 
 function mapStatus(status: string): GlobalUser["status"] {
@@ -288,9 +294,9 @@ export class PrismaIdentityRepositoryAdapter implements IdentityRepositoryPort {
     });
   }
 
-  async consumeActivationToken(input: ConsumeActivationInput): Promise<GlobalUser> {
+  async consumeActivationToken(input: ConsumeActivationInput): Promise<ConsumedActivationUser> {
     return this.prisma.$transaction(async (transaction) => {
-      const rows = await transaction.$queryRawUnsafe<LockedTokenRow[]>(
+      const rows = await transaction.$queryRawUnsafe<LockedActivationTokenRow[]>(
         LOCK_ACTIVATION_TOKEN_SQL,
         input.selector,
       );
@@ -346,7 +352,26 @@ export class PrismaIdentityRepositoryAdapter implements IdentityRepositoryPort {
         },
       });
 
-      return mapUser(user);
+      let intendedRoleKey: string | null = null;
+      if (token.invitationId && token.tenantId) {
+        await transaction.$executeRawUnsafe(`SET LOCAL ROLE ${APPLICATION_DATABASE_ROLE}`);
+        await transaction.$executeRaw`SELECT set_config('app.tenant_id', ${token.tenantId}, true)`;
+        const invitation = await transaction.membershipInvitation.findFirst({
+          where: {
+            id: token.invitationId,
+            tenantId: token.tenantId,
+            invitedUserId: token.userId,
+          },
+          select: { intendedRoleKey: true },
+        });
+        intendedRoleKey = invitation?.intendedRoleKey ?? null;
+      }
+
+      return Object.freeze({
+        ...mapUser(user),
+        invitationId: token.invitationId,
+        intendedRoleKey,
+      });
     });
   }
 
