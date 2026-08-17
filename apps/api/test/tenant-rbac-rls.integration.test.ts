@@ -221,7 +221,7 @@ test("foreign and missing tenant context deny CRUD across all custom-RBAC tables
     );
     assert.deepEqual(visibleRoles, []);
 
-    const visibleMappings = await runAsTenant(
+    const visibleMappings = await runAsTenant<readonly { role_id: string }[]>(
       deniedTenantId,
       (transaction) => transaction.$queryRaw<readonly { role_id: string }[]>`
         SELECT "role_id"
@@ -249,7 +249,7 @@ test("foreign and missing tenant context deny CRUD across all custom-RBAC tables
     );
     assert.equal(updatedRoles, 0);
 
-    const updatedMappings = await runAsTenant(
+    const updatedMappings = await runAsTenant<number>(
       deniedTenantId,
       (transaction) => transaction.$executeRaw`
         UPDATE "tenant_custom_role_permissions"
@@ -319,7 +319,7 @@ test("foreign and missing tenant context deny CRUD across all custom-RBAC tables
     );
     assert.equal(deletedRoles, 0);
 
-    const deletedMappings = await runAsTenant(
+    const deletedMappings = await runAsTenant<number>(
       deniedTenantId,
       (transaction) => transaction.$executeRaw`
         DELETE FROM "tenant_custom_role_permissions"
