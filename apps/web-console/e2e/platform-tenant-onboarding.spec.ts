@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 import { installAuthenticatedSession } from "./authenticated-session.ts";
 
@@ -11,7 +11,7 @@ const INVITATION_TOKEN = `${"c".repeat(22)}.${"d".repeat(43)}`;
 const OWNER_EMAIL = "owner@example.test";
 const NEW_PASSWORD = "Long-enough-password-123!";
 
-async function expectInvitationTokenNotPersisted(page: Parameters<typeof test>[0]["page"]) {
+async function expectInvitationTokenNotPersisted(page: Page) {
   const persisted = await page.evaluate((token) => {
     function storageContains(storage: Storage): boolean {
       for (let index = 0; index < storage.length; index += 1) {
