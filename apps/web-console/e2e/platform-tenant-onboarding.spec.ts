@@ -186,7 +186,9 @@ test("new owner can retry normal login after automatic login fails", async ({ pa
   await page.getByLabel("Confirm new password", { exact: true }).fill(NEW_PASSWORD);
   await page.getByRole("button", { name: "Activate account" }).click();
 
-  await expect(page.getByText("Your account is active, but we couldn't sign you in automatically.")).toBeVisible();
+  await expect(
+    page.getByText("Your account is active, but we couldn't sign you in automatically."),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Continue to sign in" })).toBeVisible();
   await expectInvitationTokenNotPersisted(page);
