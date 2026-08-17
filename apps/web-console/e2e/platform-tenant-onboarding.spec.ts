@@ -11,6 +11,25 @@ const INVITATION_TOKEN = `${"c".repeat(22)}.${"d".repeat(43)}`;
 const OWNER_EMAIL = "owner@example.test";
 const NEW_PASSWORD = "Long-enough-password-123!";
 
+async function expectInvitationTokenNotPersisted(page: Parameters<typeof test>[0]["page"]) {
+  const persisted = await page.evaluate((token) => {
+    function storageContains(storage: Storage): boolean {
+      for (let index = 0; index < storage.length; index += 1) {
+        const key = storage.key(index);
+        if (key && storage.getItem(key)?.includes(token)) return true;
+      }
+      return false;
+    }
+
+    return {
+      local: storageContains(window.localStorage),
+      session: storageContains(window.sessionStorage),
+    };
+  }, INVITATION_TOKEN);
+
+  expect(persisted).toEqual({ local: false, session: false });
+}
+
 test("platform admin bootstraps a tenant and inspects provisioning status", async ({
   context,
   page,
@@ -134,4 +153,96 @@ test("new owner activates, signs in normally, and explicitly accepts the invitat
 
   await page.getByRole("button", { name: "Accept invitation" }).click();
   await expect.poll(() => acceptRequests).toBe(1);
+});
+
+test("new owner can retry normal login after automatic login fails", async ({ page }) => {
+  let loginRequests = 0;
+
+  await page.route(`${TENANT_CONSOLE_BASE_URL}/api/auth/activation/complete`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ completed: true, continuationEmail: OWNER_EMAIL }),
+    });
+  });
+  await page.route(`${TENANT_CONSOLE_BASE_URL}/api/auth/login`, async (route) => {
+    loginRequests += 1;
+    expect(route.request().postDataJSON()).toEqual({
+      email: OWNER_EMAIL,
+      password: NEW_PASSWORD,
+    });
+    await route.fulfill({
+      status: loginRequests === 1 ? 401 : 200,
+      contentType: "application/json",
+      body: loginRequests === 1 ? '{"error":"unauthorized"}' : '{"authenticated":true}',
+    });
+  });
+
+  await page.goto(
+    `${TENANT_CONSOLE_BASE_URL}/activate#activation=${encodeURIComponent(ACTIVATION_TOKEN)}&invitation=${encodeURIComponent(INVITATION_TOKEN)}`,
+  );
+  await expect.poll(() => new URL(page.url()).hash).toBe("");
+  await page.getByLabel("New password", { exact: true }).fill(NEW_PASSWORD);
+  await page.getByLabel("Confirm new password", { exact: true }).fill(NEW_PASSWORD);
+  await page.getByRole("button", { name: "Activate account" }).click();
+
+  await expect(page.getByText("Your account is active, but we couldn't sign you in automatically.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue to sign in" })).toBeVisible();
+  await expectInvitationTokenNotPersisted(page);
+
+  await page.getByRole("button", { name: "Try again" }).click();
+
+  await expect.poll(() => loginRequests).toBe(2);
+  await expect(page.getByRole("heading", { name: "Accept tenant invitation" })).toBeVisible();
+  await expect.poll(() => new URL(page.url()).hash).toBe("");
+  expect(page.url()).not.toContain(INVITATION_TOKEN);
+});
+
+test("new owner can continue to manual sign in without persisting the invitation token", async ({
+  page,
+}) => {
+  let loginRequests = 0;
+
+  await page.route(`${TENANT_CONSOLE_BASE_URL}/api/auth/activation/complete`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ completed: true, continuationEmail: OWNER_EMAIL }),
+    });
+  });
+  await page.route(`${TENANT_CONSOLE_BASE_URL}/api/auth/login`, async (route) => {
+    loginRequests += 1;
+    await route.fulfill({
+      status: loginRequests === 1 ? 401 : 200,
+      contentType: "application/json",
+      body: loginRequests === 1 ? '{"error":"unauthorized"}' : '{"authenticated":true}',
+    });
+  });
+
+  await page.goto(
+    `${TENANT_CONSOLE_BASE_URL}/activate#activation=${encodeURIComponent(ACTIVATION_TOKEN)}&invitation=${encodeURIComponent(INVITATION_TOKEN)}`,
+  );
+  await expect.poll(() => new URL(page.url()).hash).toBe("");
+  await page.getByLabel("New password", { exact: true }).fill(NEW_PASSWORD);
+  await page.getByLabel("Confirm new password", { exact: true }).fill(NEW_PASSWORD);
+  await page.getByRole("button", { name: "Activate account" }).click();
+
+  await expect(page.getByRole("button", { name: "Continue to sign in" })).toBeVisible();
+  await expectInvitationTokenNotPersisted(page);
+  await page.getByRole("button", { name: "Continue to sign in" }).click();
+
+  await expect(page).toHaveURL(/\/login(?:#.*)?$/u);
+  await expect.poll(() => new URL(page.url()).hash).toBe("");
+  expect(page.url()).not.toContain(INVITATION_TOKEN);
+  await expectInvitationTokenNotPersisted(page);
+
+  await page.getByLabel("Email address").fill(OWNER_EMAIL);
+  await page.getByLabel("Password").fill(NEW_PASSWORD);
+  await page.getByRole("button", { name: "Sign in" }).click();
+
+  await expect.poll(() => loginRequests).toBe(2);
+  await expect(page.getByRole("heading", { name: "Accept tenant invitation" })).toBeVisible();
+  await expect.poll(() => new URL(page.url()).hash).toBe("");
+  expect(page.url()).not.toContain(INVITATION_TOKEN);
 });
