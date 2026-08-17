@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { TenantNotAvailableError } from "../../domain/membership-errors.js";
+import type { InitialOwnerOnboardingEnvelopePort } from "../ports/initial-owner-onboarding-envelope.port.js";
 import type { MembershipInvitationEnvelopePort } from "../ports/membership-invitation-envelope.port.js";
 import type { MembershipInvitationTokenPort } from "../ports/membership-invitation-token.port.js";
 import type { PlatformTenantProvisioningTransactionPort } from "../ports/platform-tenant-provisioning-transaction.port.js";
@@ -21,6 +22,7 @@ export interface PlatformTenantProvisioningWorkflowDependencies {
   readonly invitationEnvelope?: MembershipInvitationEnvelopePort;
   readonly activationTokens?: TenantActivationTokenPort;
   readonly activationEnvelope?: TenantActivationEnvelopePort;
+  readonly ownerOnboardingEnvelope?: InitialOwnerOnboardingEnvelopePort;
 }
 
 const unavailableInvitationTokens: MembershipInvitationTokenPort = Object.freeze({
@@ -41,9 +43,9 @@ const unavailableActivationTokens: TenantActivationTokenPort = Object.freeze({
   },
 });
 
-const unavailableActivationEnvelope: TenantActivationEnvelopePort = Object.freeze({
+const unavailableOwnerOnboardingEnvelope: InitialOwnerOnboardingEnvelopePort = Object.freeze({
   seal() {
-    throw new Error("Tenant activation envelope sealer is not configured.");
+    throw new Error("Initial owner onboarding envelope sealer is not configured.");
   },
 });
 
@@ -53,7 +55,7 @@ export class PlatformTenantProvisioningWorkflow {
   private readonly invitationTokens: MembershipInvitationTokenPort;
   private readonly invitationEnvelope: MembershipInvitationEnvelopePort;
   private readonly activationTokens: TenantActivationTokenPort;
-  private readonly activationEnvelope: TenantActivationEnvelopePort;
+  private readonly ownerOnboardingEnvelope: InitialOwnerOnboardingEnvelopePort;
 
   constructor(
     private readonly transaction: PlatformTenantProvisioningTransactionPort,
@@ -64,7 +66,8 @@ export class PlatformTenantProvisioningWorkflow {
     this.invitationTokens = dependencies.invitationTokens ?? unavailableInvitationTokens;
     this.invitationEnvelope = dependencies.invitationEnvelope ?? unavailableInvitationEnvelope;
     this.activationTokens = dependencies.activationTokens ?? unavailableActivationTokens;
-    this.activationEnvelope = dependencies.activationEnvelope ?? unavailableActivationEnvelope;
+    this.ownerOnboardingEnvelope =
+      dependencies.ownerOnboardingEnvelope ?? unavailableOwnerOnboardingEnvelope;
   }
 
   async provision(input: ProvisionPlatformTenantInput): Promise<ProvisionPlatformTenantResult> {
@@ -124,56 +127,60 @@ export class PlatformTenantProvisioningWorkflow {
           invitedByUserId: input.actorUserId,
           now: input.now,
         });
-        const invitationEventId = this.createOutboxEventId();
-        const invitationEnvelope = this.invitationEnvelope.seal({
-          eventId: invitationEventId,
-          tenantId,
-          invitationId: invitation.id,
-          userId: ownerIdentity.userId,
-          hostname: input.tenantHostname,
-          normalizedEmail: input.normalizedOwnerEmail,
-          intendedRoleKey: "tenant_owner",
-          serializedToken: invitationToken.serialized,
-        });
-        await session.outbox.append({
-          id: invitationEventId,
-          type: "membership.owner_invitation.requested.v1",
-          aggregateType: "membership_invitation",
-          aggregateId: invitation.id,
-          payload: {
-            version: 1,
-            recipient: input.normalizedOwnerEmail,
-            hostname: input.tenantHostname,
-            purpose: "membership_invitation",
-            userId: ownerIdentity.userId,
-            intendedRoleKey: "tenant_owner",
-            envelope: invitationEnvelope,
-          },
-          occurredAt: input.now,
-        });
+        const deliveryEventId = this.createOutboxEventId();
 
         if (activationToken) {
-          const activationEventId = this.createOutboxEventId();
-          const activationEnvelope = this.activationEnvelope.seal({
-            eventId: activationEventId,
+          const onboardingEnvelope = this.ownerOnboardingEnvelope.seal({
+            eventId: deliveryEventId,
             tenantId,
             invitationId: invitation.id,
             userId: ownerIdentity.userId,
             hostname: input.tenantHostname,
             recipient: input.normalizedOwnerEmail,
-            serializedToken: activationToken.serialized,
+            activationToken: activationToken.serialized,
+            invitationToken: invitationToken.serialized,
           });
           await session.outbox.append({
-            id: activationEventId,
-            type: "identity.activation.requested.v1",
-            aggregateType: "user",
-            aggregateId: ownerIdentity.userId,
+            id: deliveryEventId,
+            type: "membership.owner_onboarding.requested.v1",
+            aggregateType: "membership_invitation",
+            aggregateId: invitation.id,
             payload: {
               version: 1,
               recipient: input.normalizedOwnerEmail,
-              template: "account_activation",
               hostname: input.tenantHostname,
-              envelope: activationEnvelope,
+              purpose: "initial_owner_onboarding",
+              tenantId,
+              invitationId: invitation.id,
+              userId: ownerIdentity.userId,
+              envelope: onboardingEnvelope,
+            },
+            occurredAt: input.now,
+          });
+        } else {
+          const invitationEnvelope = this.invitationEnvelope.seal({
+            eventId: deliveryEventId,
+            tenantId,
+            invitationId: invitation.id,
+            userId: ownerIdentity.userId,
+            hostname: input.tenantHostname,
+            normalizedEmail: input.normalizedOwnerEmail,
+            intendedRoleKey: "tenant_owner",
+            serializedToken: invitationToken.serialized,
+          });
+          await session.outbox.append({
+            id: deliveryEventId,
+            type: "membership.owner_invitation.requested.v1",
+            aggregateType: "membership_invitation",
+            aggregateId: invitation.id,
+            payload: {
+              version: 1,
+              recipient: input.normalizedOwnerEmail,
+              hostname: input.tenantHostname,
+              purpose: "membership_invitation",
+              userId: ownerIdentity.userId,
+              intendedRoleKey: "tenant_owner",
+              envelope: invitationEnvelope,
             },
             occurredAt: input.now,
           });
@@ -244,8 +251,6 @@ export class PlatformTenantProvisioningWorkflow {
     input: ResendOwnerInvitationInput,
   ): Promise<ResendOwnerInvitationResult> {
     return this.transaction.run(async (context) => {
-      // Both tenant scopes run inside this single outer transaction. The first
-      // FOR UPDATE lock remains held while global identity data is resolved.
       const lockedInvitation = await context.runTenant(input.tenantId, async (session) => {
         const tenant = await session.tenants.lockCurrent();
         const invitation = await session.invitations.lockPendingOwnerInvitation();
@@ -306,53 +311,57 @@ export class PlatformTenantProvisioningWorkflow {
           invitedByUserId: input.actorUserId,
           now: input.now,
         });
-        const invitationEventId = this.createOutboxEventId();
-        await session.outbox.append({
-          id: invitationEventId,
-          type: "membership.owner_invitation.requested.v1",
-          aggregateType: "membership_invitation",
-          aggregateId: replacement.id,
-          payload: {
-            version: 1,
-            recipient: invitation.normalizedEmail,
-            hostname: invitation.hostname,
-            purpose: "membership_invitation",
-            userId: ownerIdentity.userId,
-            intendedRoleKey: "tenant_owner",
-            envelope: this.invitationEnvelope.seal({
-              eventId: invitationEventId,
-              tenantId: input.tenantId,
-              invitationId: replacement.id,
-              userId: ownerIdentity.userId,
-              hostname: invitation.hostname,
-              normalizedEmail: invitation.normalizedEmail,
-              intendedRoleKey: "tenant_owner",
-              serializedToken: invitationToken.serialized,
-            }),
-          },
-          occurredAt: input.now,
-        });
+        const deliveryEventId = this.createOutboxEventId();
 
         if (activationToken) {
-          const activationEventId = this.createOutboxEventId();
           await session.outbox.append({
-            id: activationEventId,
-            type: "identity.activation.requested.v1",
-            aggregateType: "user",
-            aggregateId: ownerIdentity.userId,
+            id: deliveryEventId,
+            type: "membership.owner_onboarding.requested.v1",
+            aggregateType: "membership_invitation",
+            aggregateId: replacement.id,
             payload: {
               version: 1,
               recipient: invitation.normalizedEmail,
-              template: "account_activation",
               hostname: invitation.hostname,
-              envelope: this.activationEnvelope.seal({
-                eventId: activationEventId,
+              purpose: "initial_owner_onboarding",
+              tenantId: input.tenantId,
+              invitationId: replacement.id,
+              userId: ownerIdentity.userId,
+              envelope: this.ownerOnboardingEnvelope.seal({
+                eventId: deliveryEventId,
                 tenantId: input.tenantId,
                 invitationId: replacement.id,
                 userId: ownerIdentity.userId,
                 hostname: invitation.hostname,
                 recipient: invitation.normalizedEmail,
-                serializedToken: activationToken.serialized,
+                activationToken: activationToken.serialized,
+                invitationToken: invitationToken.serialized,
+              }),
+            },
+            occurredAt: input.now,
+          });
+        } else {
+          await session.outbox.append({
+            id: deliveryEventId,
+            type: "membership.owner_invitation.requested.v1",
+            aggregateType: "membership_invitation",
+            aggregateId: replacement.id,
+            payload: {
+              version: 1,
+              recipient: invitation.normalizedEmail,
+              hostname: invitation.hostname,
+              purpose: "membership_invitation",
+              userId: ownerIdentity.userId,
+              intendedRoleKey: "tenant_owner",
+              envelope: this.invitationEnvelope.seal({
+                eventId: deliveryEventId,
+                tenantId: input.tenantId,
+                invitationId: replacement.id,
+                userId: ownerIdentity.userId,
+                hostname: invitation.hostname,
+                normalizedEmail: invitation.normalizedEmail,
+                intendedRoleKey: "tenant_owner",
+                serializedToken: invitationToken.serialized,
               }),
             },
             occurredAt: input.now,

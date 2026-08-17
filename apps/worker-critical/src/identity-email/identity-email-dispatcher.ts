@@ -1,6 +1,9 @@
 import { IdentityEmailDeliveryError } from "./identity-email-error.js";
 import { parseIdentityEmailEvent } from "./identity-email-event.js";
-import { decryptIdentityEmailToken } from "./sensitive-envelope.js";
+import {
+  decryptIdentityEmailMaterial,
+  type InitialOwnerOnboardingMaterial,
+} from "./sensitive-envelope.js";
 
 export interface IdentityEmailMessage {
   readonly to: string;
@@ -51,6 +54,25 @@ function messageFor(
   });
 }
 
+function onboardingMessage(
+  hostname: string,
+  material: InitialOwnerOnboardingMaterial,
+  recipient: string,
+): IdentityEmailMessage {
+  const activation = encodeURIComponent(material.activationToken);
+  const invitation = encodeURIComponent(material.invitationToken);
+  const link = `https://${hostname}/activate#activation=${activation}&invitation=${invitation}`;
+  return Object.freeze({
+    to: recipient,
+    subject: "Set up your Booking OS workspace",
+    text: `You've been invited to set up your workspace on Booking OS.\n\nSet your password to activate your account, then you'll review your workspace invitation.\n\n${link}\n\nThis link expires in 24 hours.`,
+  });
+}
+
+function invalidMaterial(): never {
+  throw new IdentityEmailDeliveryError("identity_email.envelope_invalid", false);
+}
+
 export class IdentityEmailDispatcher {
   constructor(
     private readonly sender: IdentityEmailSender,
@@ -59,8 +81,15 @@ export class IdentityEmailDispatcher {
 
   async dispatch(name: string, data: Parameters<typeof parseIdentityEmailEvent>[1]) {
     const event = parseIdentityEmailEvent(name, data);
-    const token = decryptIdentityEmailToken(event, this.keyring);
-    const message = messageFor(event.template, event.hostname, token, event.recipient);
+    const material = decryptIdentityEmailMaterial(event, this.keyring);
+    const message =
+      event.template === "initial_owner_onboarding"
+        ? typeof material === "string"
+          ? invalidMaterial()
+          : onboardingMessage(event.hostname, material, event.recipient)
+        : typeof material === "string"
+          ? messageFor(event.template, event.hostname, material, event.recipient)
+          : invalidMaterial();
 
     try {
       await this.sender.send(message);

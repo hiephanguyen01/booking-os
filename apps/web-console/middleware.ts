@@ -28,19 +28,19 @@ function isAuthPage(pathname: string): boolean {
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }
-
 function authPageContentSecurityPolicy(nonce: string): string {
+  const isDevelopment = process.env.NODE_ENV === "development";
+
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
-    `style-src 'self' 'nonce-${nonce}'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDevelopment ? " 'unsafe-eval'" : ""}`,
+    isDevelopment ? "style-src 'self' 'unsafe-inline'" : `style-src 'self' 'nonce-${nonce}'`,
     "object-src 'none'",
     "base-uri 'none'",
     "frame-ancestors 'none'",
     "form-action 'self'",
   ].join("; ");
 }
-
 function authPageResponse(request: Request): Response {
   const nonce = globalThis.crypto.randomUUID().replaceAll("-", "");
   const contentSecurityPolicy = authPageContentSecurityPolicy(nonce);

@@ -7,6 +7,7 @@ import { AuthorizationModule } from "../authorization/authorization.module.js";
 import type { TenantTransactionPort } from "../tenancy/application/ports/tenant-transaction.port.js";
 import { TenancyModule } from "../tenancy/tenancy.module.js";
 import { TENANT_TRANSACTION_PORT } from "../tenancy/tenancy.tokens.js";
+import type { InitialOwnerOnboardingEnvelopePort } from "./application/ports/initial-owner-onboarding-envelope.port.js";
 import type { MembershipInvitationEnvelopePort } from "./application/ports/membership-invitation-envelope.port.js";
 import type { MembershipInvitationTokenPort } from "./application/ports/membership-invitation-token.port.js";
 import type { PlatformAuthorizationPort } from "./application/ports/platform-authorization.port.js";
@@ -35,6 +36,7 @@ import { RevokeMembershipUseCase } from "./application/use-cases/revoke-membersh
 import { SuspendMembershipUseCase } from "./application/use-cases/suspend-membership.use-case.js";
 import { TenantAdminInvitationWorkflow } from "./application/use-cases/tenant-admin-invitation.workflow.js";
 import {
+  AesInitialOwnerOnboardingEnvelopeAdapter,
   AesMembershipInvitationEnvelopeAdapter,
   AesTenantActivationEnvelopeAdapter,
 } from "./infrastructure/crypto/aes-membership-provisioning-envelope.adapter.js";
@@ -50,6 +52,7 @@ import { PrismaPlatformAuthorizationAdapter } from "./infrastructure/persistence
 import { PrismaPlatformTenantProvisioningQueryAdapter } from "./infrastructure/persistence/prisma/prisma-platform-tenant-provisioning-query.adapter.js";
 import { PrismaPlatformTenantProvisioningTransactionAdapter } from "./infrastructure/persistence/prisma/prisma-platform-tenant-provisioning-transaction.adapter.js";
 import {
+  INITIAL_OWNER_ONBOARDING_ENVELOPE_PORT,
   MEMBERSHIP_INVITATION_ENVELOPE_PORT,
   MEMBERSHIP_INVITATION_TOKEN_PORT,
   PLATFORM_AUTHORIZATION_PORT,
@@ -94,6 +97,17 @@ import {
       },
     },
     {
+      provide: INITIAL_OWNER_ONBOARDING_ENVELOPE_PORT,
+      inject: [EnvironmentService],
+      useFactory: (environment: EnvironmentService): InitialOwnerOnboardingEnvelopePort => {
+        const security = environment.identitySecurity;
+        return new AesInitialOwnerOnboardingEnvelopeAdapter(
+          security.activeEnvelopeKeyId,
+          security.envelopeKeys,
+        );
+      },
+    },
+    {
       provide: TENANT_ADMIN_INVITATION_ENVELOPE_PORT,
       inject: [EnvironmentService],
       useFactory: (environment: EnvironmentService): TenantAdminInvitationEnvelopePort => {
@@ -129,6 +143,7 @@ import {
         MEMBERSHIP_INVITATION_ENVELOPE_PORT,
         TENANT_ACTIVATION_TOKEN_PORT,
         TENANT_ACTIVATION_ENVELOPE_PORT,
+        INITIAL_OWNER_ONBOARDING_ENVELOPE_PORT,
       ],
       useFactory: (
         transaction: PlatformTenantProvisioningTransactionPort,
@@ -136,12 +151,14 @@ import {
         invitationEnvelope: MembershipInvitationEnvelopePort,
         activationTokens: TenantActivationTokenPort,
         activationEnvelope: TenantActivationEnvelopePort,
+        ownerOnboardingEnvelope: InitialOwnerOnboardingEnvelopePort,
       ): PlatformTenantProvisioningWorkflow =>
         new PlatformTenantProvisioningWorkflow(transaction, {
           invitationTokens,
           invitationEnvelope,
           activationTokens,
           activationEnvelope,
+          ownerOnboardingEnvelope,
         }),
     },
     {

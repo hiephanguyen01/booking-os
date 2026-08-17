@@ -23,6 +23,7 @@ export interface CompleteActivationCommand {
 
 export interface CompleteActivationResult {
   readonly userId: string;
+  readonly continuationEmail?: string;
 }
 
 export class CompleteActivationUseCase {
@@ -60,7 +61,15 @@ export class CompleteActivationUseCase {
       now,
       requestId: command.requestId,
     });
+    const ownerContinuation =
+      command.scopeType === "tenant" &&
+      user.invitationId !== null &&
+      user.invitationId !== undefined &&
+      user.intendedRoleKey === "tenant_owner";
 
-    return Object.freeze({ userId: user.id });
+    return Object.freeze({
+      userId: user.id,
+      ...(ownerContinuation ? { continuationEmail: user.normalizedEmail } : {}),
+    });
   }
 }
