@@ -25,7 +25,7 @@ async function createTenant(): Promise<string> {
   const slug = `rbac-schema-${tenantId.slice(0, 8)}`;
   await prisma.$executeRaw`
     INSERT INTO "tenants" ("id", "slug", "name", "status")
-    VALUES (${tenantId}::uuid, ${slug}, ${slug}, 'active'::tenant_status)
+    VALUES (${tenantId}::uuid, ${slug}, ${slug}, 'provisioning'::tenant_status)
   `;
   createdTenantIds.push(tenantId);
   return tenantId;
