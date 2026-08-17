@@ -24,6 +24,22 @@
         ],
         "type": "object"
       },
+      "ActivationCompletedResponseDto": {
+        "properties": {
+          "completed": {
+            "example": true,
+            "type": "boolean"
+          },
+          "continuationEmail": {
+            "format": "email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "completed"
+        ],
+        "type": "object"
+      },
       "ActorDto": {
         "properties": {
           "id": {
@@ -734,7 +750,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CompletedResponseDto"
+                  "$ref": "#/components/schemas/ActivationCompletedResponseDto"
                 }
               }
             },

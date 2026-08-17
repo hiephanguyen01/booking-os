@@ -17,6 +17,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiProperty,
+  ApiPropertyOptional,
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
@@ -26,6 +27,7 @@ import { effectiveHostname } from "../../../../common/http/effective-hostname.js
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import { EnvironmentService } from "../../../../config/environment.service.js";
 import {
+  type CompleteActivationHttpResult,
   type CompleteIdentityPasswordBody,
   IdentityPublicController,
   type IdentityPublicHttpRequest,
@@ -63,6 +65,14 @@ class AcceptedResponseDto {
 class CompletedResponseDto {
   @ApiProperty({ type: Boolean, example: true })
   completed!: true;
+}
+
+class ActivationCompletedResponseDto {
+  @ApiProperty({ type: Boolean, example: true })
+  completed!: true;
+
+  @ApiPropertyOptional({ type: String, format: "email" })
+  continuationEmail?: string;
 }
 
 class CompleteIdentityPasswordDto {
@@ -229,13 +239,13 @@ export class NestIdentityPublicController {
   @HttpCode(200)
   @ApiOperation({ operationId: "completeAccountActivation" })
   @ApiBody({ type: CompleteIdentityPasswordDto })
-  @ApiOkResponse({ type: CompletedResponseDto })
+  @ApiOkResponse({ type: ActivationCompletedResponseDto })
   @ApiBadRequestResponse()
   completeActivation(
     @Body() body: CompleteIdentityPasswordBody,
     @Req() request: NestIdentityRequest,
     @Res({ passthrough: true }) response: IdentityPublicHttpResponse,
-  ): Promise<{ readonly completed: true }> {
+  ): Promise<CompleteActivationHttpResult> {
     return this.core.completeActivation(
       body,
       requestContext(request, this.environment, this.requestContextStorage),

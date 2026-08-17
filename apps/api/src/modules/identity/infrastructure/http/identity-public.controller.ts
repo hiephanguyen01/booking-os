@@ -63,6 +63,11 @@ export interface RequestIdentityPasswordResetBody {
   readonly email: string;
 }
 
+export interface CompleteActivationHttpResult {
+  readonly completed: true;
+  readonly continuationEmail?: string;
+}
+
 function applySensitiveResponseHeaders(response: IdentityPublicHttpResponse): void {
   response.setHeader("Cache-Control", "no-store");
   response.setHeader("Referrer-Policy", "no-referrer");
@@ -117,17 +122,20 @@ export class IdentityPublicController {
     body: CompleteIdentityPasswordBody,
     request: IdentityPublicHttpRequest,
     response: IdentityPublicHttpResponse,
-  ): Promise<{ readonly completed: true }> {
+  ): Promise<CompleteActivationHttpResult> {
     this.dependencies.csrf.assertRequest(request, "activation");
     applySensitiveResponseHeaders(response);
-    await this.dependencies.completeActivation.execute({
+    const result = await this.dependencies.completeActivation.execute({
       token: body.token,
       newPassword: body.newPassword,
       hostname: request.hostname,
       ...commandScope(request.scope),
       requestId: request.requestId,
     });
-    return Object.freeze({ completed: true });
+    return Object.freeze({
+      completed: true,
+      ...(result.continuationEmail ? { continuationEmail: result.continuationEmail } : {}),
+    });
   }
 
   async completePasswordReset(

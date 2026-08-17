@@ -4,6 +4,7 @@ import { IdentityEmailDeliveryError } from "./identity-email-error.js";
 import {
   MEMBERSHIP_ADMIN_INVITATION_EVENT,
   MEMBERSHIP_OWNER_INVITATION_EVENT,
+  MEMBERSHIP_OWNER_ONBOARDING_EVENT,
   type ParsedIdentityEmailEvent,
 } from "./identity-email-event.js";
 
@@ -12,6 +13,13 @@ const TOKEN_PATTERN = /^[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}$/;
 const AES_KEY_BYTES = 32;
 const GCM_IV_BYTES = 12;
 const GCM_TAG_BYTES = 16;
+
+export interface InitialOwnerOnboardingMaterial {
+  readonly activationToken: string;
+  readonly invitationToken: string;
+}
+
+export type IdentityEmailMaterial = string | InitialOwnerOnboardingMaterial;
 
 function invalidEnvelope(): never {
   throw new IdentityEmailDeliveryError("identity_email.envelope_invalid", false);
@@ -30,6 +38,23 @@ function decodeBase64Url(value: string, expectedBytes?: number): Buffer {
 }
 
 function associatedData(event: ParsedIdentityEmailEvent): Buffer {
+  if (event.eventType === MEMBERSHIP_OWNER_ONBOARDING_EVENT) {
+    if (!event.tenantId || !event.invitationId) return invalidEnvelope();
+    return Buffer.from(
+      [
+        "booking-os:owner-onboarding-email:v1",
+        event.eventType,
+        event.eventId,
+        event.tenantId,
+        event.invitationId,
+        event.userId,
+        event.hostname,
+        event.recipient,
+      ].join("\0"),
+      "utf8",
+    );
+  }
+
   if (
     event.eventType === MEMBERSHIP_ADMIN_INVITATION_EVENT ||
     event.eventType === MEMBERSHIP_OWNER_INVITATION_EVENT
@@ -69,10 +94,36 @@ function associatedData(event: ParsedIdentityEmailEvent): Buffer {
   );
 }
 
-export function decryptIdentityEmailToken(
+function parseMaterial(event: ParsedIdentityEmailEvent, parsed: unknown): IdentityEmailMaterial {
+  if (typeof parsed !== "object" || parsed === null) return invalidEnvelope();
+
+  if (event.eventType === MEMBERSHIP_OWNER_ONBOARDING_EVENT) {
+    const candidate = parsed as Record<string, unknown>;
+    if (
+      typeof candidate.activationToken !== "string" ||
+      typeof candidate.invitationToken !== "string" ||
+      !TOKEN_PATTERN.test(candidate.activationToken) ||
+      !TOKEN_PATTERN.test(candidate.invitationToken)
+    ) {
+      return invalidEnvelope();
+    }
+    return Object.freeze({
+      activationToken: candidate.activationToken,
+      invitationToken: candidate.invitationToken,
+    });
+  }
+
+  const candidate = parsed as Record<string, unknown>;
+  if (typeof candidate.token !== "string" || !TOKEN_PATTERN.test(candidate.token)) {
+    return invalidEnvelope();
+  }
+  return candidate.token;
+}
+
+export function decryptIdentityEmailMaterial(
   event: ParsedIdentityEmailEvent,
   keyring: Readonly<Record<string, Uint8Array>>,
-): string {
+): IdentityEmailMaterial {
   let plaintext: Buffer | undefined;
 
   try {
@@ -91,21 +142,18 @@ export function decryptIdentityEmailToken(
     decipher.setAuthTag(tag);
     plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
 
-    const parsed: unknown = JSON.parse(plaintext.toString("utf8"));
-    if (
-      typeof parsed !== "object" ||
-      parsed === null ||
-      !("token" in parsed) ||
-      typeof parsed.token !== "string" ||
-      !TOKEN_PATTERN.test(parsed.token)
-    ) {
-      return invalidEnvelope();
-    }
-
-    return parsed.token;
+    return parseMaterial(event, JSON.parse(plaintext.toString("utf8")) as unknown);
   } catch {
     return invalidEnvelope();
   } finally {
     plaintext?.fill(0);
   }
+}
+
+export function decryptIdentityEmailToken(
+  event: ParsedIdentityEmailEvent,
+  keyring: Readonly<Record<string, Uint8Array>>,
+): string {
+  const material = decryptIdentityEmailMaterial(event, keyring);
+  return typeof material === "string" ? material : invalidEnvelope();
 }

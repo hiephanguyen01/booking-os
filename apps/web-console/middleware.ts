@@ -33,12 +33,8 @@ function authPageContentSecurityPolicy(nonce: string): string {
 
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${
-      isDevelopment ? " 'unsafe-eval'" : ""
-    }`,
-    isDevelopment
-      ? "style-src 'self' 'unsafe-inline'"
-      : `style-src 'self' 'nonce-${nonce}'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDevelopment ? " 'unsafe-eval'" : ""}`,
+    isDevelopment ? "style-src 'self' 'unsafe-inline'" : `style-src 'self' 'nonce-${nonce}'`,
     "object-src 'none'",
     "base-uri 'none'",
     "frame-ancestors 'none'",

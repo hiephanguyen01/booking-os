@@ -463,6 +463,12 @@ export interface components {
         readonly AcceptTenantInvitationRequestDto: {
             readonly token: string;
         };
+        readonly ActivationCompletedResponseDto: {
+            /** @example true */
+            readonly completed: boolean;
+            /** Format: email */
+            readonly continuationEmail?: string;
+        };
         readonly ActorDto: {
             /** Format: uuid */
             readonly id: string;
@@ -690,7 +696,7 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["CompletedResponseDto"];
+                    readonly "application/json": components["schemas"]["ActivationCompletedResponseDto"];
                 };
             };
             readonly 400: {
