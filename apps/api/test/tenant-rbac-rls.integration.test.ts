@@ -152,9 +152,7 @@ test("all tenant custom RBAC tables use the canonical FORCE-RLS tenant contract"
     assert.doesNotMatch(policy.with_check ?? "", /app\.current_tenant_id/);
   }
 
-  const grants = await prisma.$queryRaw<
-    readonly { table_name: string; privilege_type: string }[]
-  >`
+  const grants = await prisma.$queryRaw<readonly { table_name: string; privilege_type: string }[]>`
     SELECT table_name, privilege_type
     FROM information_schema.table_privileges
     WHERE table_schema = 'public'
