@@ -61,10 +61,15 @@ export class CompleteActivationUseCase {
       now,
       requestId: command.requestId,
     });
+    const ownerContinuation =
+      command.scopeType === "tenant" &&
+      user.invitationId !== null &&
+      user.invitationId !== undefined &&
+      user.intendedRoleKey === "tenant_owner";
 
     return Object.freeze({
       userId: user.id,
-      ...(command.scopeType === "tenant" ? { continuationEmail: user.normalizedEmail } : {}),
+      ...(ownerContinuation ? { continuationEmail: user.normalizedEmail } : {}),
     });
   }
 }
