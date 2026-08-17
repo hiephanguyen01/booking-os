@@ -9,7 +9,7 @@
     "build": "node ../../scripts/prisma/generate-shared-client.mjs && tsc -p tsconfig.build.json",
     "lint": "biome check src test prisma",
     "typecheck": "node ../../scripts/prisma/generate-shared-client.mjs && tsc -p tsconfig.json --noEmit",
-    "test": "node ../../scripts/prisma/generate-shared-client.mjs && node --test --test-concurrency=1 --test-name-pattern=\"tenant custom RBAC migration|active normalized\" --import tsx \"test/tenant-rbac-schema.integration.test.ts\"",
+    "test": "node ../../scripts/prisma/generate-shared-client.mjs && node --test --test-concurrency=1 --test-name-pattern=\"tenant custom RBAC migration creates\" --import tsx \"test/tenant-rbac-schema.integration.test.ts\"",
     "test:e2e": "node ../../scripts/prisma/generate-shared-client.mjs && node --test --test-concurrency=1 --import tsx \"test/**/*.test.ts\"",
     "openapi:generate": "node ../../scripts/prisma/generate-shared-client.mjs && tsx src/openapi/generate-openapi.ts",
     "identity:bootstrap-platform-admin": "tsx src/cli/run-platform-admin-bootstrap.ts",
