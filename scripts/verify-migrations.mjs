@@ -104,7 +104,7 @@ function verifyDynamicRbacMigrationContract() {
     '"tenant_custom_roles_tenant_isolation"',
     '"tenant_custom_role_permissions_tenant_isolation"',
     '"tenant_custom_role_assignments_tenant_isolation"',
-    "app.current_tenant_id",
+    "app.tenant_id",
     "tenant.rbac.role.create",
     "tenant.rbac.assignment.revoke",
   ];
