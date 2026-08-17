@@ -201,20 +201,35 @@ ALTER TABLE "tenant_custom_role_assignments" FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY "tenant_custom_roles_tenant_isolation" ON "tenant_custom_roles"
   FOR ALL TO booking_app
-  USING ("tenant_id"::text = current_setting('app.current_tenant_id', true))
-  WITH CHECK ("tenant_id"::text = current_setting('app.current_tenant_id', true));
+  USING (
+    "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+  )
+  WITH CHECK (
+    "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+  );
 CREATE POLICY "tenant_custom_role_permissions_tenant_isolation" ON "tenant_custom_role_permissions"
   FOR ALL TO booking_app
-  USING ("tenant_id"::text = current_setting('app.current_tenant_id', true))
-  WITH CHECK ("tenant_id"::text = current_setting('app.current_tenant_id', true));
+  USING (
+    "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+  )
+  WITH CHECK (
+    "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+  );
 CREATE POLICY "tenant_custom_role_assignments_tenant_isolation" ON "tenant_custom_role_assignments"
   FOR ALL TO booking_app
-  USING ("tenant_id"::text = current_setting('app.current_tenant_id', true))
-  WITH CHECK ("tenant_id"::text = current_setting('app.current_tenant_id', true));
+  USING (
+    "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+  )
+  WITH CHECK (
+    "tenant_id" = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+  );
 
+REVOKE ALL PRIVILEGES ON TABLE "tenant_custom_roles" FROM booking_app;
+REVOKE ALL PRIVILEGES ON TABLE "tenant_custom_role_permissions" FROM booking_app;
+REVOKE ALL PRIVILEGES ON TABLE "tenant_custom_role_assignments" FROM booking_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "tenant_custom_roles" TO booking_app;
-GRANT SELECT, INSERT, DELETE ON TABLE "tenant_custom_role_permissions" TO booking_app;
-GRANT SELECT, INSERT, UPDATE ON TABLE "tenant_custom_role_assignments" TO booking_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "tenant_custom_role_permissions" TO booking_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "tenant_custom_role_assignments" TO booking_app;
 
 REVOKE ALL ON FUNCTION validate_tenant_custom_role_permission() FROM PUBLIC;
 REVOKE ALL ON FUNCTION validate_tenant_custom_role_assignment() FROM PUBLIC;
