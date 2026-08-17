@@ -221,15 +221,17 @@ test("foreign and missing tenant context deny CRUD across all custom-RBAC tables
     );
     assert.deepEqual(visibleRoles, []);
 
-    const visibleMappings = await runAsTenant<readonly { role_id: string }[]>(
-      deniedTenantId,
-      (transaction) => transaction.$queryRaw<readonly { role_id: string }[]>`
-        SELECT "role_id"
-        FROM "tenant_custom_role_permissions"
-        WHERE "role_id" = ${roleId}::uuid AND "permission_id" = ${permissionId}::uuid
-      `,
+    assert.deepEqual(
+      await runAsTenant<readonly { role_id: string }[]>(
+        deniedTenantId,
+        (transaction) => transaction.$queryRaw<readonly { role_id: string }[]>`
+          SELECT "role_id"
+          FROM "tenant_custom_role_permissions"
+          WHERE "role_id" = ${roleId}::uuid AND "permission_id" = ${permissionId}::uuid
+        `,
+      ),
+      [],
     );
-    assert.deepEqual(visibleMappings, []);
 
     const visibleAssignments = await runAsTenant(
       deniedTenantId,
@@ -249,15 +251,17 @@ test("foreign and missing tenant context deny CRUD across all custom-RBAC tables
     );
     assert.equal(updatedRoles, 0);
 
-    const updatedMappings = await runAsTenant<number>(
-      deniedTenantId,
-      (transaction) => transaction.$executeRaw`
-        UPDATE "tenant_custom_role_permissions"
-        SET "created_at" = CURRENT_TIMESTAMP
-        WHERE "role_id" = ${roleId}::uuid AND "permission_id" = ${permissionId}::uuid
-      `,
+    assert.equal(
+      await runAsTenant<number>(
+        deniedTenantId,
+        (transaction) => transaction.$executeRaw`
+          UPDATE "tenant_custom_role_permissions"
+          SET "created_at" = CURRENT_TIMESTAMP
+          WHERE "role_id" = ${roleId}::uuid AND "permission_id" = ${permissionId}::uuid
+        `,
+      ),
+      0,
     );
-    assert.equal(updatedMappings, 0);
 
     const updatedAssignments = await runAsTenant(
       deniedTenantId,
@@ -319,14 +323,16 @@ test("foreign and missing tenant context deny CRUD across all custom-RBAC tables
     );
     assert.equal(deletedRoles, 0);
 
-    const deletedMappings = await runAsTenant<number>(
-      deniedTenantId,
-      (transaction) => transaction.$executeRaw`
-        DELETE FROM "tenant_custom_role_permissions"
-        WHERE "role_id" = ${roleId}::uuid AND "permission_id" = ${permissionId}::uuid
-      `,
+    assert.equal(
+      await runAsTenant<number>(
+        deniedTenantId,
+        (transaction) => transaction.$executeRaw`
+          DELETE FROM "tenant_custom_role_permissions"
+          WHERE "role_id" = ${roleId}::uuid AND "permission_id" = ${permissionId}::uuid
+        `,
+      ),
+      0,
     );
-    assert.equal(deletedMappings, 0);
 
     const deletedAssignments = await runAsTenant(
       deniedTenantId,
