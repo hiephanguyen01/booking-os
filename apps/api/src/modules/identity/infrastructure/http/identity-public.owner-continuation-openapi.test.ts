@@ -19,9 +19,7 @@ interface TestSchema {
 }
 
 interface TestResponse {
-  readonly content?: Readonly<
-    Record<string, { readonly schema?: TestSchema }>
-  >;
+  readonly content?: Readonly<Record<string, { readonly schema?: TestSchema }>>;
 }
 
 const CORE_CONTROLLER_STUB = {
