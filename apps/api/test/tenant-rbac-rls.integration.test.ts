@@ -15,7 +15,7 @@ async function runAsTenant<T>(
   return prisma.$transaction(async (transaction) => {
     await transaction.$executeRawUnsafe("SET LOCAL ROLE booking_app");
     if (tenantId) {
-      await transaction.$executeRaw`SELECT set_config('app.current_tenant_id', ${tenantId}, true)`;
+      await transaction.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
     }
     return work(transaction);
   });
@@ -46,7 +46,7 @@ after(async () => {
   }
 });
 
-test("all tenant custom RBAC tables use FORCE RLS with tenant isolation policies", async () => {
+test("all tenant custom RBAC tables use the canonical FORCE-RLS tenant contract", async () => {
   const expectedTables = [
     "tenant_custom_role_assignments",
     "tenant_custom_role_permissions",
@@ -70,27 +70,66 @@ test("all tenant custom RBAC tables use FORCE RLS with tenant isolation policies
     { table_name: "tenant_custom_roles", rls_enabled: true, rls_forced: true },
   ]);
 
-  const policies = await prisma.$queryRaw<readonly { table_name: string; policy_name: string }[]>`
-    SELECT tablename AS table_name, policyname AS policy_name
+  const policies = await prisma.$queryRaw<
+    readonly {
+      table_name: string;
+      policy_name: string;
+      qual: string | null;
+      with_check: string | null;
+    }[]
+  >`
+    SELECT tablename AS table_name,
+           policyname AS policy_name,
+           qual,
+           with_check
     FROM pg_policies
     WHERE schemaname = 'public'
       AND tablename = ANY(${expectedTables}::text[])
     ORDER BY tablename, policyname
   `;
-  assert.deepEqual(policies, [
-    {
-      table_name: "tenant_custom_role_assignments",
-      policy_name: "tenant_custom_role_assignments_tenant_isolation",
-    },
-    {
-      table_name: "tenant_custom_role_permissions",
-      policy_name: "tenant_custom_role_permissions_tenant_isolation",
-    },
-    {
-      table_name: "tenant_custom_roles",
-      policy_name: "tenant_custom_roles_tenant_isolation",
-    },
-  ]);
+  assert.deepEqual(
+    policies.map(({ table_name, policy_name }) => ({ table_name, policy_name })),
+    [
+      {
+        table_name: "tenant_custom_role_assignments",
+        policy_name: "tenant_custom_role_assignments_tenant_isolation",
+      },
+      {
+        table_name: "tenant_custom_role_permissions",
+        policy_name: "tenant_custom_role_permissions_tenant_isolation",
+      },
+      {
+        table_name: "tenant_custom_roles",
+        policy_name: "tenant_custom_roles_tenant_isolation",
+      },
+    ],
+  );
+  for (const policy of policies) {
+    assert.match(policy.qual ?? "", /app\.tenant_id/);
+    assert.match(policy.with_check ?? "", /app\.tenant_id/);
+    assert.doesNotMatch(policy.qual ?? "", /app\.current_tenant_id/);
+    assert.doesNotMatch(policy.with_check ?? "", /app\.current_tenant_id/);
+  }
+
+  const grants = await prisma.$queryRaw<
+    readonly { table_name: string; privilege_type: string }[]
+  >`
+    SELECT table_name, privilege_type
+    FROM information_schema.table_privileges
+    WHERE table_schema = 'public'
+      AND table_name = ANY(${expectedTables}::text[])
+      AND grantee = 'booking_app'
+    ORDER BY table_name, privilege_type
+  `;
+  for (const table of expectedTables) {
+    assert.deepEqual(
+      grants
+        .filter((grant) => grant.table_name === table)
+        .map((grant) => grant.privilege_type)
+        .sort(),
+      ["DELETE", "INSERT", "SELECT", "UPDATE"],
+    );
+  }
 });
 
 test("missing and foreign tenant context cannot read or mutate tenant custom RBAC rows", async () => {
