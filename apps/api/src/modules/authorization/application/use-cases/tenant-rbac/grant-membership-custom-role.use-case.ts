@@ -26,9 +26,7 @@ export interface GrantMembershipCustomRoleInput {
 export class GrantMembershipCustomRoleUseCase {
   constructor(private readonly transactions: TenantTransactionPort) {}
 
-  async execute(
-    input: GrantMembershipCustomRoleInput,
-  ): Promise<TenantCustomRoleAssignmentRecord> {
+  async execute(input: GrantMembershipCustomRoleInput): Promise<TenantCustomRoleAssignmentRecord> {
     const authorization = input.authorization;
     if (
       !isActiveTenantAuthorizationContext(authorization) ||
