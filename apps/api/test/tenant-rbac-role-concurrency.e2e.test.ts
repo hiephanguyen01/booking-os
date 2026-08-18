@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test, { after, before, beforeEach } from "node:test";
 
-import { PERMISSION_KEYS, type PermissionKey } from "@booking-os/auth";
+import { PERMISSION_KEYS, type PermissionKey, SYSTEM_ROLES } from "@booking-os/auth";
 import type {
   AuthorizationContext,
   AuthorizedTenantExecutionContext,
@@ -178,13 +178,16 @@ before(async () => {
 
   membershipReadPermissionId = await permissionId(PERMISSION_KEYS.tenantMembershipRead);
   sessionReadPermissionId = await permissionId(PERMISSION_KEYS.tenantSecuritySessionRead);
+  const ownerRole = await prisma.role.findUniqueOrThrow({
+    where: { key: SYSTEM_ROLES.tenantOwner },
+  });
 
   await prisma.tenant.create({
     data: {
       id: TENANT_ID,
       slug: "rbac-role-concurrency",
       name: "RBAC Role Concurrency",
-      status: "active",
+      status: "provisioning",
     },
   });
   await prisma.user.createMany({
@@ -227,6 +230,16 @@ before(async () => {
       },
     ],
   });
+  await prisma.roleAssignment.create({
+    data: {
+      id: randomUUID(),
+      userId: ACTOR_USER_ID,
+      roleId: ownerRole.id,
+      scopeLevel: "tenant",
+      tenantId: TENANT_ID,
+    },
+  });
+  await prisma.tenant.update({ where: { id: TENANT_ID }, data: { status: "active" } });
 });
 
 beforeEach(resetRoleState);
