@@ -136,7 +136,7 @@ function createHarness(
         readonly eventType: string;
         readonly metadata: Readonly<Record<string, unknown>>;
       }) {
-        audits.push(input);
+        audits.push({ eventType: input.eventType, metadata: input.metadata });
         events.push(`audit:${input.eventType}`);
       },
     } as never,
