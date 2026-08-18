@@ -104,7 +104,9 @@ import { PrismaSessionAuthorizationRefreshAdapter } from "./infrastructure/persi
     {
       provide: ReplaceTenantCustomRolePermissionsUseCase,
       inject: [TENANT_TRANSACTION_PORT],
-      useFactory: (transactions: TenantTransactionPort): ReplaceTenantCustomRolePermissionsUseCase =>
+      useFactory: (
+        transactions: TenantTransactionPort,
+      ): ReplaceTenantCustomRolePermissionsUseCase =>
         new ReplaceTenantCustomRolePermissionsUseCase(transactions),
     },
     {
