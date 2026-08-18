@@ -5,7 +5,6 @@ import {
   TenantCustomRoleVersionConflictError,
   TenantRbacError,
 } from "../../../domain/tenant-rbac/tenant-rbac.errors.js";
-import { UpdateTenantCustomRoleUseCase } from "./update-tenant-custom-role.use-case.js";
 import {
   adminAuthorization,
   customRole,
@@ -15,6 +14,7 @@ import {
   ROLE_ID,
   USER_ID,
 } from "./tenant-rbac-use-case.test-fixtures.js";
+import { UpdateTenantCustomRoleUseCase } from "./update-tenant-custom-role.use-case.js";
 
 function updateHarness(current = customRole()) {
   const events: string[] = [];
