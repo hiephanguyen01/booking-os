@@ -23,7 +23,9 @@ import {
   USER_ID,
 } from "./tenant-rbac-use-case.test-fixtures.js";
 
-function revokeAuthorization(base: AuthorizationContext = ownerAuthorization()): AuthorizationContext {
+function revokeAuthorization(
+  base: AuthorizationContext = ownerAuthorization(),
+): AuthorizationContext {
   return Object.freeze({
     ...base,
     permissionKeys: Object.freeze([
@@ -47,16 +49,22 @@ function membership(): TenantMembership {
   });
 }
 
-function createHarness(options: {
-  readonly role?: ReturnType<typeof customRole> | null;
-  readonly targetMembership?: TenantMembership | null;
-  readonly changed?: boolean;
-} = {}) {
+function createHarness(
+  options: {
+    readonly role?: ReturnType<typeof customRole> | null;
+    readonly targetMembership?: TenantMembership | null;
+    readonly changed?: boolean;
+  } = {},
+) {
   const role = options.role === undefined ? customRole() : options.role;
-  const targetMembership = options.targetMembership === undefined ? membership() : options.targetMembership;
+  const targetMembership =
+    options.targetMembership === undefined ? membership() : options.targetMembership;
   const changed = options.changed ?? true;
   const events: string[] = [];
-  const audits: Array<{ readonly eventType: string; readonly metadata: Readonly<Record<string, unknown>> }> = [];
+  const audits: Array<{
+    readonly eventType: string;
+    readonly metadata: Readonly<Record<string, unknown>>;
+  }> = [];
   const transactions = new RecordingTenantTransactions({
     customRoles: {
       async lockById(id: string) {
@@ -81,7 +89,10 @@ function createHarness(options: {
       },
     } as never,
     audit: {
-      async append(input: { readonly eventType: string; readonly metadata: Readonly<Record<string, unknown>> }) {
+      async append(input: {
+        readonly eventType: string;
+        readonly metadata: Readonly<Record<string, unknown>>;
+      }) {
         audits.push({ eventType: input.eventType, metadata: input.metadata });
         events.push(`audit:${input.eventType}`);
       },
@@ -109,10 +120,12 @@ test("first revoke locks role then membership, revokes once, invalidates authori
     `membership.bump:${MEMBERSHIP_ID}`,
     "audit:tenant.rbac.assignment.revoked",
   ]);
-  assert.deepEqual(audits, [{
-    eventType: "tenant.rbac.assignment.revoked",
-    metadata: { membershipId: MEMBERSHIP_ID, roleId: ROLE_ID },
-  }]);
+  assert.deepEqual(audits, [
+    {
+      eventType: "tenant.rbac.assignment.revoked",
+      metadata: { membershipId: MEMBERSHIP_ID, roleId: ROLE_ID },
+    },
+  ]);
 });
 
 test("repeated revoke is a safe idempotent no-op with no second version bump or audit", async () => {
@@ -167,8 +180,14 @@ test("missing or foreign role/membership fails with tenant-scoped not-found sema
       }),
       ErrorType,
     );
-    assert.equal(harness.events.some((event) => event.startsWith("assignment.revoke:")), false);
-    assert.equal(harness.events.some((event) => event.startsWith("membership.bump:")), false);
+    assert.equal(
+      harness.events.some((event) => event.startsWith("assignment.revoke:")),
+      false,
+    );
+    assert.equal(
+      harness.events.some((event) => event.startsWith("membership.bump:")),
+      false,
+    );
   }
 });
 
