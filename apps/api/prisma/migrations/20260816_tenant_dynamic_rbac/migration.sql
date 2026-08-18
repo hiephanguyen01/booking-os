@@ -164,7 +164,8 @@ DECLARE
 BEGIN
   SELECT "archived_at" INTO role_archived_at
   FROM "tenant_custom_roles"
-  WHERE "id" = NEW."role_id" AND "tenant_id" = NEW."tenant_id";
+  WHERE "id" = NEW."role_id" AND "tenant_id" = NEW."tenant_id"
+  FOR SHARE;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'tenant custom role not found in tenant' USING ERRCODE = '23503';
