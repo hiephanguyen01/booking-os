@@ -31,7 +31,10 @@ function stablePermissionKeys(keys: readonly PermissionKey[]): readonly Permissi
   return Object.freeze([...new Set(keys)].sort());
 }
 
-function samePermissionKeys(left: readonly PermissionKey[], right: readonly PermissionKey[]): boolean {
+function samePermissionKeys(
+  left: readonly PermissionKey[],
+  right: readonly PermissionKey[],
+): boolean {
   return left.length === right.length && left.every((key, index) => key === right[index]);
 }
 
@@ -122,7 +125,9 @@ export class ReplaceTenantCustomRolePermissionsUseCase {
         if (desiredPermissionKeys.length > 0) {
           const permissionRows =
             await session.rbacPermissions.findTenantPermissionsByKeys(desiredPermissionKeys);
-          const idsByKey = new Map(permissionRows.map((permission) => [permission.key, permission.id]));
+          const idsByKey = new Map(
+            permissionRows.map((permission) => [permission.key, permission.id]),
+          );
           permissionIds = desiredPermissionKeys.map((key) => {
             const id = idsByKey.get(key);
             if (!id) throw new TenantRbacPermissionUnknownError();
