@@ -26,9 +26,7 @@ function mapAssignment(row: AssignmentRow): TenantCustomRoleAssignmentRecord {
   return Object.freeze({ ...row });
 }
 
-function firstAssignment(
-  rows: readonly AssignmentRow[],
-): TenantCustomRoleAssignmentRecord | null {
+function firstAssignment(rows: readonly AssignmentRow[]): TenantCustomRoleAssignmentRecord | null {
   const row = rows[0];
   return row ? mapAssignment(row) : null;
 }

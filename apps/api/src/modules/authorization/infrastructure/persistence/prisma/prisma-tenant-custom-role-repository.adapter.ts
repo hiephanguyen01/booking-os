@@ -1,6 +1,6 @@
 import type { PermissionKey } from "@booking-os/auth";
 import type { Prisma } from "@prisma/client";
-
+import type { TenantCustomRoleRepositoryPort } from "../../../application/ports/tenant-custom-role-repository.port.js";
 import type {
   CreateTenantCustomRoleRecordInput,
   TenantCustomRoleRecord,
@@ -11,7 +11,6 @@ import {
   TenantCustomRoleNotFoundError,
   TenantCustomRoleVersionConflictError,
 } from "../../../domain/tenant-rbac/tenant-rbac.errors.js";
-import type { TenantCustomRoleRepositoryPort } from "../../../application/ports/tenant-custom-role-repository.port.js";
 
 interface TenantCustomRoleRow {
   readonly id: string;
@@ -73,9 +72,7 @@ export class PrismaTenantCustomRoleRepositoryAdapter implements TenantCustomRole
        ORDER BY "normalized_name", "id"`,
       this.tenantId,
     );
-    return Object.freeze(
-      await Promise.all(rows.map((row) => this.mapRoleWithPermissions(row))),
-    );
+    return Object.freeze(await Promise.all(rows.map((row) => this.mapRoleWithPermissions(row))));
   }
 
   async findById(id: string): Promise<TenantCustomRoleRecord | null> {
@@ -223,9 +220,7 @@ export class PrismaTenantCustomRoleRepositoryAdapter implements TenantCustomRole
     return Object.freeze(rows.map((row) => row.membershipId));
   }
 
-  private async mapRoleWithPermissions(
-    row: TenantCustomRoleRow,
-  ): Promise<TenantCustomRoleRecord> {
+  private async mapRoleWithPermissions(row: TenantCustomRoleRow): Promise<TenantCustomRoleRecord> {
     const permissions = await this.transaction.$queryRawUnsafe<readonly PermissionKeyRow[]>(
       `SELECT permission."key"::text AS "key"
        FROM "tenant_custom_role_permissions" AS mapping
