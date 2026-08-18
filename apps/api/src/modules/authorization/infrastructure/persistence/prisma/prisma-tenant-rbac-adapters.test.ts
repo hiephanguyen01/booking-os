@@ -3,14 +3,9 @@ import test from "node:test";
 
 import { PERMISSION_KEYS } from "@booking-os/auth";
 
-import { PrismaTenantCustomRoleAssignmentRepositoryAdapter } from "../../infrastructure/persistence/prisma/prisma-tenant-custom-role-assignment-repository.adapter.js";
-import { PrismaTenantCustomRoleRepositoryAdapter } from "../../infrastructure/persistence/prisma/prisma-tenant-custom-role-repository.adapter.js";
-import { PrismaTenantRbacPermissionRepositoryAdapter } from "../../infrastructure/persistence/prisma/prisma-tenant-rbac-permission-repository.adapter.js";
-import {
-  normalizeTenantCustomRoleName,
-  TENANT_CUSTOM_ROLE_NAME_MAX_LENGTH,
-} from "./tenant-custom-role-name.js";
-import { TenantRbacError } from "./tenant-rbac.errors.js";
+import { PrismaTenantCustomRoleAssignmentRepositoryAdapter } from "./prisma-tenant-custom-role-assignment-repository.adapter.js";
+import { PrismaTenantCustomRoleRepositoryAdapter } from "./prisma-tenant-custom-role-repository.adapter.js";
+import { PrismaTenantRbacPermissionRepositoryAdapter } from "./prisma-tenant-rbac-permission-repository.adapter.js";
 
 const TENANT_ID = "550e8400-e29b-41d4-a716-446655440001";
 const ROLE_ID = "550e8400-e29b-41d4-a716-446655440002";
@@ -39,26 +34,6 @@ class RecordingTransaction {
     return 1;
   }
 }
-
-test("custom-role names use NFKC, trim, whitespace collapse, and Unicode lowercase", () => {
-  assert.deepEqual(normalizeTenantCustomRoleName("  Ｄｉｓｐａｔｃｈｅｒ\t TEAM  "), {
-    name: "Dispatcher TEAM",
-    normalizedName: "dispatcher team",
-  });
-});
-
-test("custom-role names reject empty and over-bound values", () => {
-  assert.throws(
-    () => normalizeTenantCustomRoleName(" \t\n "),
-    (error: unknown) =>
-      error instanceof TenantRbacError && error.code === "TENANT_CUSTOM_ROLE_NAME_INVALID",
-  );
-  assert.throws(
-    () => normalizeTenantCustomRoleName("x".repeat(TENANT_CUSTOM_ROLE_NAME_MAX_LENGTH + 1)),
-    (error: unknown) =>
-      error instanceof TenantRbacError && error.code === "TENANT_CUSTOM_ROLE_NAME_INVALID",
-  );
-});
 
 test("custom-role repository is tenant-bound, maps archive state, sorts permissions, and locks rows", async () => {
   const transaction = new RecordingTransaction();
