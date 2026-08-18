@@ -13,7 +13,7 @@ test("loads custom-role permission contributions without widening system roleKey
   let values: readonly unknown[] = [];
   const adapter = new PrismaTenantAuthorizationQueryAdapter(
     {
-      async $queryRawUnsafe(sql: string, ...parameters: unknown[]) {
+      async $queryRawUnsafe<T>(sql: string, ...parameters: unknown[]): Promise<T> {
         statement = sql;
         values = parameters;
         return [
@@ -28,7 +28,7 @@ test("loads custom-role permission contributions without widening system roleKey
               PERMISSION_KEYS.tenantMembershipRead,
             ],
           },
-        ];
+        ] as unknown as T;
       },
       async $executeRawUnsafe() {
         return 0;
@@ -63,7 +63,7 @@ test("fails closed for unknown permission or custom role identifiers returned by
   const makeAdapter = (roleKeys: readonly string[], permissionKeys: readonly string[]) =>
     new PrismaTenantAuthorizationQueryAdapter(
       {
-        async $queryRawUnsafe() {
+        async $queryRawUnsafe<T>(): Promise<T> {
           return [
             {
               tenantSlug: "acme",
@@ -72,7 +72,7 @@ test("fails closed for unknown permission or custom role identifiers returned by
               roleKeys,
               permissionKeys,
             },
-          ];
+          ] as unknown as T;
         },
         async $executeRawUnsafe() {
           return 0;
