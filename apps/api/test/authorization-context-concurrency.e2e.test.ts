@@ -5,8 +5,8 @@ import test, { after, before } from "node:test";
 import {
   createSessionToken,
   deriveSessionSecretDigest,
-  parseSessionToken,
   PERMISSION_KEYS,
+  parseSessionToken,
   SYSTEM_ROLES,
 } from "@booking-os/auth";
 
