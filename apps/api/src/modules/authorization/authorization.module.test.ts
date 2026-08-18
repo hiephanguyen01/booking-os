@@ -4,7 +4,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { AppModule } from "../../app.module.js";
-import { TenantRbacController } from "./infrastructure/http/tenant-rbac.controller.js";
 import { AuthorizationModule } from "./authorization.module.js";
 import {
   AUTHORIZATION_REPOSITORY_PORT,
@@ -12,6 +11,7 @@ import {
   PROTECTED_REQUEST_AUTHORIZATION_PORT,
   SESSION_AUTHORIZATION_REFRESH_PORT,
 } from "./authorization.tokens.js";
+import { TenantRbacController } from "./infrastructure/http/tenant-rbac.controller.js";
 
 test("authorization integration tokens are distinct symbols", () => {
   const tokens = [
