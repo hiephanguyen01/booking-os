@@ -61,10 +61,12 @@ function membership(id: string, status: "active" | "suspended"): TenantMembershi
   });
 }
 
-function createHarness(options: {
-  readonly current?: ReturnType<typeof customRole>;
-  readonly affectedMembershipIds?: readonly string[];
-} = {}) {
+function createHarness(
+  options: {
+    readonly current?: ReturnType<typeof customRole>;
+    readonly affectedMembershipIds?: readonly string[];
+  } = {},
+) {
   const current = options.current ?? customRole();
   const affectedMembershipIds = options.affectedMembershipIds ?? [
     HOLDER_B,
@@ -72,7 +74,10 @@ function createHarness(options: {
     HOLDER_A,
   ];
   const events: string[] = [];
-  const audits: Array<{ readonly eventType: string; readonly metadata: Readonly<Record<string, unknown>> }> = [];
+  const audits: Array<{
+    readonly eventType: string;
+    readonly metadata: Readonly<Record<string, unknown>>;
+  }> = [];
 
   const transactions = new RecordingTenantTransactions({
     customRoles: {
@@ -94,10 +99,7 @@ function createHarness(options: {
     memberships: {
       async lockById(membershipId: string) {
         events.push(`membership.lock:${membershipId}`);
-        return membership(
-          membershipId,
-          membershipId === HOLDER_SUSPENDED ? "suspended" : "active",
-        );
+        return membership(membershipId, membershipId === HOLDER_SUSPENDED ? "suspended" : "active");
       },
       async incrementAuthorizationVersion(membershipId: string) {
         events.push(`membership.bump:${membershipId}`);
