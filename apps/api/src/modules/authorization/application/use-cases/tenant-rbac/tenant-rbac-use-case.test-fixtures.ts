@@ -1,7 +1,10 @@
 import { PERMISSION_KEYS } from "@booking-os/auth";
 import type { AuthorizationContext, TenantExecutionContext } from "@booking-os/contracts";
 
-import type { TenantDataSession, TenantTransactionPort } from "../../../../tenancy/application/ports/tenant-transaction.port.js";
+import type {
+  TenantDataSession,
+  TenantTransactionPort,
+} from "../../../../tenancy/application/ports/tenant-transaction.port.js";
 import type { TenantCustomRoleRecord } from "../../../domain/tenant-rbac/tenant-custom-role.js";
 
 export const TENANT_ID = "550e8400-e29b-41d4-a716-446655440101";
@@ -39,10 +42,7 @@ export function adminAuthorization(): AuthorizationContext {
     membershipId: MEMBERSHIP_ID,
     membershipStatus: "active",
     roleKeys: ["tenant_admin"],
-    permissionKeys: [
-      PERMISSION_KEYS.tenantRbacPermissionRead,
-      PERMISSION_KEYS.tenantRbacRoleRead,
-    ],
+    permissionKeys: [PERMISSION_KEYS.tenantRbacPermissionRead, PERMISSION_KEYS.tenantRbacRoleRead],
     userAuthorizationVersion: 1,
     membershipAuthorizationVersion: 1,
   });
@@ -70,7 +70,10 @@ export class RecordingTenantTransactions implements TenantTransactionPort {
 
   constructor(private readonly session: Partial<TenantDataSession>) {}
 
-  async run<T>(context: TenantExecutionContext, work: (session: TenantDataSession) => Promise<T>): Promise<T> {
+  async run<T>(
+    context: TenantExecutionContext,
+    work: (session: TenantDataSession) => Promise<T>,
+  ): Promise<T> {
     this.contexts.push(context);
     this.events.push("transaction.begin");
     const result = await work(this.session as TenantDataSession);
