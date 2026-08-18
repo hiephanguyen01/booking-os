@@ -21,7 +21,7 @@ export function ownerAuthorization(): AuthorizationContext {
     scope: { type: "tenant" as const, tenantId: TENANT_ID, tenantSlug: "tenant-a" },
     membershipId: MEMBERSHIP_ID,
     membershipStatus: "active",
-    roleKeys: ["tenant_owner"],
+    roleKeys: ["tenant_owner"] as const,
     permissionKeys: [
       PERMISSION_KEYS.tenantMembershipRead,
       PERMISSION_KEYS.tenantRbacPermissionRead,
@@ -41,7 +41,7 @@ export function adminAuthorization(): AuthorizationContext {
     scope: { type: "tenant" as const, tenantId: TENANT_ID, tenantSlug: "tenant-a" },
     membershipId: MEMBERSHIP_ID,
     membershipStatus: "active",
-    roleKeys: ["tenant_admin"],
+    roleKeys: ["tenant_admin"] as const,
     permissionKeys: [PERMISSION_KEYS.tenantRbacPermissionRead, PERMISSION_KEYS.tenantRbacRoleRead],
     userAuthorizationVersion: 1,
     membershipAuthorizationVersion: 1,
