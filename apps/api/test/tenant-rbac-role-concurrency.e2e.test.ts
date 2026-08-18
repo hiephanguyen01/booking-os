@@ -333,3 +333,94 @@ test("archive racing permission replacement serializes to one valid authority st
     assert.deepEqual(state.auditEventTypes, ["tenant.rbac.role.permissions_changed"]);
   }
 });
+
+test("archive racing assignment grant cannot leave an active assignment on the archived role", async () => {
+  let markArchiveReady!: () => void;
+  let releaseArchive!: () => void;
+  const archiveReady = new Promise<void>((resolve) => {
+    markArchiveReady = resolve;
+  });
+  const archiveReleased = new Promise<void>((resolve) => {
+    releaseArchive = resolve;
+  });
+  const executionContext: TenantExecutionContext = {
+    tenantId: TENANT_ID,
+    actorId: ACTOR_USER_ID,
+    sessionId: SESSION_ID,
+    requestId: "req-archive-grant-race",
+    traceId: "trace-archive-grant-race",
+    source: "console",
+  };
+
+  const archivePromise = transactions.run(executionContext, async (session) => {
+    const current = await session.customRoles.lockById(ROLE_ID);
+    assert.ok(current);
+    await session.customRoles.archive(ROLE_ID, NOW);
+    await session.customRoleAssignments.revokeAllForRole(ROLE_ID, NOW);
+    markArchiveReady();
+    await archiveReleased;
+  });
+
+  await archiveReady;
+
+  let markGrantPid!: (pid: number) => void;
+  const grantPid = new Promise<number>((resolve) => {
+    markGrantPid = resolve;
+  });
+  const grantPromise = prisma.$transaction(async (transaction: Prisma.TransactionClient) => {
+    await transaction.$executeRawUnsafe("SET LOCAL ROLE booking_app");
+    await transaction.$executeRaw`SELECT set_config('app.tenant_id', ${TENANT_ID}, true)`;
+    const pidRows = await transaction.$queryRaw<readonly { pid: number }[]>`
+      SELECT pg_backend_pid()::int AS "pid"
+    `;
+    const pid = pidRows[0]?.pid;
+    assert.ok(pid);
+    markGrantPid(pid);
+    return sessionFactory
+      .create(transaction, TENANT_ID)
+      .customRoleAssignments.grant(ACTOR_MEMBERSHIP_ID, ROLE_ID, NOW);
+  });
+
+  const pid = await grantPid;
+  let observedBlockedInsert = false;
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const rows = await prisma.$queryRaw<
+      readonly { query: string; state: string; waitEventType: string | null }[]
+    >`
+      SELECT "query", "state", "wait_event_type" AS "waitEventType"
+      FROM pg_stat_activity
+      WHERE "pid" = ${pid}
+    `;
+    const activity = rows[0];
+    if (
+      activity?.state === "active" &&
+      activity.waitEventType === "Lock" &&
+      activity.query.includes('INSERT INTO "tenant_custom_role_assignments"')
+    ) {
+      observedBlockedInsert = true;
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  assert.equal(observedBlockedInsert, true, "grant must reach the blocked assignment INSERT");
+
+  releaseArchive();
+  const [archiveResult, grantResult] = await Promise.allSettled([archivePromise, grantPromise]);
+  assert.equal(archiveResult.status, "fulfilled");
+  assert.equal(grantResult.status, "rejected");
+
+  const activeAssignments = await prisma.$queryRaw<readonly { count: bigint }[]>`
+    SELECT COUNT(*)::bigint AS "count"
+    FROM "tenant_custom_role_assignments"
+    WHERE "tenant_id" = ${TENANT_ID}::uuid
+      AND "role_id" = ${ROLE_ID}::uuid
+      AND "revoked_at" IS NULL
+  `;
+  const archivedRoles = await prisma.$queryRaw<readonly { archivedAt: Date | null }[]>`
+    SELECT "archived_at" AS "archivedAt"
+    FROM "tenant_custom_roles"
+    WHERE "tenant_id" = ${TENANT_ID}::uuid AND "id" = ${ROLE_ID}::uuid
+  `;
+  assert.ok(archivedRoles[0]?.archivedAt);
+  assert.equal(Number(activeAssignments[0]?.count ?? 0n), 0);
+});
