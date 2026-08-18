@@ -49,7 +49,12 @@ function readableAuthorization() {
 test("lists active custom roles for a same-tenant membership and filters archived roles fail-closed", async () => {
   const events: string[] = [];
   const roleA = customRole();
-  const roleB = customRole({ id: ROLE_ID_B, name: "Archived", normalizedName: "archived", archivedAt: NOW });
+  const roleB = customRole({
+    id: ROLE_ID_B,
+    name: "Archived",
+    normalizedName: "archived",
+    archivedAt: NOW,
+  });
   const transactions = new RecordingTenantTransactions({
     memberships: {
       async findById(id: string) {
@@ -104,7 +109,11 @@ test("lists active custom roles for a same-tenant membership and filters archive
 
 test("missing or foreign membership uses same safe membership-not-found error", async () => {
   const transactions = new RecordingTenantTransactions({
-    memberships: { async findById() { return null; } } as never,
+    memberships: {
+      async findById() {
+        return null;
+      },
+    } as never,
   });
 
   await assert.rejects(
