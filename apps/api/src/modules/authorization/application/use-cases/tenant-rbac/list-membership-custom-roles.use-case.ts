@@ -15,9 +15,7 @@ export interface ListMembershipCustomRolesInput {
 export class ListMembershipCustomRolesUseCase {
   constructor(private readonly transactions: TenantTransactionPort) {}
 
-  async execute(
-    input: ListMembershipCustomRolesInput,
-  ): Promise<readonly TenantCustomRoleRecord[]> {
+  async execute(input: ListMembershipCustomRolesInput): Promise<readonly TenantCustomRoleRecord[]> {
     const authorization = input.authorization;
     if (
       !isActiveTenantAuthorizationContext(authorization) ||
