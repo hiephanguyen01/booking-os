@@ -82,9 +82,10 @@ test("fails closed for unknown permission or custom role identifiers returned by
     );
 
   assert.equal(
-    await makeAdapter(["tenant_admin"], ["tenant.unknown.permission"]).loadActiveTenantAuthorization(
-      USER_ID,
-    ),
+    await makeAdapter(
+      ["tenant_admin"],
+      ["tenant.unknown.permission"],
+    ).loadActiveTenantAuthorization(USER_ID),
     null,
   );
   assert.equal(
