@@ -346,7 +346,6 @@ test("archive racing assignment grant cannot leave an active assignment on the a
   const executionContext: TenantExecutionContext = {
     tenantId: TENANT_ID,
     actorId: ACTOR_USER_ID,
-    sessionId: SESSION_ID,
     requestId: "req-archive-grant-race",
     traceId: "trace-archive-grant-race",
     source: "console",
