@@ -7,8 +7,8 @@ import { PrismaTenantCustomRoleAssignmentRepositoryAdapter } from "../../infrast
 import { PrismaTenantCustomRoleRepositoryAdapter } from "../../infrastructure/persistence/prisma/prisma-tenant-custom-role-repository.adapter.js";
 import { PrismaTenantRbacPermissionRepositoryAdapter } from "../../infrastructure/persistence/prisma/prisma-tenant-rbac-permission-repository.adapter.js";
 import {
-  TENANT_CUSTOM_ROLE_NAME_MAX_LENGTH,
   normalizeTenantCustomRoleName,
+  TENANT_CUSTOM_ROLE_NAME_MAX_LENGTH,
 } from "./tenant-custom-role-name.js";
 import { TenantRbacError } from "./tenant-rbac.errors.js";
 
@@ -50,11 +50,13 @@ test("custom-role names use NFKC, trim, whitespace collapse, and Unicode lowerca
 test("custom-role names reject empty and over-bound values", () => {
   assert.throws(
     () => normalizeTenantCustomRoleName(" \t\n "),
-    (error: unknown) => error instanceof TenantRbacError && error.code === "TENANT_CUSTOM_ROLE_NAME_INVALID",
+    (error: unknown) =>
+      error instanceof TenantRbacError && error.code === "TENANT_CUSTOM_ROLE_NAME_INVALID",
   );
   assert.throws(
     () => normalizeTenantCustomRoleName("x".repeat(TENANT_CUSTOM_ROLE_NAME_MAX_LENGTH + 1)),
-    (error: unknown) => error instanceof TenantRbacError && error.code === "TENANT_CUSTOM_ROLE_NAME_INVALID",
+    (error: unknown) =>
+      error instanceof TenantRbacError && error.code === "TENANT_CUSTOM_ROLE_NAME_INVALID",
   );
 });
 
