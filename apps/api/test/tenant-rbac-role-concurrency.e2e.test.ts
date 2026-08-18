@@ -8,7 +8,7 @@ import type {
   AuthorizedTenantExecutionContext,
   TenantExecutionContext,
 } from "@booking-os/contracts";
-import { PrismaClient, type Prisma } from "@prisma/client";
+import { type Prisma, PrismaClient } from "@prisma/client";
 
 import { PrismaTenantDataSessionFactory } from "../src/database/prisma-tenant-data-session.factory.js";
 import { ArchiveTenantCustomRoleUseCase } from "../src/modules/authorization/application/use-cases/tenant-rbac/archive-tenant-custom-role.use-case.js";
