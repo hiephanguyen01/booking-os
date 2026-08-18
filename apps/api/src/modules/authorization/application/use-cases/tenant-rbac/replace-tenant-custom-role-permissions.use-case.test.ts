@@ -27,7 +27,9 @@ const HOLDER_B = "550e8400-e29b-41d4-a716-446655440107";
 const PERMISSION_ID_MEMBERSHIP_READ = "550e8400-e29b-41d4-a716-446655440108";
 const PERMISSION_ID_SESSION_READ = "550e8400-e29b-41d4-a716-446655440109";
 
-function task5OwnerAuthorization(extraPermissions: readonly PermissionKey[] = []): AuthorizationContext {
+function task5OwnerAuthorization(
+  extraPermissions: readonly PermissionKey[] = [],
+): AuthorizationContext {
   const base = ownerAuthorization();
   return Object.freeze({
     ...base,
@@ -78,14 +80,19 @@ function permissionIdFor(key: PermissionKey): string | null {
   return null;
 }
 
-function createHarness(options: {
-  readonly current?: ReturnType<typeof customRole>;
-  readonly holders?: readonly string[];
-} = {}) {
+function createHarness(
+  options: {
+    readonly current?: ReturnType<typeof customRole>;
+    readonly holders?: readonly string[];
+  } = {},
+) {
   const current = options.current ?? customRole();
   const holders = options.holders ?? [HOLDER_B, HOLDER_A];
   const events: string[] = [];
-  const audits: Array<{ readonly eventType: string; readonly metadata: Readonly<Record<string, unknown>> }> = [];
+  const audits: Array<{
+    readonly eventType: string;
+    readonly metadata: Readonly<Record<string, unknown>>;
+  }> = [];
 
   const transactions = new RecordingTenantTransactions({
     customRoles: {
@@ -192,10 +199,7 @@ test("unchanged desired permission set is a success no-op with no version or aut
   const result = await useCase.execute({
     authorization: task5OwnerAuthorization(),
     roleId: ROLE_ID,
-    permissionKeys: [
-      PERMISSION_KEYS.tenantMembershipRead,
-      PERMISSION_KEYS.tenantMembershipRead,
-    ],
+    permissionKeys: [PERMISSION_KEYS.tenantMembershipRead, PERMISSION_KEYS.tenantMembershipRead],
     expectedVersion: current.version,
     requestId: "req-replace-noop",
     now: NOW,
