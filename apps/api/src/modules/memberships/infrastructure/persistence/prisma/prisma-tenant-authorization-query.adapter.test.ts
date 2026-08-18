@@ -8,7 +8,7 @@ import { PrismaTenantAuthorizationQueryAdapter } from "./prisma-tenant-authoriza
 const TENANT_ID = "30000000-0000-4000-8000-000000000001";
 const USER_ID = "10000000-0000-4000-8000-000000000001";
 
-test.skip("loads custom-role permission contributions without widening system roleKeys", async () => {
+test("loads custom-role permission contributions without widening system roleKeys", async () => {
   let statement = "";
   let values: readonly unknown[] = [];
   const adapter = new PrismaTenantAuthorizationQueryAdapter(
