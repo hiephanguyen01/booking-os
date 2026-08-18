@@ -186,10 +186,7 @@ test("S2-RBAC13 authoritative context includes only active custom-role permissio
       const revoked = await authorization.loadActiveTenantAuthorization(TARGET_USER_ID);
       assert.ok(revoked);
       assert.deepEqual(revoked.roleKeys, [SYSTEM_ROLES.tenantAdmin]);
-      assert.equal(
-        revoked.permissionKeys.includes(PERMISSION_KEYS.tenantMembershipRead),
-        false,
-      );
+      assert.equal(revoked.permissionKeys.includes(PERMISSION_KEYS.tenantMembershipRead), false);
 
       await transaction.$executeRaw`
         INSERT INTO "tenant_custom_role_assignments" (
@@ -213,10 +210,7 @@ test("S2-RBAC13 authoritative context includes only active custom-role permissio
       const archived = await authorization.loadActiveTenantAuthorization(TARGET_USER_ID);
       assert.ok(archived);
       assert.deepEqual(archived.roleKeys, [SYSTEM_ROLES.tenantAdmin]);
-      assert.equal(
-        archived.permissionKeys.includes(PERMISSION_KEYS.tenantMembershipRead),
-        false,
-      );
+      assert.equal(archived.permissionKeys.includes(PERMISSION_KEYS.tenantMembershipRead), false);
 
       throw new RollbackAuthoritativeContextTest();
     }),
