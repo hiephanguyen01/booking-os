@@ -25,6 +25,7 @@ import { RequestContextStorage } from "../../../../common/request-context/reques
 import { SessionCsrfGuard } from "../../../../common/security/session-csrf.guard.js";
 import { SessionRequired } from "../../../../common/security/session-required.decorator.js";
 import { MembershipInactiveError, MembershipRequiredError } from "../../../memberships/domain/membership-errors.js";
+import { CurrentAuthorizationContext, PermissionGuard, RequiresPermission } from "../../authorization.http.js";
 import { ArchiveTenantCustomRoleUseCase } from "../../application/use-cases/tenant-rbac/archive-tenant-custom-role.use-case.js";
 import { CreateTenantCustomRoleUseCase } from "../../application/use-cases/tenant-rbac/create-tenant-custom-role.use-case.js";
 import { GetTenantCustomRoleUseCase } from "../../application/use-cases/tenant-rbac/get-tenant-custom-role.use-case.js";
@@ -49,7 +50,6 @@ import {
   TenantRbacPermissionScopeInvalidError,
   TenantRbacPermissionUnknownError,
 } from "../../domain/tenant-rbac/tenant-rbac.errors.js";
-import { CurrentAuthorizationContext, PermissionGuard, RequiresPermission } from "./authorization.http.js";
 import {
   ArchiveTenantCustomRoleRequestDto,
   CreateTenantCustomRoleRequestDto,
