@@ -137,7 +137,7 @@ model AccountActivationToken {
   invitationId         String?               @db.Uuid @map("invitation_id")
   hostname             String
   selector             String                @unique
-  tokenHash             String                @db.Char(64) @map("token_hash")
+  tokenHash            String                @db.Char(64) @map("token_hash")
   expiresAt            DateTime              @db.Timestamptz(6) @map("expires_at")
   consumedAt           DateTime?             @db.Timestamptz(6) @map("consumed_at")
   revokedAt            DateTime?             @db.Timestamptz(6) @map("revoked_at")
@@ -252,7 +252,7 @@ model AuthSession {
   lastSeenAt                     DateTime           @default(now()) @db.Timestamptz(6) @map("last_seen_at")
   revokedAt                      DateTime?          @db.Timestamptz(6) @map("revoked_at")
   revocationReason               String?            @map("revocation_reason")
-  compromisedAt                 DateTime?          @db.Timestamptz(6) @map("compromised_at")
+  compromisedAt                 DateTime?           @db.Timestamptz(6) @map("compromised_at")
   createdAt                      DateTime           @default(now()) @db.Timestamptz(6) @map("created_at")
   updatedAt                      DateTime           @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
   user                           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -348,18 +348,18 @@ model RoleAssignment {
 }
 
 model TenantCustomRole {
-  id             String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId       String                       @db.Uuid @map("tenant_id")
-  name           String
-  normalizedName String                       @map("normalized_name")
-  description    String?
-  version        Int                          @default(1)
-  archivedAt     DateTime?                    @db.Timestamptz(6) @map("archived_at")
-  createdAt      DateTime                     @default(now()) @db.Timestamptz(6) @map("created_at")
-  updatedAt      DateTime                     @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
-  tenant         Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id              String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String                       @db.Uuid @map("tenant_id")
+  name            String
+  normalizedName  String                       @map("normalized_name")
+  description     String?
+  version         Int                          @default(1)
+  archivedAt      DateTime?                    @db.Timestamptz(6) @map("archived_at")
+  createdAt       DateTime                     @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt       DateTime                     @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
+  tenant          Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   rolePermissions TenantCustomRolePermission[]
-  assignments    TenantCustomRoleAssignment[]
+  assignments     TenantCustomRoleAssignment[]
 
   @@unique([id, tenantId])
   @@index([tenantId])
@@ -371,7 +371,7 @@ model TenantCustomRolePermission {
   roleId       String           @db.Uuid @map("role_id")
   permissionId String           @db.Uuid @map("permission_id")
   createdAt    DateTime         @default(now()) @db.Timestamptz(6) @map("created_at")
-  role         TenantCustomRole @relation(fields: [roleId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  role         TenantCustomRole @relation(fields: [roleId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "tenant_custom_role_permissions_role_tenant_fkey")
   permission   Permission       @relation(fields: [permissionId], references: [id], onDelete: Restrict)
 
   @@id([roleId, permissionId])
@@ -387,8 +387,8 @@ model TenantCustomRoleAssignment {
   roleId       String           @db.Uuid @map("role_id")
   createdAt    DateTime         @default(now()) @db.Timestamptz(6) @map("created_at")
   revokedAt    DateTime?        @db.Timestamptz(6) @map("revoked_at")
-  membership   TenantMembership @relation(fields: [membershipId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  role         TenantCustomRole @relation(fields: [roleId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  membership   TenantMembership @relation(fields: [membershipId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "tenant_custom_role_assignments_membership_tenant_fkey")
+  role         TenantCustomRole @relation(fields: [roleId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "tenant_custom_role_assignments_role_tenant_fkey")
 
   @@index([tenantId])
   @@index([membershipId])
