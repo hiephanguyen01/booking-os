@@ -18,7 +18,7 @@ export function ownerAuthorization(): AuthorizationContext {
   return Object.freeze({
     userId: USER_ID,
     sessionId: SESSION_ID,
-    scope: { type: "tenant", tenantId: TENANT_ID, tenantSlug: "tenant-a" },
+    scope: { type: "tenant" as const, tenantId: TENANT_ID, tenantSlug: "tenant-a" },
     membershipId: MEMBERSHIP_ID,
     membershipStatus: "active",
     roleKeys: ["tenant_owner"],
@@ -38,7 +38,7 @@ export function adminAuthorization(): AuthorizationContext {
   return Object.freeze({
     userId: USER_ID,
     sessionId: SESSION_ID,
-    scope: { type: "tenant", tenantId: TENANT_ID, tenantSlug: "tenant-a" },
+    scope: { type: "tenant" as const, tenantId: TENANT_ID, tenantSlug: "tenant-a" },
     membershipId: MEMBERSHIP_ID,
     membershipStatus: "active",
     roleKeys: ["tenant_admin"],
