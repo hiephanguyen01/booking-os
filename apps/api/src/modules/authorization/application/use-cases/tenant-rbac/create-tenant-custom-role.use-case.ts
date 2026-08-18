@@ -1,14 +1,10 @@
-import {
-  getPermissionCatalogEntry,
-  PERMISSION_KEYS,
-  type PermissionKey,
-} from "@booking-os/auth";
+import { getPermissionCatalogEntry, PERMISSION_KEYS, type PermissionKey } from "@booking-os/auth";
 import type { AuthorizationContext } from "@booking-os/contracts";
 
 import type { TenantTransactionPort } from "../../../../tenancy/application/ports/tenant-transaction.port.js";
 import { isActiveTenantAuthorizationContext } from "../../../domain/active-tenant-authorization.js";
-import { normalizeTenantCustomRoleName } from "../../../domain/tenant-rbac/tenant-custom-role-name.js";
 import type { TenantCustomRoleRecord } from "../../../domain/tenant-rbac/tenant-custom-role.js";
+import { normalizeTenantCustomRoleName } from "../../../domain/tenant-rbac/tenant-custom-role-name.js";
 import {
   TenantRbacPermissionGrantNotAllowedError,
   TenantRbacPermissionNotDelegableError,
@@ -84,8 +80,11 @@ export class CreateTenantCustomRoleUseCase {
         source: "console",
       },
       async (session) => {
-        const permissionRows = await session.rbacPermissions.findTenantPermissionsByKeys(permissionKeys);
-        const permissionIdsByKey = new Map(permissionRows.map((permission) => [permission.key, permission.id]));
+        const permissionRows =
+          await session.rbacPermissions.findTenantPermissionsByKeys(permissionKeys);
+        const permissionIdsByKey = new Map(
+          permissionRows.map((permission) => [permission.key, permission.id]),
+        );
         const permissionIds = permissionKeys.map((key) => {
           const id = permissionIdsByKey.get(key);
           if (!id) throw new TenantRbacPermissionUnknownError();
