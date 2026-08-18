@@ -24,6 +24,12 @@ test("exposes only the approved canonical security audit event catalog", () => {
     "membership.owner_demoted",
     "tenant.provisioned",
     "tenant.activated",
+    "tenant.rbac.role.created",
+    "tenant.rbac.role.updated",
+    "tenant.rbac.role.permissions_changed",
+    "tenant.rbac.role.archived",
+    "tenant.rbac.assignment.granted",
+    "tenant.rbac.assignment.revoked",
     "platform.bootstrap_admin_created",
     "authorization.denied",
   ]);
