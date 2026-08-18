@@ -24,8 +24,10 @@ import { SupportedApi } from "../../../../api-visibility/api-visibility.decorato
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
 import { SessionCsrfGuard } from "../../../../common/security/session-csrf.guard.js";
 import { SessionRequired } from "../../../../common/security/session-required.decorator.js";
-import { MembershipInactiveError, MembershipRequiredError } from "../../../memberships/domain/membership-errors.js";
-import { CurrentAuthorizationContext, PermissionGuard, RequiresPermission } from "../../authorization.http.js";
+import {
+  MembershipInactiveError,
+  MembershipRequiredError,
+} from "../../../memberships/domain/membership-errors.js";
 import { ArchiveTenantCustomRoleUseCase } from "../../application/use-cases/tenant-rbac/archive-tenant-custom-role.use-case.js";
 import { CreateTenantCustomRoleUseCase } from "../../application/use-cases/tenant-rbac/create-tenant-custom-role.use-case.js";
 import { GetTenantCustomRoleUseCase } from "../../application/use-cases/tenant-rbac/get-tenant-custom-role.use-case.js";
@@ -37,6 +39,11 @@ import { ReplaceTenantCustomRolePermissionsUseCase } from "../../application/use
 import { RevokeMembershipCustomRoleUseCase } from "../../application/use-cases/tenant-rbac/revoke-membership-custom-role.use-case.js";
 import { UpdateTenantCustomRoleUseCase } from "../../application/use-cases/tenant-rbac/update-tenant-custom-role.use-case.js";
 import {
+  CurrentAuthorizationContext,
+  PermissionGuard,
+  RequiresPermission,
+} from "../../authorization.http.js";
+import {
   TenantCustomRoleArchivedError,
   TenantCustomRoleNameConflictError,
   TenantCustomRoleNameInvalidError,
@@ -44,20 +51,20 @@ import {
   TenantCustomRoleVersionConflictError,
   TenantRbacAssignmentNotAllowedError,
   TenantRbacAssignmentNotFoundError,
-  TenantRbacError,
+  type TenantRbacError,
   TenantRbacPermissionGrantNotAllowedError,
   TenantRbacPermissionNotDelegableError,
   TenantRbacPermissionScopeInvalidError,
   TenantRbacPermissionUnknownError,
 } from "../../domain/tenant-rbac/tenant-rbac.errors.js";
 import {
-  ArchiveTenantCustomRoleRequestDto,
-  CreateTenantCustomRoleRequestDto,
-  ReplaceTenantCustomRolePermissionsRequestDto,
+  type ArchiveTenantCustomRoleRequestDto,
+  type CreateTenantCustomRoleRequestDto,
+  type ReplaceTenantCustomRolePermissionsRequestDto,
   TenantCustomRoleAssignmentResponseDto,
   TenantCustomRoleResponseDto,
   TenantRbacPermissionResponseDto,
-  UpdateTenantCustomRoleRequestDto,
+  type UpdateTenantCustomRoleRequestDto,
 } from "./tenant-rbac.dto.js";
 
 function requireUuid(value: unknown, field: "roleId" | "membershipId"): string {
@@ -383,7 +390,9 @@ export class TenantRbacController {
       error instanceof TenantCustomRoleNameConflictError ||
       error instanceof TenantCustomRoleArchivedError
     ) {
-      throw new ConflictException(safeErrorBody(error, "Tenant RBAC resource conflicts with current state."));
+      throw new ConflictException(
+        safeErrorBody(error, "Tenant RBAC resource conflicts with current state."),
+      );
     }
     if (error instanceof MembershipInactiveError) {
       throw new ConflictException({
