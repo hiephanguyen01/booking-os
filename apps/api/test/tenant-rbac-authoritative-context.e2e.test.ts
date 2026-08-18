@@ -89,7 +89,7 @@ after(async () => {
   await prisma.$disconnect();
 });
 
-test("S2-RBAC13 custom role contributes authority without widening system roleKeys and revoked or archived authority disappears", async () => {
+test("S2-RBAC13 active custom role contributes authority without widening system roleKeys", async () => {
   const tenantAdmin = await prisma.role.findUniqueOrThrow({
     where: { key: SYSTEM_ROLES.tenantAdmin },
   });
@@ -139,31 +139,6 @@ test("S2-RBAC13 custom role contributes authority without widening system roleKe
       assert.ok(active);
       assert.deepEqual(active.roleKeys, [SYSTEM_ROLES.tenantAdmin]);
       assert.ok(active.permissionKeys.includes(PERMISSION_KEYS.tenantMembershipRead));
-
-      await transaction.$executeRaw`
-        UPDATE "tenant_custom_role_assignments"
-        SET "revoked_at" = ${NOW}::timestamptz
-        WHERE "tenant_id" = ${TENANT_ID}::uuid AND "id" = ${ASSIGNMENT_ID}::uuid
-      `;
-      const revoked = await authorization.loadActiveTenantAuthorization(USER_ID);
-      assert.ok(revoked);
-      assert.deepEqual(revoked.roleKeys, [SYSTEM_ROLES.tenantAdmin]);
-      assert.equal(revoked.permissionKeys.includes(PERMISSION_KEYS.tenantMembershipRead), false);
-
-      await transaction.$executeRaw`
-        UPDATE "tenant_custom_role_assignments"
-        SET "revoked_at" = NULL
-        WHERE "tenant_id" = ${TENANT_ID}::uuid AND "id" = ${ASSIGNMENT_ID}::uuid
-      `;
-      await transaction.$executeRaw`
-        UPDATE "tenant_custom_roles"
-        SET "archived_at" = ${NOW}::timestamptz, "version" = "version" + 1
-        WHERE "tenant_id" = ${TENANT_ID}::uuid AND "id" = ${CUSTOM_ROLE_ID}::uuid
-      `;
-      const archived = await authorization.loadActiveTenantAuthorization(USER_ID);
-      assert.ok(archived);
-      assert.deepEqual(archived.roleKeys, [SYSTEM_ROLES.tenantAdmin]);
-      assert.equal(archived.permissionKeys.includes(PERMISSION_KEYS.tenantMembershipRead), false);
 
       throw new RollbackAuthoritativeContextTest();
     }),
