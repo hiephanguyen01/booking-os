@@ -29,7 +29,9 @@ import {
 
 const ASSIGNMENT_ID = "550e8400-e29b-41d4-a716-446655440118";
 
-function grantAuthorization(base: AuthorizationContext = ownerAuthorization()): AuthorizationContext {
+function grantAuthorization(
+  base: AuthorizationContext = ownerAuthorization(),
+): AuthorizationContext {
   return Object.freeze({
     ...base,
     permissionKeys: Object.freeze([
@@ -64,16 +66,22 @@ function assignment() {
   });
 }
 
-function createHarness(options: {
-  readonly role?: ReturnType<typeof customRole> | null;
-  readonly targetMembership?: TenantMembership | null;
-  readonly existingAssignment?: ReturnType<typeof assignment> | null;
-} = {}) {
+function createHarness(
+  options: {
+    readonly role?: ReturnType<typeof customRole> | null;
+    readonly targetMembership?: TenantMembership | null;
+    readonly existingAssignment?: ReturnType<typeof assignment> | null;
+  } = {},
+) {
   const role = options.role === undefined ? customRole() : options.role;
-  const targetMembership = options.targetMembership === undefined ? membership() : options.targetMembership;
+  const targetMembership =
+    options.targetMembership === undefined ? membership() : options.targetMembership;
   const existingAssignment = options.existingAssignment ?? null;
   const events: string[] = [];
-  const audits: Array<{ readonly eventType: string; readonly metadata: Readonly<Record<string, unknown>> }> = [];
+  const audits: Array<{
+    readonly eventType: string;
+    readonly metadata: Readonly<Record<string, unknown>>;
+  }> = [];
   const transactions = new RecordingTenantTransactions({
     customRoles: {
       async lockById(id: string) {
@@ -102,7 +110,10 @@ function createHarness(options: {
       },
     } as never,
     audit: {
-      async append(input: { readonly eventType: string; readonly metadata: Readonly<Record<string, unknown>> }) {
+      async append(input: {
+        readonly eventType: string;
+        readonly metadata: Readonly<Record<string, unknown>>;
+      }) {
         audits.push({ eventType: input.eventType, metadata: input.metadata });
         events.push(`audit:${input.eventType}`);
       },
@@ -131,10 +142,12 @@ test("owner grant locks active role then active membership, creates once, invali
     `membership.bump:${MEMBERSHIP_ID}`,
     "audit:tenant.rbac.assignment.granted",
   ]);
-  assert.deepEqual(audits, [{
-    eventType: "tenant.rbac.assignment.granted",
-    metadata: { assignmentId: ASSIGNMENT_ID, membershipId: MEMBERSHIP_ID, roleId: ROLE_ID },
-  }]);
+  assert.deepEqual(audits, [
+    {
+      eventType: "tenant.rbac.assignment.granted",
+      metadata: { assignmentId: ASSIGNMENT_ID, membershipId: MEMBERSHIP_ID, roleId: ROLE_ID },
+    },
+  ]);
 });
 
 test("duplicate grant is an idempotent no-op with no second authorization-version bump or audit", async () => {
@@ -177,8 +190,14 @@ test("missing role, archived role, missing membership, and inactive membership f
       }),
       ErrorType,
     );
-    assert.equal(harness.events.some((event) => event.startsWith("assignment.grant:")), false);
-    assert.equal(harness.events.some((event) => event.startsWith("membership.bump:")), false);
+    assert.equal(
+      harness.events.some((event) => event.startsWith("assignment.grant:")),
+      false,
+    );
+    assert.equal(
+      harness.events.some((event) => event.startsWith("membership.bump:")),
+      false,
+    );
   }
 });
 
