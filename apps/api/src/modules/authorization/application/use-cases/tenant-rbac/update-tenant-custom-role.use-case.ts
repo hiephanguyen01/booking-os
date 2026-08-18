@@ -3,8 +3,8 @@ import type { AuthorizationContext } from "@booking-os/contracts";
 
 import type { TenantTransactionPort } from "../../../../tenancy/application/ports/tenant-transaction.port.js";
 import { isActiveTenantAuthorizationContext } from "../../../domain/active-tenant-authorization.js";
-import { normalizeTenantCustomRoleName } from "../../../domain/tenant-rbac/tenant-custom-role-name.js";
 import type { TenantCustomRoleRecord } from "../../../domain/tenant-rbac/tenant-custom-role.js";
+import { normalizeTenantCustomRoleName } from "../../../domain/tenant-rbac/tenant-custom-role-name.js";
 import {
   TenantCustomRoleArchivedError,
   TenantCustomRoleNotFoundError,
