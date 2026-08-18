@@ -1,7 +1,6 @@
 import { Module } from "@nestjs/common";
 
 import { RequestContextModule } from "../../common/request-context/request-context.module.js";
-import { SessionCsrfGuard } from "../../common/security/session-csrf.guard.js";
 import { DatabaseModule } from "../../database/database.module.js";
 import type { TenantTransactionPort } from "../tenancy/application/ports/tenant-transaction.port.js";
 import { TenancyModule } from "../tenancy/tenancy.module.js";
@@ -138,7 +137,6 @@ import { PrismaSessionAuthorizationRefreshAdapter } from "./infrastructure/persi
       provide: PROTECTED_REQUEST_AUTHORIZATION_PORT,
       useExisting: ReconcileAuthorizationVersionUseCase,
     },
-    SessionCsrfGuard,
     PermissionGuard,
   ],
   exports: [
