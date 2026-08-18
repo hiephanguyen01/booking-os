@@ -203,7 +203,7 @@ test("routes delegate guard-built authority without accepting tenantId from tran
   });
 
   for (const [, input] of calls) {
-    assert.equal(Object.hasOwn(input, "tenantId"), false);
+    assert.equal(Object.hasOwn(input as object, "tenantId"), false);
   }
 });
 
