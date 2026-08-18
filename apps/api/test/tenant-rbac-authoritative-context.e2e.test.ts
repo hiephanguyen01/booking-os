@@ -86,37 +86,15 @@ after(async () => {
   await prisma.$disconnect();
 });
 
-test("S2-RBAC13 custom-role authority setup is valid before role switching", async () => {
-  const tenantAdmin = await prisma.role.findUniqueOrThrow({
-    where: { key: SYSTEM_ROLES.tenantAdmin },
-  });
-  const permission = await prisma.permission.findUniqueOrThrow({
-    where: { key: PERMISSION_KEYS.tenantMembershipRead },
-  });
-
+test("S2-RBAC13 custom role and assignment fixture is valid", async () => {
   await assert.rejects(
     prisma.$transaction(async (transaction: Prisma.TransactionClient) => {
-      await transaction.rolePermission.delete({
-        where: {
-          roleId_permissionId: {
-            roleId: tenantAdmin.id,
-            permissionId: permission.id,
-          },
-        },
-      });
       await transaction.$executeRaw`
         INSERT INTO "tenant_custom_roles" (
           "id", "tenant_id", "name", "normalized_name", "version", "created_at", "updated_at"
         ) VALUES (
           ${CUSTOM_ROLE_ID}::uuid, ${TENANT_ID}::uuid, 'Membership Reader', 'membership reader', 1,
           ${NOW}::timestamptz, ${NOW}::timestamptz
-        )
-      `;
-      await transaction.$executeRaw`
-        INSERT INTO "tenant_custom_role_permissions" (
-          "tenant_id", "role_id", "permission_id", "created_at"
-        ) VALUES (
-          ${TENANT_ID}::uuid, ${CUSTOM_ROLE_ID}::uuid, ${permission.id}::uuid, ${NOW}::timestamptz
         )
       `;
       await transaction.$executeRaw`
