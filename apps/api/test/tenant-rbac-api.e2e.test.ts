@@ -19,6 +19,7 @@ const TENANT_SLUG = `tenant-rbac-api-${RUN_TAG}`;
 const TENANT_HOSTNAME = `${TENANT_SLUG}.example.test`;
 const OWNER_PERMISSION_KEYS = [
   PERMISSION_KEYS.tenantRbacPermissionRead,
+  PERMISSION_KEYS.tenantRbacRoleRead,
   PERMISSION_KEYS.tenantRbacRoleCreate,
   PERMISSION_KEYS.tenantRbacRoleUpdate,
   PERMISSION_KEYS.tenantRbacRoleArchive,
@@ -239,6 +240,89 @@ test("GET /tenant/rbac/permissions uses the authenticated tenant hostname and se
       (entry: { readonly key?: string }) => entry.key === PERMISSION_KEYS.tenantRbacPermissionRead,
     ),
   );
+});
+
+test("tenant RBAC routes require an authenticated session", async () => {
+  await request(app.getHttpServer())
+    .get("/api/tenant/rbac/permissions")
+    .set("host", TENANT_HOSTNAME)
+    .expect(401);
+});
+
+test("unsafe tenant RBAC mutations require CSRF", async () => {
+  await request(app.getHttpServer())
+    .post("/api/tenant/rbac/roles")
+    .set("host", TENANT_HOSTNAME)
+    .set("origin", `https://${TENANT_HOSTNAME}`)
+    .set("cookie", sessionCookie)
+    .send({ name: `Missing CSRF ${RUN_TAG}`, description: null, permissionKeys: [] })
+    .expect(403);
+});
+
+test("owner can create, read, update, replace permissions, and archive a tenant custom role", async () => {
+  const csrfToken = await readCsrfToken();
+  const created = await createRoleForMutation(`Lifecycle ${RUN_TAG}`, csrfToken);
+
+  const readResponse = await request(app.getHttpServer())
+    .get(`/api/tenant/rbac/roles/${created.id}`)
+    .set("host", TENANT_HOSTNAME)
+    .set("cookie", sessionCookie)
+    .expect(200);
+  assert.equal(readResponse.headers["cache-control"], "private, no-store");
+  assert.equal(readResponse.body.id, created.id);
+
+  const updateResponse = await request(app.getHttpServer())
+    .patch(`/api/tenant/rbac/roles/${created.id}`)
+    .set("host", TENANT_HOSTNAME)
+    .set("origin", `https://${TENANT_HOSTNAME}`)
+    .set("cookie", sessionCookie)
+    .set("x-csrf-token", csrfToken)
+    .send({
+      name: `  Lifecycle Updated ${RUN_TAG}  `,
+      description: "updated",
+      expectedVersion: created.version,
+    })
+    .expect(200);
+  assert.equal(updateResponse.body.name, `Lifecycle Updated ${RUN_TAG}`);
+  assert.equal(updateResponse.body.version, created.version + 1);
+
+  const permissionResponse = await request(app.getHttpServer())
+    .put(`/api/tenant/rbac/roles/${created.id}/permissions`)
+    .set("host", TENANT_HOSTNAME)
+    .set("origin", `https://${TENANT_HOSTNAME}`)
+    .set("cookie", sessionCookie)
+    .set("x-csrf-token", csrfToken)
+    .send({ permissionKeys: [], expectedVersion: updateResponse.body.version })
+    .expect(200);
+  assert.deepEqual(permissionResponse.body.permissionKeys, []);
+  assert.equal(permissionResponse.body.version, updateResponse.body.version);
+
+  const archiveResponse = await request(app.getHttpServer())
+    .delete(`/api/tenant/rbac/roles/${created.id}`)
+    .set("host", TENANT_HOSTNAME)
+    .set("origin", `https://${TENANT_HOSTNAME}`)
+    .set("cookie", sessionCookie)
+    .set("x-csrf-token", csrfToken)
+    .send({ expectedVersion: permissionResponse.body.version })
+    .expect(200);
+  assert.equal(typeof archiveResponse.body.archivedAt, "string");
+  assert.equal(archiveResponse.body.version, permissionResponse.body.version + 1);
+});
+
+test("tenant RBAC role IDs reject invalid UUIDs and hide inaccessible resources", async () => {
+  const invalidResponse = await request(app.getHttpServer())
+    .get("/api/tenant/rbac/roles/not-a-uuid")
+    .set("host", TENANT_HOSTNAME)
+    .set("cookie", sessionCookie)
+    .expect(400);
+  assert.equal(invalidResponse.body.code, "INVALID_UUID");
+
+  const missingResponse = await request(app.getHttpServer())
+    .get(`/api/tenant/rbac/roles/${randomUUID()}`)
+    .set("host", TENANT_HOSTNAME)
+    .set("cookie", sessionCookie)
+    .expect(404);
+  assert.equal(missingResponse.body.code, "TENANT_CUSTOM_ROLE_NOT_FOUND");
 });
 
 test("POST /tenant/rbac/roles rejects tenantId supplied by the transport", async () => {
