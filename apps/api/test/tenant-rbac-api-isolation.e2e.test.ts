@@ -185,6 +185,16 @@ async function seed(createSession: CreateSessionUseCase): Promise<void> {
     },
   });
 
+  await prisma.roleAssignment.create({
+    data: {
+      id: randomUUID(),
+      userId: OTHER_USER_ID,
+      roleId: ownerRole.id,
+      scopeLevel: "tenant",
+      tenantId: OTHER_TENANT_ID,
+    },
+  });
+
   await prisma.tenant.updateMany({
     where: { id: { in: [TENANT_ID, OTHER_TENANT_ID] } },
     data: { status: "active" },
