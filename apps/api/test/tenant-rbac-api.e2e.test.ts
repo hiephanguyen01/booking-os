@@ -259,7 +259,7 @@ test("unsafe tenant RBAC mutations require CSRF", async () => {
     .expect(403);
 });
 
-test.skip("owner can create, read, update, replace permissions, and archive a tenant custom role", async () => {
+test("owner can create, read, update, replace permissions, and archive a tenant custom role", async () => {
   const csrfToken = await readCsrfToken();
   const created = await createRoleForMutation(`Lifecycle ${RUN_TAG}`, csrfToken);
 
