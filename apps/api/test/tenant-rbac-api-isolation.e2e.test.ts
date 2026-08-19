@@ -10,6 +10,7 @@ import request from "supertest";
 import { AppModule } from "../src/app.module.js";
 import { PrismaService } from "../src/database/prisma.service.js";
 import { CreateSessionUseCase } from "../src/modules/sessions/application/use-cases/create-session.js";
+import { runTenantTestTransaction } from "./support/tenant-test-transaction.js";
 
 const RUN_TAG = randomUUID().slice(0, 8);
 const TENANT_ID = randomUUID();
@@ -193,6 +194,18 @@ async function seed(createSession: CreateSessionUseCase): Promise<void> {
       scopeLevel: "tenant",
       tenantId: OTHER_TENANT_ID,
     },
+  });
+
+  await runTenantTestTransaction(prisma, OTHER_TENANT_ID, async (transaction) => {
+    await transaction.$executeRaw`
+      INSERT INTO "tenant_custom_roles" (
+        "id", "tenant_id", "name", "normalized_name", "version", "created_at", "updated_at"
+      ) VALUES (
+        ${OTHER_ROLE_ID}::uuid, ${OTHER_TENANT_ID}::uuid,
+        'Other Tenant Role', 'other tenant role', 1,
+        ${now}::timestamptz, ${now}::timestamptz
+      )
+    `;
   });
 
   await prisma.tenant.updateMany({
