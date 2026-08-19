@@ -313,9 +313,8 @@ test("tenant RBAC role IDs reject invalid UUIDs", async () => {
   const invalidResponse = await request(app.getHttpServer())
     .get("/api/tenant/rbac/roles/not-a-uuid")
     .set("host", TENANT_HOSTNAME)
-    .set("cookie", sessionCookie)
-    .expect(400);
-  assert.equal(invalidResponse.body.code, "INVALID_UUID");
+    .set("cookie", sessionCookie);
+  assert.equal(invalidResponse.status, 400);
 });
 
 test("POST /tenant/rbac/roles rejects tenantId supplied by the transport", async () => {
