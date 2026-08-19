@@ -1,9 +1,37 @@
 import { PERMISSION_KEYS, type PermissionKey } from "@booking-os/auth";
+import { BadRequestException } from "@nestjs/common";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { z } from "zod";
 
 const TENANT_PERMISSION_KEYS = Object.values(PERMISSION_KEYS).filter((key) =>
   key.startsWith("tenant."),
 );
+const ROLE_NAME_MAX_LENGTH = 100;
+const ROLE_DESCRIPTION_MAX_LENGTH = 500;
+
+const tenantPermissionKeySchema = z.custom<PermissionKey>(
+  (value) =>
+    typeof value === "string" && TENANT_PERMISSION_KEYS.includes(value as PermissionKey),
+  { message: "permission key must be tenant-scoped" },
+);
+
+const createTenantCustomRoleRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(ROLE_NAME_MAX_LENGTH),
+    description: z
+      .string()
+      .trim()
+      .max(ROLE_DESCRIPTION_MAX_LENGTH)
+      .nullable()
+      .optional()
+      .default(null),
+    permissionKeys: z
+      .array(tenantPermissionKeySchema)
+      .refine((keys) => new Set(keys).size === keys.length, {
+        message: "permissionKeys must not contain duplicates",
+      }),
+  })
+  .strict();
 
 export class TenantRbacPermissionResponseDto {
   @ApiProperty({ enum: TENANT_PERMISSION_KEYS })
@@ -46,14 +74,27 @@ export class TenantCustomRoleResponseDto {
 }
 
 export class CreateTenantCustomRoleRequestDto {
-  @ApiProperty({ type: String })
+  @ApiProperty({ type: String, maxLength: ROLE_NAME_MAX_LENGTH })
   name!: string;
 
-  @ApiPropertyOptional({ type: String, nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true, maxLength: ROLE_DESCRIPTION_MAX_LENGTH })
   description!: string | null;
 
-  @ApiProperty({ enum: TENANT_PERMISSION_KEYS, isArray: true })
+  @ApiProperty({ enum: TENANT_PERMISSION_KEYS, isArray: true, uniqueItems: true })
   permissionKeys!: PermissionKey[];
+}
+
+export function parseCreateTenantCustomRoleRequest(
+  input: unknown,
+): CreateTenantCustomRoleRequestDto {
+  const result = createTenantCustomRoleRequestSchema.safeParse(input);
+  if (!result.success) {
+    throw new BadRequestException({
+      code: "INVALID_REQUEST_BODY",
+      message: "Tenant RBAC request body is invalid.",
+    });
+  }
+  return result.data;
 }
 
 export class UpdateTenantCustomRoleRequestDto {
