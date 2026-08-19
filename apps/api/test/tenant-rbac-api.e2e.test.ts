@@ -17,6 +17,13 @@ const TENANT_USER_ID = randomUUID();
 const TENANT_MEMBERSHIP_ID = randomUUID();
 const TENANT_SLUG = `tenant-rbac-api-${RUN_TAG}`;
 const TENANT_HOSTNAME = `${TENANT_SLUG}.example.test`;
+const OWNER_PERMISSION_KEYS = [
+  PERMISSION_KEYS.tenantRbacPermissionRead,
+  PERMISSION_KEYS.tenantRbacRoleCreate,
+  PERMISSION_KEYS.tenantRbacRoleUpdate,
+  PERMISSION_KEYS.tenantRbacRoleArchive,
+  PERMISSION_KEYS.tenantRbacRolePermissionGrant,
+] as const;
 
 const originalEnvironment = {
   NODE_ENV: process.env.NODE_ENV,
@@ -67,44 +74,27 @@ async function seedTenantOwner(createSession: CreateSessionUseCase): Promise<voi
       isSystem: true,
     },
   });
-  const permission = await prisma.permission.upsert({
-    where: { key: PERMISSION_KEYS.tenantRbacPermissionRead },
-    update: {
-      scopeLevel: "tenant",
-      description: "Read tenant RBAC permission catalog.",
-    },
-    create: {
-      id: randomUUID(),
-      key: PERMISSION_KEYS.tenantRbacPermissionRead,
-      scopeLevel: "tenant",
-      description: "Read tenant RBAC permission catalog.",
-    },
-  });
-  const createRolePermission = await prisma.permission.upsert({
-    where: { key: PERMISSION_KEYS.tenantRbacRoleCreate },
-    update: {
-      scopeLevel: "tenant",
-      description: "Create tenant custom roles.",
-    },
-    create: {
-      id: randomUUID(),
-      key: PERMISSION_KEYS.tenantRbacRoleCreate,
-      scopeLevel: "tenant",
-      description: "Create tenant custom roles.",
-    },
-  });
-  await prisma.rolePermission.upsert({
-    where: { roleId_permissionId: { roleId: role.id, permissionId: permission.id } },
-    update: {},
-    create: { roleId: role.id, permissionId: permission.id },
-  });
-  await prisma.rolePermission.upsert({
-    where: {
-      roleId_permissionId: { roleId: role.id, permissionId: createRolePermission.id },
-    },
-    update: {},
-    create: { roleId: role.id, permissionId: createRolePermission.id },
-  });
+
+  for (const key of OWNER_PERMISSION_KEYS) {
+    const permission = await prisma.permission.upsert({
+      where: { key },
+      update: {
+        scopeLevel: "tenant",
+        description: `Tenant RBAC API test permission: ${key}.`,
+      },
+      create: {
+        id: randomUUID(),
+        key,
+        scopeLevel: "tenant",
+        description: `Tenant RBAC API test permission: ${key}.`,
+      },
+    });
+    await prisma.rolePermission.upsert({
+      where: { roleId_permissionId: { roleId: role.id, permissionId: permission.id } },
+      update: {},
+      create: { roleId: role.id, permissionId: permission.id },
+    });
+  }
 
   const now = new Date();
   await prisma.user.create({
@@ -169,6 +159,31 @@ async function seedTenantOwner(createSession: CreateSessionUseCase): Promise<voi
   sessionCookie = `${BOOKING_SESSION_COOKIE}=${encodeURIComponent(created.token)}`;
 }
 
+async function readCsrfToken(): Promise<string> {
+  const response = await request(app.getHttpServer())
+    .get("/api/auth/session/csrf")
+    .set("host", TENANT_HOSTNAME)
+    .set("cookie", sessionCookie)
+    .expect(200);
+  assert.equal(typeof response.body.csrfToken, "string");
+  return response.body.csrfToken as string;
+}
+
+async function createRoleForMutation(name: string, csrfToken: string) {
+  const response = await request(app.getHttpServer())
+    .post("/api/tenant/rbac/roles")
+    .set("host", TENANT_HOSTNAME)
+    .set("origin", `https://${TENANT_HOSTNAME}`)
+    .set("cookie", sessionCookie)
+    .set("x-csrf-token", csrfToken)
+    .send({ name, description: null, permissionKeys: [] })
+    .expect(201);
+
+  assert.equal(typeof response.body.id, "string");
+  assert.equal(typeof response.body.version, "number");
+  return response.body as { readonly id: string; readonly version: number };
+}
+
 before(async () => {
   process.env.NODE_ENV = "test";
   process.env.HOST = "127.0.0.1";
@@ -227,23 +242,62 @@ test("GET /tenant/rbac/permissions uses the authenticated tenant hostname and se
 });
 
 test("POST /tenant/rbac/roles rejects tenantId supplied by the transport", async () => {
-  const csrf = await request(app.getHttpServer())
-    .get("/api/auth/session/csrf")
-    .set("host", TENANT_HOSTNAME)
-    .set("cookie", sessionCookie)
-    .expect(200);
+  const csrfToken = await readCsrfToken();
 
   await request(app.getHttpServer())
     .post("/api/tenant/rbac/roles")
     .set("host", TENANT_HOSTNAME)
     .set("origin", `https://${TENANT_HOSTNAME}`)
     .set("cookie", sessionCookie)
-    .set("x-csrf-token", csrf.body.csrfToken)
+    .set("x-csrf-token", csrfToken)
     .send({
       tenantId: randomUUID(),
       name: `Transport Tenant Leak ${RUN_TAG}`,
       description: null,
       permissionKeys: [],
     })
+    .expect(400);
+});
+
+test("body-bearing tenant RBAC mutations reject tenantId supplied by the transport", async () => {
+  const csrfToken = await readCsrfToken();
+
+  const updateRole = await createRoleForMutation(`Update Body ${RUN_TAG}`, csrfToken);
+  await request(app.getHttpServer())
+    .patch(`/api/tenant/rbac/roles/${updateRole.id}`)
+    .set("host", TENANT_HOSTNAME)
+    .set("origin", `https://${TENANT_HOSTNAME}`)
+    .set("cookie", sessionCookie)
+    .set("x-csrf-token", csrfToken)
+    .send({
+      tenantId: randomUUID(),
+      name: `Updated Body ${RUN_TAG}`,
+      description: null,
+      expectedVersion: updateRole.version,
+    })
+    .expect(400);
+
+  const permissionRole = await createRoleForMutation(`Permission Body ${RUN_TAG}`, csrfToken);
+  await request(app.getHttpServer())
+    .put(`/api/tenant/rbac/roles/${permissionRole.id}/permissions`)
+    .set("host", TENANT_HOSTNAME)
+    .set("origin", `https://${TENANT_HOSTNAME}`)
+    .set("cookie", sessionCookie)
+    .set("x-csrf-token", csrfToken)
+    .send({
+      tenantId: randomUUID(),
+      permissionKeys: [],
+      expectedVersion: permissionRole.version,
+    })
+    .expect(400);
+
+  const archiveRole = await createRoleForMutation(`Archive Body ${RUN_TAG}`, csrfToken);
+  await request(app.getHttpServer())
+    .delete(`/api/tenant/rbac/roles/${archiveRole.id}`)
+    .set("host", TENANT_HOSTNAME)
+    .set("origin", `https://${TENANT_HOSTNAME}`)
+    .set("cookie", sessionCookie)
+    .set("x-csrf-token", csrfToken)
+    .send({ tenantId: randomUUID(), expectedVersion: archiveRole.version })
     .expect(400);
 });
