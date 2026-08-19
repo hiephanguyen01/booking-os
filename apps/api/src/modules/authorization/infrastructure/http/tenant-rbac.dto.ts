@@ -10,8 +10,7 @@ const ROLE_NAME_MAX_LENGTH = 100;
 const ROLE_DESCRIPTION_MAX_LENGTH = 500;
 
 const tenantPermissionKeySchema = z.custom<PermissionKey>(
-  (value) =>
-    typeof value === "string" && TENANT_PERMISSION_KEYS.includes(value as PermissionKey),
+  (value) => typeof value === "string" && TENANT_PERMISSION_KEYS.includes(value as PermissionKey),
   { message: "permission key must be tenant-scoped" },
 );
 
