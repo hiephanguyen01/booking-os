@@ -10,6 +10,7 @@ import { DependenciesModule } from "./dependencies/dependencies.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { AuthorizationModule } from "./modules/authorization/authorization.module.js";
 import { AuthorizationController } from "./modules/authorization/infrastructure/http/authorization.controller.js";
+import { TenantRbacController } from "./modules/authorization/infrastructure/http/tenant-rbac.controller.js";
 import { IdentityModule } from "./modules/identity/identity.module.js";
 import { NestIdentityPublicController } from "./modules/identity/infrastructure/http/identity-public.nest.controller.js";
 import { PlatformTenantsController } from "./modules/memberships/infrastructure/http/platform-tenants.controller.js";
@@ -52,6 +53,7 @@ export class AppModule implements NestModule {
       .apply(HttpSecurityMiddleware)
       .forRoutes(
         AuthorizationController,
+        TenantRbacController,
         NestIdentityPublicController,
         TenantInvitationsController,
         SessionHttpController,
@@ -65,6 +67,7 @@ export class AppModule implements NestModule {
       .apply(TenantResolutionMiddleware, SessionAuthMiddleware)
       .forRoutes(
         AuthorizationController,
+        TenantRbacController,
         TenantInvitationsController,
         TenantMembershipsController,
         SessionHttpController,
