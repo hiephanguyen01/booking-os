@@ -60,6 +60,7 @@ import {
 import {
   type ArchiveTenantCustomRoleRequestDto,
   type CreateTenantCustomRoleRequestDto,
+  parseCreateTenantCustomRoleRequest,
   type ReplaceTenantCustomRolePermissionsRequestDto,
   TenantCustomRoleAssignmentResponseDto,
   TenantCustomRoleResponseDto,
@@ -163,12 +164,13 @@ export class TenantRbacController {
     @CurrentAuthorizationContext() authorization: AuthorizationContext,
   ) {
     try {
+      const parsedBody = parseCreateTenantCustomRoleRequest(body);
       const authenticated = this.requestContext.requireAuthenticated();
       return await this.createTenantCustomRole.execute({
         authorization,
-        name: body.name,
-        description: body.description,
-        permissionKeys: body.permissionKeys,
+        name: parsedBody.name,
+        description: parsedBody.description,
+        permissionKeys: parsedBody.permissionKeys,
         requestId: authenticated.requestId,
         now: new Date(),
       });
