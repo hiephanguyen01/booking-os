@@ -19,13 +19,13 @@ const OWNER_USER_ID = randomUUID();
 const OTHER_USER_ID = randomUUID();
 const OWNER_MEMBERSHIP_ID = randomUUID();
 const OTHER_MEMBERSHIP_ID = randomUUID();
-const CURRENT_ROLE_ID = randomUUID();
 const OTHER_ROLE_ID = randomUUID();
 const TENANT_SLUG = `tenant-rbac-isolation-${RUN_TAG}`;
 const TENANT_HOSTNAME = `${TENANT_SLUG}.example.test`;
 
 const OWNER_PERMISSION_KEYS = [
   PERMISSION_KEYS.tenantRbacRoleRead,
+  PERMISSION_KEYS.tenantRbacRoleCreate,
   PERMISSION_KEYS.tenantRbacAssignmentRead,
   PERMISSION_KEYS.tenantRbacAssignmentGrant,
 ] as const;
@@ -54,6 +54,7 @@ const originalEnvironment = {
 let app: INestApplication;
 let prisma: PrismaService;
 let sessionCookie = "";
+let currentRoleId = "";
 
 function restoreEnvironment(): void {
   for (const key of Object.keys(originalEnvironment) as Array<keyof typeof originalEnvironment>) {
@@ -185,18 +186,6 @@ async function seed(createSession: CreateSessionUseCase): Promise<void> {
     },
   });
 
-  await runTenantTestTransaction(prisma, TENANT_ID, async (transaction) => {
-    await transaction.$executeRaw`
-      INSERT INTO "tenant_custom_roles" (
-        "id", "tenant_id", "name", "normalized_name", "version", "created_at", "updated_at"
-      ) VALUES (
-        ${CURRENT_ROLE_ID}::uuid, ${TENANT_ID}::uuid,
-        'Current Tenant Role', 'current tenant role', 1,
-        ${now}::timestamptz, ${now}::timestamptz
-      )
-    `;
-  });
-
   await runTenantTestTransaction(prisma, OTHER_TENANT_ID, async (transaction) => {
     await transaction.$executeRaw`
       INSERT INTO "tenant_custom_roles" (
@@ -236,6 +225,20 @@ async function readCsrfToken(): Promise<string> {
   return response.body.csrfToken as string;
 }
 
+async function createCurrentRole(): Promise<void> {
+  const csrfToken = await readCsrfToken();
+  const response = await request(app.getHttpServer())
+    .post("/api/tenant/rbac/roles")
+    .set("host", TENANT_HOSTNAME)
+    .set("origin", `https://${TENANT_HOSTNAME}`)
+    .set("cookie", sessionCookie)
+    .set("x-csrf-token", csrfToken)
+    .send({ name: `Current Tenant Role ${RUN_TAG}`, description: null, permissionKeys: [] })
+    .expect(201);
+  assert.equal(typeof response.body.id, "string");
+  currentRoleId = response.body.id as string;
+}
+
 before(async () => {
   process.env.NODE_ENV = "test";
   process.env.HOST = "127.0.0.1";
@@ -265,6 +268,7 @@ before(async () => {
   prisma = app.get(PrismaService);
   await cleanup();
   await seed(app.get(CreateSessionUseCase));
+  await createCurrentRole();
 });
 
 after(async () => {
@@ -278,15 +282,11 @@ after(async () => {
 
 test("current Tenant RBAC role remains visible to the current tenant", async () => {
   const currentRole = await request(app.getHttpServer())
-    .get(`/api/tenant/rbac/roles/${CURRENT_ROLE_ID}`)
+    .get(`/api/tenant/rbac/roles/${currentRoleId}`)
     .set("host", TENANT_HOSTNAME)
-    .set("cookie", sessionCookie);
-  assert.equal(
-    currentRole.status,
-    200,
-    `expected current role GET to return 200, received ${currentRole.status}; body=${JSON.stringify(currentRole.body)}; headers=${JSON.stringify(currentRole.headers)}`,
-  );
-  assert.equal(currentRole.body.id, CURRENT_ROLE_ID);
+    .set("cookie", sessionCookie)
+    .expect(200);
+  assert.equal(currentRole.body.id, currentRoleId);
 });
 
 test.skip("foreign Tenant RBAC role IDs remain hidden from the current tenant", async () => {
@@ -315,7 +315,7 @@ test.skip("foreign Tenant RBAC membership IDs remain hidden from the current ten
 
   const csrfToken = await readCsrfToken();
   const foreignAssignment = await request(app.getHttpServer())
-    .post(`/api/tenant/rbac/memberships/${OTHER_MEMBERSHIP_ID}/roles/${CURRENT_ROLE_ID}`)
+    .post(`/api/tenant/rbac/memberships/${OTHER_MEMBERSHIP_ID}/roles/${currentRoleId}`)
     .set("host", TENANT_HOSTNAME)
     .set("origin", `https://${TENANT_HOSTNAME}`)
     .set("cookie", sessionCookie)
