@@ -242,14 +242,14 @@ test("GET /tenant/rbac/permissions uses the authenticated tenant hostname and se
   );
 });
 
-test.skip("tenant RBAC routes require an authenticated session", async () => {
+test("tenant RBAC routes require an authenticated session", async () => {
   await request(app.getHttpServer())
     .get("/api/tenant/rbac/permissions")
     .set("host", TENANT_HOSTNAME)
     .expect(401);
 });
 
-test.skip("unsafe tenant RBAC mutations require CSRF", async () => {
+test("unsafe tenant RBAC mutations require CSRF", async () => {
   await request(app.getHttpServer())
     .post("/api/tenant/rbac/roles")
     .set("host", TENANT_HOSTNAME)
@@ -309,12 +309,20 @@ test.skip("owner can create, read, update, replace permissions, and archive a te
   assert.equal(archiveResponse.body.version, permissionResponse.body.version + 1);
 });
 
-test("tenant RBAC role IDs reject invalid UUIDs", async () => {
+test("tenant RBAC role IDs reject invalid UUIDs and hide inaccessible resources", async () => {
   const invalidResponse = await request(app.getHttpServer())
     .get("/api/tenant/rbac/roles/not-a-uuid")
     .set("host", TENANT_HOSTNAME)
-    .set("cookie", sessionCookie);
-  assert.equal(invalidResponse.status, 400);
+    .set("cookie", sessionCookie)
+    .expect(400);
+  assert.equal(invalidResponse.body.error.code, "INVALID_UUID");
+
+  const missingResponse = await request(app.getHttpServer())
+    .get(`/api/tenant/rbac/roles/${randomUUID()}`)
+    .set("host", TENANT_HOSTNAME)
+    .set("cookie", sessionCookie)
+    .expect(404);
+  assert.equal(missingResponse.body.error.code, "TENANT_CUSTOM_ROLE_NOT_FOUND");
 });
 
 test("POST /tenant/rbac/roles rejects tenantId supplied by the transport", async () => {
