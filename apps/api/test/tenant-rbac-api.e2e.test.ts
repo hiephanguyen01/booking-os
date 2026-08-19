@@ -80,10 +80,30 @@ async function seedTenantOwner(createSession: CreateSessionUseCase): Promise<voi
       description: "Read tenant RBAC permission catalog.",
     },
   });
+  const createRolePermission = await prisma.permission.upsert({
+    where: { key: PERMISSION_KEYS.tenantRbacRoleCreate },
+    update: {
+      scopeLevel: "tenant",
+      description: "Create tenant custom roles.",
+    },
+    create: {
+      id: randomUUID(),
+      key: PERMISSION_KEYS.tenantRbacRoleCreate,
+      scopeLevel: "tenant",
+      description: "Create tenant custom roles.",
+    },
+  });
   await prisma.rolePermission.upsert({
     where: { roleId_permissionId: { roleId: role.id, permissionId: permission.id } },
     update: {},
     create: { roleId: role.id, permissionId: permission.id },
+  });
+  await prisma.rolePermission.upsert({
+    where: {
+      roleId_permissionId: { roleId: role.id, permissionId: createRolePermission.id },
+    },
+    update: {},
+    create: { roleId: role.id, permissionId: createRolePermission.id },
   });
 
   const now = new Date();
@@ -204,4 +224,26 @@ test("GET /tenant/rbac/permissions uses the authenticated tenant hostname and se
       (entry: { readonly key?: string }) => entry.key === PERMISSION_KEYS.tenantRbacPermissionRead,
     ),
   );
+});
+
+test("POST /tenant/rbac/roles rejects tenantId supplied by the transport", async () => {
+  const csrf = await request(app.getHttpServer())
+    .get("/api/auth/session/csrf")
+    .set("host", TENANT_HOSTNAME)
+    .set("cookie", sessionCookie)
+    .expect(200);
+
+  await request(app.getHttpServer())
+    .post("/api/tenant/rbac/roles")
+    .set("host", TENANT_HOSTNAME)
+    .set("origin", `https://${TENANT_HOSTNAME}`)
+    .set("cookie", sessionCookie)
+    .set("x-csrf-token", csrf.body.csrfToken)
+    .send({
+      tenantId: randomUUID(),
+      name: `Transport Tenant Leak ${RUN_TAG}`,
+      description: null,
+      permissionKeys: [],
+    })
+    .expect(400);
 });
