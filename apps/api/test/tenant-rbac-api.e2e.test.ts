@@ -242,14 +242,14 @@ test("GET /tenant/rbac/permissions uses the authenticated tenant hostname and se
   );
 });
 
-test.skip("tenant RBAC routes require an authenticated session", async () => {
+test("tenant RBAC routes require an authenticated session", async () => {
   await request(app.getHttpServer())
     .get("/api/tenant/rbac/permissions")
     .set("host", TENANT_HOSTNAME)
     .expect(401);
 });
 
-test.skip("unsafe tenant RBAC mutations require CSRF", async () => {
+test("unsafe tenant RBAC mutations require CSRF", async () => {
   await request(app.getHttpServer())
     .post("/api/tenant/rbac/roles")
     .set("host", TENANT_HOSTNAME)
