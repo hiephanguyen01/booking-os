@@ -15,6 +15,8 @@ const RUN_TAG = randomUUID().slice(0, 8);
 const TENANT_ID = randomUUID();
 const TENANT_USER_ID = randomUUID();
 const TENANT_MEMBERSHIP_ID = randomUUID();
+const TENANT_ADMIN_USER_ID = randomUUID();
+const TENANT_ADMIN_MEMBERSHIP_ID = randomUUID();
 const TENANT_SLUG = `tenant-rbac-api-${RUN_TAG}`;
 const TENANT_HOSTNAME = `${TENANT_SLUG}.example.test`;
 const OWNER_PERMISSION_KEYS = [
@@ -24,6 +26,11 @@ const OWNER_PERMISSION_KEYS = [
   PERMISSION_KEYS.tenantRbacRoleUpdate,
   PERMISSION_KEYS.tenantRbacRoleArchive,
   PERMISSION_KEYS.tenantRbacRolePermissionGrant,
+] as const;
+const ADMIN_PERMISSION_KEYS = [
+  PERMISSION_KEYS.tenantRbacPermissionRead,
+  PERMISSION_KEYS.tenantRbacRoleRead,
+  PERMISSION_KEYS.tenantRbacAssignmentRead,
 ] as const;
 
 const originalEnvironment = {
@@ -50,6 +57,7 @@ const originalEnvironment = {
 let app: INestApplication;
 let prisma: PrismaService;
 let sessionCookie = "";
+let adminSessionCookie = "";
 
 function restoreEnvironment(): void {
   for (const key of Object.keys(originalEnvironment) as Array<keyof typeof originalEnvironment>) {
@@ -61,7 +69,7 @@ function restoreEnvironment(): void {
 
 async function cleanup(): Promise<void> {
   await prisma?.tenant.deleteMany({ where: { id: TENANT_ID } });
-  await prisma?.user.deleteMany({ where: { id: TENANT_USER_ID } });
+  await prisma?.user.deleteMany({ where: { id: { in: [TENANT_USER_ID, TENANT_ADMIN_USER_ID] } } });
 }
 
 async function seedTenantOwner(createSession: CreateSessionUseCase): Promise<void> {
@@ -71,6 +79,16 @@ async function seedTenantOwner(createSession: CreateSessionUseCase): Promise<voi
     create: {
       id: randomUUID(),
       key: "tenant_owner",
+      scopeLevel: "tenant",
+      isSystem: true,
+    },
+  });
+  const adminRole = await prisma.role.upsert({
+    where: { key: "tenant_admin" },
+    update: { scopeLevel: "tenant", isSystem: true },
+    create: {
+      id: randomUUID(),
+      key: "tenant_admin",
       scopeLevel: "tenant",
       isSystem: true,
     },
@@ -97,16 +115,37 @@ async function seedTenantOwner(createSession: CreateSessionUseCase): Promise<voi
     });
   }
 
+  for (const key of ADMIN_PERMISSION_KEYS) {
+    const permission = await prisma.permission.upsert({
+      where: { key },
+      update: {
+        scopeLevel: "tenant",
+        description: `Tenant RBAC API test permission: ${key}.`,
+      },
+      create: {
+        id: randomUUID(),
+        key,
+        scopeLevel: "tenant",
+        description: `Tenant RBAC API test permission: ${key}.`,
+      },
+    });
+    await prisma.rolePermission.upsert({
+      where: { roleId_permissionId: { roleId: adminRole.id, permissionId: permission.id } },
+      update: {},
+      create: { roleId: adminRole.id, permissionId: permission.id },
+    });
+  }
+
   const now = new Date();
-  await prisma.user.create({
-    data: {
-      id: TENANT_USER_ID,
-      normalizedEmail: `tenant-rbac-api-${RUN_TAG}@example.test`,
-      displayEmail: `tenant-rbac-api-${RUN_TAG}@example.test`,
-      status: "active",
+  await prisma.user.createMany({
+    data: [TENANT_USER_ID, TENANT_ADMIN_USER_ID].map((id, index) => ({
+      id,
+      normalizedEmail: `tenant-rbac-api-${RUN_TAG}-${index}@example.test`,
+      displayEmail: `tenant-rbac-api-${RUN_TAG}-${index}@example.test`,
+      status: "active" as const,
       authorizationVersion: 1,
       activatedAt: now,
-    },
+    })),
   });
   await prisma.tenant.create({
     data: {
@@ -124,24 +163,43 @@ async function seedTenantOwner(createSession: CreateSessionUseCase): Promise<voi
       isPrimary: true,
     },
   });
-  await prisma.tenantMembership.create({
-    data: {
-      id: TENANT_MEMBERSHIP_ID,
-      tenantId: TENANT_ID,
-      userId: TENANT_USER_ID,
-      status: "active",
-      authorizationVersion: 1,
-      acceptedAt: now,
-    },
+  await prisma.tenantMembership.createMany({
+    data: [
+      {
+        id: TENANT_MEMBERSHIP_ID,
+        tenantId: TENANT_ID,
+        userId: TENANT_USER_ID,
+        status: "active",
+        authorizationVersion: 1,
+        acceptedAt: now,
+      },
+      {
+        id: TENANT_ADMIN_MEMBERSHIP_ID,
+        tenantId: TENANT_ID,
+        userId: TENANT_ADMIN_USER_ID,
+        status: "active",
+        authorizationVersion: 1,
+        acceptedAt: now,
+      },
+    ],
   });
-  await prisma.roleAssignment.create({
-    data: {
-      id: randomUUID(),
-      userId: TENANT_USER_ID,
-      roleId: role.id,
-      scopeLevel: "tenant",
-      tenantId: TENANT_ID,
-    },
+  await prisma.roleAssignment.createMany({
+    data: [
+      {
+        id: randomUUID(),
+        userId: TENANT_USER_ID,
+        roleId: role.id,
+        scopeLevel: "tenant",
+        tenantId: TENANT_ID,
+      },
+      {
+        id: randomUUID(),
+        userId: TENANT_ADMIN_USER_ID,
+        roleId: adminRole.id,
+        scopeLevel: "tenant",
+        tenantId: TENANT_ID,
+      },
+    ],
   });
   await prisma.tenant.update({
     where: { id: TENANT_ID },
@@ -158,13 +216,24 @@ async function seedTenantOwner(createSession: CreateSessionUseCase): Promise<voi
     requestId: `tenant-rbac-api-${RUN_TAG}`,
   });
   sessionCookie = `${BOOKING_SESSION_COOKIE}=${encodeURIComponent(created.token)}`;
+
+  const adminCreated = await createSession.execute({
+    userId: TENANT_ADMIN_USER_ID,
+    scope: { type: "tenant", tenantId: TENANT_ID },
+    hostname: TENANT_HOSTNAME,
+    state: "active",
+    authorizationVersion: 1,
+    membershipAuthorizationVersion: 1,
+    requestId: `tenant-rbac-api-admin-${RUN_TAG}`,
+  });
+  adminSessionCookie = `${BOOKING_SESSION_COOKIE}=${encodeURIComponent(adminCreated.token)}`;
 }
 
-async function readCsrfToken(): Promise<string> {
+async function readCsrfToken(cookie = sessionCookie): Promise<string> {
   const response = await request(app.getHttpServer())
     .get("/api/auth/session/csrf")
     .set("host", TENANT_HOSTNAME)
-    .set("cookie", sessionCookie)
+    .set("cookie", cookie)
     .expect(200);
   assert.equal(typeof response.body.csrfToken, "string");
   return response.body.csrfToken as string;
@@ -307,6 +376,65 @@ test("owner can create, read, update, replace permissions, and archive a tenant 
     .expect(200);
   assert.equal(typeof archiveResponse.body.archivedAt, "string");
   assert.equal(archiveResponse.body.version, permissionResponse.body.version + 1);
+});
+
+test("tenant admin can read tenant RBAC state but cannot mutate roles or assignments", async () => {
+  const ownerCsrfToken = await readCsrfToken();
+  const adminCsrfToken = await readCsrfToken(adminSessionCookie);
+  const role = await createRoleForMutation(`Admin Read Only ${RUN_TAG}`, ownerCsrfToken);
+
+  await request(app.getHttpServer())
+    .get("/api/tenant/rbac/permissions")
+    .set("host", TENANT_HOSTNAME)
+    .set("cookie", adminSessionCookie)
+    .expect(200);
+  await request(app.getHttpServer())
+    .get("/api/tenant/rbac/roles")
+    .set("host", TENANT_HOSTNAME)
+    .set("cookie", adminSessionCookie)
+    .expect(200);
+  await request(app.getHttpServer())
+    .get(`/api/tenant/rbac/roles/${role.id}`)
+    .set("host", TENANT_HOSTNAME)
+    .set("cookie", adminSessionCookie)
+    .expect(200);
+  await request(app.getHttpServer())
+    .get(`/api/tenant/rbac/memberships/${TENANT_ADMIN_MEMBERSHIP_ID}/roles`)
+    .set("host", TENANT_HOSTNAME)
+    .set("cookie", adminSessionCookie)
+    .expect(200);
+
+  await request(app.getHttpServer())
+    .post("/api/tenant/rbac/roles")
+    .set("host", TENANT_HOSTNAME)
+    .set("origin", `https://${TENANT_HOSTNAME}`)
+    .set("cookie", adminSessionCookie)
+    .set("x-csrf-token", adminCsrfToken)
+    .send({ name: `Admin Forbidden ${RUN_TAG}`, description: null, permissionKeys: [] })
+    .expect(403);
+  await request(app.getHttpServer())
+    .patch(`/api/tenant/rbac/roles/${role.id}`)
+    .set("host", TENANT_HOSTNAME)
+    .set("origin", `https://${TENANT_HOSTNAME}`)
+    .set("cookie", adminSessionCookie)
+    .set("x-csrf-token", adminCsrfToken)
+    .send({ name: `Admin Forbidden Update ${RUN_TAG}`, expectedVersion: role.version })
+    .expect(403);
+  await request(app.getHttpServer())
+    .delete(`/api/tenant/rbac/roles/${role.id}`)
+    .set("host", TENANT_HOSTNAME)
+    .set("origin", `https://${TENANT_HOSTNAME}`)
+    .set("cookie", adminSessionCookie)
+    .set("x-csrf-token", adminCsrfToken)
+    .send({ expectedVersion: role.version })
+    .expect(403);
+  await request(app.getHttpServer())
+    .post(`/api/tenant/rbac/memberships/${TENANT_ADMIN_MEMBERSHIP_ID}/roles/${role.id}`)
+    .set("host", TENANT_HOSTNAME)
+    .set("origin", `https://${TENANT_HOSTNAME}`)
+    .set("cookie", adminSessionCookie)
+    .set("x-csrf-token", adminCsrfToken)
+    .expect(403);
 });
 
 test("tenant RBAC role IDs reject invalid UUIDs and hide inaccessible resources", async () => {
