@@ -298,7 +298,7 @@ test("current tenant RBAC base fixture can list roles", async () => {
   assert.ok(Array.isArray(response.body));
 });
 
-test.skip("foreign Tenant RBAC role IDs remain hidden from the current tenant", async () => {
+test("foreign Tenant RBAC role IDs remain hidden from the current tenant", async () => {
   const foreignRole = await request(app.getHttpServer())
     .get(`/api/tenant/rbac/roles/${OTHER_ROLE_ID}`)
     .set("host", TENANT_HOSTNAME)
