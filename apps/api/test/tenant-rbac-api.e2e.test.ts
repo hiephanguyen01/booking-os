@@ -190,17 +190,9 @@ test("GET /tenant/rbac/permissions uses the authenticated tenant hostname and se
     .get("/api/tenant/rbac/permissions")
     .set("host", TENANT_HOSTNAME)
     .set("origin", `https://${TENANT_HOSTNAME}`)
-    .set("cookie", sessionCookie);
+    .set("cookie", sessionCookie)
+    .expect(200);
 
-  assert.equal(
-    response.status,
-    200,
-    `tenant RBAC permissions transport failed: ${JSON.stringify({
-      status: response.status,
-      body: response.body,
-      headers: response.headers,
-    })}`,
-  );
   assert.equal(response.headers["cache-control"], "private, no-store");
   assert.ok(Array.isArray(response.body));
   assert.ok(
