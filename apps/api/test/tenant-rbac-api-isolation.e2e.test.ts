@@ -222,6 +222,19 @@ async function readCsrfToken(): Promise<string> {
   return response.body.csrfToken as string;
 }
 
+async function createCurrentRole(): Promise<void> {
+  const csrfToken = await readCsrfToken();
+  const response = await request(app.getHttpServer())
+    .post("/api/tenant/rbac/roles")
+    .set("host", TENANT_HOSTNAME)
+    .set("origin", `https://${TENANT_HOSTNAME}`)
+    .set("cookie", sessionCookie)
+    .set("x-csrf-token", csrfToken)
+    .send({ name: `Current Tenant Role ${RUN_TAG}`, description: null, permissionKeys: [] })
+    .expect(201);
+  assert.equal(typeof response.body.id, "string");
+}
+
 before(async () => {
   process.env.NODE_ENV = "test";
   process.env.HOST = "127.0.0.1";
@@ -251,6 +264,7 @@ before(async () => {
   prisma = app.get(PrismaService);
   await cleanup();
   await seed(app.get(CreateSessionUseCase));
+  await createCurrentRole();
 });
 
 after(async () => {
