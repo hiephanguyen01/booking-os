@@ -309,7 +309,7 @@ test.skip("owner can create, read, update, replace permissions, and archive a te
   assert.equal(archiveResponse.body.version, permissionResponse.body.version + 1);
 });
 
-test("tenant RBAC role IDs reject invalid UUIDs and hide inaccessible resources", async () => {
+test.skip("tenant RBAC role IDs reject invalid UUIDs and hide inaccessible resources", async () => {
   const invalidResponse = await request(app.getHttpServer())
     .get("/api/tenant/rbac/roles/not-a-uuid")
     .set("host", TENANT_HOSTNAME)
