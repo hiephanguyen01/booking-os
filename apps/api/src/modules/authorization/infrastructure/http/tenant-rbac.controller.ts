@@ -60,7 +60,10 @@ import {
 import {
   type ArchiveTenantCustomRoleRequestDto,
   type CreateTenantCustomRoleRequestDto,
+  parseArchiveTenantCustomRoleRequest,
   parseCreateTenantCustomRoleRequest,
+  parseReplaceTenantCustomRolePermissionsRequest,
+  parseUpdateTenantCustomRoleRequest,
   type ReplaceTenantCustomRolePermissionsRequestDto,
   TenantCustomRoleAssignmentResponseDto,
   TenantCustomRoleResponseDto,
@@ -79,16 +82,6 @@ function requireUuid(value: unknown, field: "roleId" | "membershipId"): string {
     });
   }
   return normalized;
-}
-
-function requireExpectedVersion(value: unknown): number {
-  if (!Number.isInteger(value) || (value as number) < 1) {
-    throw new BadRequestException({
-      code: "INVALID_EXPECTED_VERSION",
-      message: "expectedVersion must be a positive integer.",
-    });
-  }
-  return value as number;
 }
 
 function safeErrorBody(error: TenantRbacError, message: string) {
@@ -213,13 +206,14 @@ export class TenantRbacController {
     @CurrentAuthorizationContext() authorization: AuthorizationContext,
   ) {
     try {
+      const parsedBody = parseUpdateTenantCustomRoleRequest(body);
       const authenticated = this.requestContext.requireAuthenticated();
       return await this.updateTenantCustomRole.execute({
         authorization,
         roleId: requireUuid(roleId, "roleId"),
-        name: body.name,
-        description: body.description,
-        expectedVersion: requireExpectedVersion(body.expectedVersion),
+        name: parsedBody.name,
+        description: parsedBody.description,
+        expectedVersion: parsedBody.expectedVersion,
         requestId: authenticated.requestId,
         now: new Date(),
       });
@@ -241,12 +235,13 @@ export class TenantRbacController {
     @CurrentAuthorizationContext() authorization: AuthorizationContext,
   ) {
     try {
+      const parsedBody = parseReplaceTenantCustomRolePermissionsRequest(body);
       const authenticated = this.requestContext.requireAuthenticated();
       return await this.replaceTenantCustomRolePermissions.execute({
         authorization,
         roleId: requireUuid(roleId, "roleId"),
-        permissionKeys: body.permissionKeys,
-        expectedVersion: requireExpectedVersion(body.expectedVersion),
+        permissionKeys: parsedBody.permissionKeys,
+        expectedVersion: parsedBody.expectedVersion,
         requestId: authenticated.requestId,
         now: new Date(),
       });
@@ -268,11 +263,12 @@ export class TenantRbacController {
     @CurrentAuthorizationContext() authorization: AuthorizationContext,
   ) {
     try {
+      const parsedBody = parseArchiveTenantCustomRoleRequest(body);
       const authenticated = this.requestContext.requireAuthenticated();
       return await this.archiveTenantCustomRole.execute({
         authorization,
         roleId: requireUuid(roleId, "roleId"),
-        expectedVersion: requireExpectedVersion(body.expectedVersion),
+        expectedVersion: parsedBody.expectedVersion,
         requestId: authenticated.requestId,
         now: new Date(),
       });
