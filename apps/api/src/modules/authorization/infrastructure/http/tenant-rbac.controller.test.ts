@@ -3,7 +3,12 @@ import test from "node:test";
 
 import { PERMISSION_KEYS, SYSTEM_ROLES } from "@booking-os/auth";
 import type { AuthorizationContext } from "@booking-os/contracts";
-import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 
 import type { AuthenticatedRequestContext } from "../../../../common/request-context/request-context.types.js";
 import {
@@ -158,7 +163,7 @@ test("routes delegate guard-built authority without accepting tenantId from tran
   ]);
   assert.deepEqual(withoutNow(calls[2]?.[1]), {
     authorization: AUTHORIZATION,
-    name: " Dispatcher ",
+    name: "Dispatcher",
     description: "Dispatch operations",
     permissionKeys: [PERMISSION_KEYS.tenantMembershipRead],
     requestId: AUTHENTICATED.requestId,
@@ -205,6 +210,33 @@ test("routes delegate guard-built authority without accepting tenantId from tran
   for (const [, input] of calls) {
     assert.equal(Object.hasOwn(input as object, "tenantId"), false);
   }
+});
+
+test("create role rejects tenantId supplied by the transport", async () => {
+  const { calls, controller } = controllerWith();
+
+  await assert.rejects(
+    () =>
+      controller.createRole(
+        {
+          tenantId: TENANT_ID,
+          name: "Dispatcher",
+          description: null,
+          permissionKeys: [],
+        } as never,
+        AUTHORIZATION,
+      ),
+    (error: unknown) => {
+      assert.ok(error instanceof BadRequestException);
+      assert.equal((error.getResponse() as { code?: string }).code, "INVALID_REQUEST_BODY");
+      return true;
+    },
+  );
+
+  assert.equal(
+    calls.some(([name]) => name === "create"),
+    false,
+  );
 });
 
 test("maps RBAC domain errors to stable safe HTTP responses", async () => {
