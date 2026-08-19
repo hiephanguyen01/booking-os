@@ -271,8 +271,17 @@ test("current Tenant RBAC role remains visible to the current tenant", async () 
   const currentRole = await request(app.getHttpServer())
     .get(`/api/tenant/rbac/roles/${CURRENT_ROLE_ID}`)
     .set("host", TENANT_HOSTNAME)
-    .set("cookie", sessionCookie)
-    .expect(200);
+    .set("cookie", sessionCookie);
+
+  assert.equal(
+    currentRole.status,
+    200,
+    [
+      `Expected current Tenant RBAC role request to return 200, received ${currentRole.status}.`,
+      `Body: ${JSON.stringify(currentRole.body)}`,
+      `Headers: ${JSON.stringify(currentRole.headers)}`,
+    ].join("\n"),
+  );
   assert.equal(currentRole.body.id, CURRENT_ROLE_ID);
 });
 
