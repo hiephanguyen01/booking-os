@@ -315,14 +315,14 @@ test("tenant RBAC role IDs reject invalid UUIDs and hide inaccessible resources"
     .set("host", TENANT_HOSTNAME)
     .set("cookie", sessionCookie)
     .expect(400);
-  assert.equal(invalidResponse.body.error.code, "INVALID_UUID");
+  assert.equal(invalidResponse.body.error, "INVALID_UUID");
 
   const missingResponse = await request(app.getHttpServer())
     .get(`/api/tenant/rbac/roles/${randomUUID()}`)
     .set("host", TENANT_HOSTNAME)
     .set("cookie", sessionCookie)
     .expect(404);
-  assert.equal(missingResponse.body.error.code, "TENANT_CUSTOM_ROLE_NOT_FOUND");
+  assert.equal(missingResponse.body.error, "TENANT_CUSTOM_ROLE_NOT_FOUND");
 });
 
 test("POST /tenant/rbac/roles rejects tenantId supplied by the transport", async () => {
