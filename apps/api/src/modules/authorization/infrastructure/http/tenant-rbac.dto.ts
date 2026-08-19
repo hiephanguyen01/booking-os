@@ -14,16 +14,14 @@ const tenantPermissionKeySchema = z.custom<PermissionKey>(
   { message: "permission key must be tenant-scoped" },
 );
 
+const expectedVersionSchema = z.number().int().min(1);
+const roleNameSchema = z.string().trim().min(1).max(ROLE_NAME_MAX_LENGTH);
+const roleDescriptionSchema = z.string().trim().max(ROLE_DESCRIPTION_MAX_LENGTH).nullable();
+
 const createTenantCustomRoleRequestSchema = z
   .object({
-    name: z.string().trim().min(1).max(ROLE_NAME_MAX_LENGTH),
-    description: z
-      .string()
-      .trim()
-      .max(ROLE_DESCRIPTION_MAX_LENGTH)
-      .nullable()
-      .optional()
-      .default(null),
+    name: roleNameSchema,
+    description: roleDescriptionSchema.optional().default(null),
     permissionKeys: z
       .array(tenantPermissionKeySchema)
       .refine((keys) => new Set(keys).size === keys.length, {
@@ -31,6 +29,42 @@ const createTenantCustomRoleRequestSchema = z
       }),
   })
   .strict();
+
+const updateTenantCustomRoleRequestSchema = z
+  .object({
+    name: roleNameSchema,
+    description: roleDescriptionSchema,
+    expectedVersion: expectedVersionSchema,
+  })
+  .strict();
+
+const replaceTenantCustomRolePermissionsRequestSchema = z
+  .object({
+    permissionKeys: z
+      .array(tenantPermissionKeySchema)
+      .refine((keys) => new Set(keys).size === keys.length, {
+        message: "permissionKeys must not contain duplicates",
+      }),
+    expectedVersion: expectedVersionSchema,
+  })
+  .strict();
+
+const archiveTenantCustomRoleRequestSchema = z
+  .object({
+    expectedVersion: expectedVersionSchema,
+  })
+  .strict();
+
+function parseRequestBody<T>(schema: z.ZodType<T>, input: unknown): T {
+  const result = schema.safeParse(input);
+  if (!result.success) {
+    throw new BadRequestException({
+      code: "INVALID_REQUEST_BODY",
+      message: "Tenant RBAC request body is invalid.",
+    });
+  }
+  return result.data;
+}
 
 export class TenantRbacPermissionResponseDto {
   @ApiProperty({ enum: TENANT_PERMISSION_KEYS })
@@ -86,38 +120,49 @@ export class CreateTenantCustomRoleRequestDto {
 export function parseCreateTenantCustomRoleRequest(
   input: unknown,
 ): CreateTenantCustomRoleRequestDto {
-  const result = createTenantCustomRoleRequestSchema.safeParse(input);
-  if (!result.success) {
-    throw new BadRequestException({
-      code: "INVALID_REQUEST_BODY",
-      message: "Tenant RBAC request body is invalid.",
-    });
-  }
-  return result.data;
+  return parseRequestBody(createTenantCustomRoleRequestSchema, input);
 }
 
 export class UpdateTenantCustomRoleRequestDto {
-  @ApiProperty({ type: String })
+  @ApiProperty({ type: String, maxLength: ROLE_NAME_MAX_LENGTH })
   name!: string;
 
-  @ApiPropertyOptional({ type: String, nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true, maxLength: ROLE_DESCRIPTION_MAX_LENGTH })
   description!: string | null;
 
   @ApiProperty({ type: Number, minimum: 1 })
   expectedVersion!: number;
 }
 
+export function parseUpdateTenantCustomRoleRequest(
+  input: unknown,
+): UpdateTenantCustomRoleRequestDto {
+  return parseRequestBody(updateTenantCustomRoleRequestSchema, input);
+}
+
 export class ReplaceTenantCustomRolePermissionsRequestDto {
-  @ApiProperty({ enum: TENANT_PERMISSION_KEYS, isArray: true })
+  @ApiProperty({ enum: TENANT_PERMISSION_KEYS, isArray: true, uniqueItems: true })
   permissionKeys!: PermissionKey[];
 
   @ApiProperty({ type: Number, minimum: 1 })
   expectedVersion!: number;
 }
 
+export function parseReplaceTenantCustomRolePermissionsRequest(
+  input: unknown,
+): ReplaceTenantCustomRolePermissionsRequestDto {
+  return parseRequestBody(replaceTenantCustomRolePermissionsRequestSchema, input);
+}
+
 export class ArchiveTenantCustomRoleRequestDto {
   @ApiProperty({ type: Number, minimum: 1 })
   expectedVersion!: number;
+}
+
+export function parseArchiveTenantCustomRoleRequest(
+  input: unknown,
+): ArchiveTenantCustomRoleRequestDto {
+  return parseRequestBody(archiveTenantCustomRoleRequestSchema, input);
 }
 
 export class TenantCustomRoleAssignmentResponseDto {
