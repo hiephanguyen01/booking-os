@@ -102,7 +102,7 @@ async function seedTenantOwner(createSession: CreateSessionUseCase): Promise<voi
       id: TENANT_ID,
       slug: TENANT_SLUG,
       name: "Tenant RBAC API",
-      status: "active",
+      status: "provisioning",
     },
   });
   await prisma.tenantDomain.create({
@@ -131,6 +131,10 @@ async function seedTenantOwner(createSession: CreateSessionUseCase): Promise<voi
       scopeLevel: "tenant",
       tenantId: TENANT_ID,
     },
+  });
+  await prisma.tenant.update({
+    where: { id: TENANT_ID },
+    data: { status: "active" },
   });
 
   const created = await createSession.execute({
