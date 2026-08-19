@@ -10,6 +10,7 @@ import request from "supertest";
 import { AppModule } from "../src/app.module.js";
 import { PrismaService } from "../src/database/prisma.service.js";
 import { CreateSessionUseCase } from "../src/modules/sessions/application/use-cases/create-session.js";
+import { runTenantTestTransaction } from "./support/tenant-test-transaction.js";
 
 const RUN_TAG = randomUUID().slice(0, 8);
 const TENANT_ID = randomUUID();
@@ -184,21 +185,29 @@ async function seed(createSession: CreateSessionUseCase): Promise<void> {
     },
   });
 
-  await prisma.$executeRaw`
-    INSERT INTO "tenant_custom_roles" (
-      "id", "tenant_id", "name", "normalized_name", "version", "created_at", "updated_at"
-    ) VALUES
-      (
+  await runTenantTestTransaction(prisma, TENANT_ID, async (transaction) => {
+    await transaction.$executeRaw`
+      INSERT INTO "tenant_custom_roles" (
+        "id", "tenant_id", "name", "normalized_name", "version", "created_at", "updated_at"
+      ) VALUES (
         ${CURRENT_ROLE_ID}::uuid, ${TENANT_ID}::uuid,
-        'Current Tenant Role', ${`current tenant role ${RUN_TAG}`}, 1,
-        ${now}::timestamptz, ${now}::timestamptz
-      ),
-      (
-        ${OTHER_ROLE_ID}::uuid, ${OTHER_TENANT_ID}::uuid,
-        'Other Tenant Role', ${`other tenant role ${RUN_TAG}`}, 1,
+        'Current Tenant Role', 'current tenant role', 1,
         ${now}::timestamptz, ${now}::timestamptz
       )
-  `;
+    `;
+  });
+
+  await runTenantTestTransaction(prisma, OTHER_TENANT_ID, async (transaction) => {
+    await transaction.$executeRaw`
+      INSERT INTO "tenant_custom_roles" (
+        "id", "tenant_id", "name", "normalized_name", "version", "created_at", "updated_at"
+      ) VALUES (
+        ${OTHER_ROLE_ID}::uuid, ${OTHER_TENANT_ID}::uuid,
+        'Other Tenant Role', 'other tenant role', 1,
+        ${now}::timestamptz, ${now}::timestamptz
+      )
+    `;
+  });
 
   await prisma.tenant.updateMany({
     where: { id: { in: [TENANT_ID, OTHER_TENANT_ID] } },
@@ -271,17 +280,8 @@ test("current Tenant RBAC role remains visible to the current tenant", async () 
   const currentRole = await request(app.getHttpServer())
     .get(`/api/tenant/rbac/roles/${CURRENT_ROLE_ID}`)
     .set("host", TENANT_HOSTNAME)
-    .set("cookie", sessionCookie);
-
-  assert.equal(
-    currentRole.status,
-    200,
-    [
-      `Expected current Tenant RBAC role request to return 200, received ${currentRole.status}.`,
-      `Body: ${JSON.stringify(currentRole.body)}`,
-      `Headers: ${JSON.stringify(currentRole.headers)}`,
-    ].join("\n"),
-  );
+    .set("cookie", sessionCookie)
+    .expect(200);
   assert.equal(currentRole.body.id, CURRENT_ROLE_ID);
 });
 
