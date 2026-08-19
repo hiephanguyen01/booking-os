@@ -280,7 +280,7 @@ test("foreign Tenant RBAC role and membership IDs remain hidden from the current
     .set("host", TENANT_HOSTNAME)
     .set("cookie", sessionCookie)
     .expect(404);
-  assert.equal(foreignRole.body.error, "TENANT_CUSTOM_ROLE_NOT_FOUND");
+  assert.equal(foreignRole.body.code, "TENANT_CUSTOM_ROLE_NOT_FOUND");
 
   const currentMembership = await request(app.getHttpServer())
     .get(`/api/tenant/rbac/memberships/${OWNER_MEMBERSHIP_ID}/roles`)
@@ -294,7 +294,7 @@ test("foreign Tenant RBAC role and membership IDs remain hidden from the current
     .set("host", TENANT_HOSTNAME)
     .set("cookie", sessionCookie)
     .expect(404);
-  assert.equal(foreignMembership.body.error, "MEMBERSHIP_REQUIRED");
+  assert.equal(foreignMembership.body.code, "MEMBERSHIP_REQUIRED");
 
   const csrfToken = await readCsrfToken();
   const foreignAssignment = await request(app.getHttpServer())
@@ -304,5 +304,5 @@ test("foreign Tenant RBAC role and membership IDs remain hidden from the current
     .set("cookie", sessionCookie)
     .set("x-csrf-token", csrfToken)
     .expect(404);
-  assert.equal(foreignAssignment.body.error, "MEMBERSHIP_REQUIRED");
+  assert.equal(foreignAssignment.body.code, "MEMBERSHIP_REQUIRED");
 });
