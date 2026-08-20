@@ -95,14 +95,17 @@ Shared files are modified only where their existing ownership requires Partner-s
 
 ---
 
-### Task 1: Extend the code-owned authorization vocabulary for Partner scope
+### Task 1: Extend the code-owned Partner authorization vocabulary without opening Partner runtime scope
 
-**Execution correction — 2026-08-20 source audit**
+**Execution reconciliation — 2026-08-21 fail-closed audit**
 
-- `packages/auth/src/authorization.ts` is the exhaustive runtime `Record<SystemRole, ...>` mapping and is part of Task 1. Adding Partner system roles without updating this file makes the runtime/type contract incomplete.
-- `packages/auth/src/index.ts` already exports the authorization, permission-catalog, permission, and role modules needed by this task; no Task 1 edit is required.
-- `packages/contracts/src/index.ts` already re-exports `./auth/index.js`; no Task 1 edit is required.
-- `packages/contracts/src/request-context.ts` owns tenant execution/transaction authority and remains deferred to Task 7. Task 1 only extends the API authenticated request-context scope/guards.
+Task 1 owns only the code-seeded Partner vocabulary plus compatibility hardening required to keep that vocabulary inert until Partner persistence/session/authority exists. It does **not** open a Partner-authenticated request/session scope or build authoritative Partner authorization yet.
+
+- `packages/auth/src/authorization.ts` is the exhaustive runtime `Record<SystemRole, ...>` mapping and is part of Task 1.
+- `packages/contracts/src/auth/authorization-context.ts` receives stable Partner role/permission identifiers in Task 1, but `AuthorizationContext.scope` remains `platform | tenant` until Task 7.
+- `apps/api/src/common/request-context/request-context.types.ts` remains `platform | tenant` until Task 6, when stored Partner session scope exists.
+- `BuildAuthorizationContextUseCase` must reject Partner system roles from tenant authority until Task 7 adds a real Partner authority branch.
+- Tenant custom-role HTTP temporarily excludes `tenant.partner.*` even though those catalog entries are delegable; Task 10 removes this compatibility block when Partner tenant routes and permission enforcement exist.
 - Existing closed-catalog tests are updated in place rather than duplicated into a new Partner-only vocabulary test.
 
 **Files:**
@@ -113,13 +116,14 @@ Shared files are modified only where their existing ownership requires Partner-s
 - Modify: `packages/auth/tests/authorization.test.ts`
 - Modify: `packages/auth/tests/permission-catalog.test.ts`
 - Modify: `packages/contracts/src/auth/authorization-context.ts`
-- Modify: `packages/contracts/src/auth/index.ts`
 - Modify: `packages/contracts/tests/authorization-context.test.ts`
-- Modify: `apps/api/src/common/request-context/request-context.types.ts`
-- Create: `apps/api/src/common/request-context/request-context.types.test.ts`
+- Modify: `apps/api/src/modules/authorization/application/use-cases/build-authorization-context.use-case.ts`
+- Modify: `apps/api/src/modules/authorization/application/use-cases/build-authorization-context.use-case.test.ts`
+- Modify: `apps/api/src/modules/authorization/infrastructure/http/tenant-rbac.dto.ts`
+- Create: `apps/api/src/modules/authorization/infrastructure/http/tenant-rbac.dto.test.ts`
 
 **Interfaces:**
-- Produces:
+- Produces stable role identifiers:
   ```ts
   type AuthorizationRoleKey =
     | "platform_admin"
@@ -127,25 +131,12 @@ Shared files are modified only where their existing ownership requires Partner-s
     | "tenant_admin"
     | "partner_owner"
     | "partner_member";
-
-  type PartnerAuthorizationScope = {
-    readonly type: "partner";
-    readonly tenantId: string;
-    readonly tenantSlug: string;
-    readonly partnerId: string;
-  };
-
-  type ActivePartnerAuthorizationContext = AuthorizationContext & {
-    readonly scope: PartnerAuthorizationScope;
-    readonly membershipId: string;
-    readonly membershipStatus: "active";
-    readonly membershipAuthorizationVersion: number;
-  };
   ```
 - Produces `PermissionCatalogEntry.scopeLevel: "platform" | "tenant" | "partner"`.
 - Produces exact runtime role-permission mappings for tenant Partner-management roles and the two Partner system roles.
+- Keeps `AuthorizationContext.scope`, API `AuthenticatedScope`, session scope, and authoritative repository scope unchanged until Tasks 6–7.
 
-- [ ] **Step 1: Write RED tests for exact Partner roles, permissions, runtime mappings, scope levels, and request-context guards**
+- [ ] **Step 1: Write RED tests for exact Partner roles, permissions, runtime mappings, and scope-level metadata**
 
 Update the existing closed auth catalogs first:
 
@@ -189,12 +180,6 @@ assert.deepEqual(getPermissions(SYSTEM_ROLES.partnerMember), [
 ]);
 ```
 
-Add contract and request-context expectations proving:
-- `AuthorizationContext.scope` accepts exact Partner `tenantId + tenantSlug + partnerId`;
-- `ActivePartnerAuthorizationContext` requires active membership + positive membership authorization version;
-- authenticated Partner request scope requires non-empty `tenantId` and `partnerId`;
-- Partner request scope is authorization-ready only when session state is active and membership authorization version is positive.
-
 Partner permission constants are exactly:
 
 ```ts
@@ -210,22 +195,19 @@ partnerMembershipRevoke: "partner.membership.revoke",
 ```
 
 Use catalog metadata:
-- tenant Partner-management permissions: tenant-scoped and delegable;
+- tenant Partner-management permissions: tenant-scoped and delegable in the code-owned catalog;
 - Partner permissions: partner-scoped and non-delegable in Sprint 3A because Partner custom RBAC does not yet exist.
 
-- [ ] **Step 2: Run RED vocabulary/contract/guard tests**
-
-Run:
+- [ ] **Step 2: Run RED vocabulary tests**
 
 ```bash
 pnpm --filter @booking-os/auth test
 pnpm --filter @booking-os/contracts test
-pnpm --filter @booking-os/api test -- request-context
 ```
 
-Expected: FAIL because Partner roles, Partner permissions, Partner runtime mappings, Partner authorization-context types, and Partner request guards do not exist.
+Expected: FAIL because Partner roles, permission identifiers, Partner catalog scope, and runtime role mappings do not exist.
 
-- [ ] **Step 3: Implement minimal vocabulary, runtime role mappings, and contract extension**
+- [ ] **Step 3: Implement minimal vocabulary and runtime role mappings**
 
 Add to `SYSTEM_ROLES`:
 
@@ -262,53 +244,24 @@ partner_member
   partner.membership.read
 ```
 
-Extend authorization context:
+Append Partner role/permission identifiers to the shared authorization catalogs, but do not add a Partner branch to `AuthorizationContext.scope` yet.
 
-```ts
-readonly scope:
-  | { readonly type: "platform" }
-  | { readonly type: "tenant"; readonly tenantId: string; readonly tenantSlug: string }
-  | {
-      readonly type: "partner";
-      readonly tenantId: string;
-      readonly tenantSlug: string;
-      readonly partnerId: string;
-    };
-```
+- [ ] **Step 4: Add fail-closed compatibility hardening**
 
-Export `ActivePartnerAuthorizationContext` from `packages/contracts/src/auth/index.ts`.
+Until Task 7 owns Partner authority loading, `BuildAuthorizationContextUseCase` must reject `partner_owner` / `partner_member` when returned under platform or tenant authority.
 
-Do not edit `packages/contracts/src/request-context.ts` in this task; transaction/execution authority is Task 7.
+Until Task 10 introduces real tenant Partner routes, `tenant-rbac.dto.ts` must exclude `tenant.partner.*` from create/update custom-role HTTP payloads even though those permissions remain catalog-delegable. Add focused regression tests for both boundaries.
 
-- [ ] **Step 4: Add Partner-aware API request-context scope and guards**
-
-Extend:
-
-```ts
-export type AuthenticatedScope =
-  | { readonly type: "platform" }
-  | { readonly type: "tenant"; readonly tenantId: string }
-  | { readonly type: "partner"; readonly tenantId: string; readonly partnerId: string };
-```
-
-`isAuthenticatedRequestContext()` accepts Partner scope only when both `tenantId` and `partnerId` are non-empty strings.
-
-`AuthorizationReadyRequestContext` accepts Partner scope only with:
-- session state `active`;
-- positive `membershipAuthorizationVersion`.
-
-Keep `RequestContext.tenantId` as the canonical tenant execution key; do not add client-derived Partner authority to base execution contracts here.
-
-- [ ] **Step 5: Run GREEN focused and repository type verification**
+- [ ] **Step 5: Run GREEN focused and protected verification**
 
 ```bash
 pnpm --filter @booking-os/auth test
 pnpm --filter @booking-os/contracts test
-pnpm --filter @booking-os/api test -- request-context
+pnpm --filter @booking-os/api test -- build-authorization-context tenant-rbac.dto
 pnpm typecheck
 ```
 
-Expected: PASS.
+Expected: PASS, with Partner vocabulary present but no Partner runtime authority/session branch opened yet.
 
 - [ ] **Step 6: Commit**
 
@@ -321,12 +274,13 @@ git add \
   packages/auth/tests/authorization.test.ts \
   packages/auth/tests/permission-catalog.test.ts \
   packages/contracts/src/auth/authorization-context.ts \
-  packages/contracts/src/auth/index.ts \
   packages/contracts/tests/authorization-context.test.ts \
-  apps/api/src/common/request-context/request-context.types.ts \
-  apps/api/src/common/request-context/request-context.types.test.ts
+  apps/api/src/modules/authorization/application/use-cases/build-authorization-context.use-case.ts \
+  apps/api/src/modules/authorization/application/use-cases/build-authorization-context.use-case.test.ts \
+  apps/api/src/modules/authorization/infrastructure/http/tenant-rbac.dto.ts \
+  apps/api/src/modules/authorization/infrastructure/http/tenant-rbac.dto.test.ts
 
-git commit -m "feat: define Partner authorization scope"
+git commit -m "feat: define Partner authorization vocabulary"
 ```
 
 ---
@@ -836,7 +790,11 @@ git commit -m "feat: deliver Partner onboarding emails"
 
 ### Task 6: Extend opaque sessions and request authentication for stored Partner scope
 
+**Execution reconciliation:** Task 6 is the first point where API request authentication may carry `authScope.type = "partner"`, because only this task adds persisted Partner session scope and trusted tenant-host session lookup.
+
 **Files:**
+- Modify: `apps/api/src/common/request-context/request-context.types.ts`
+- Create: `apps/api/src/common/request-context/request-context.types.test.ts`
 - Modify: `apps/api/src/modules/sessions/domain/auth-session.ts`
 - Modify: `apps/api/src/modules/sessions/application/ports/session-repository.port.ts`
 - Modify: `apps/api/src/modules/sessions/application/use-cases/create-session.ts`
@@ -859,6 +817,7 @@ git commit -m "feat: deliver Partner onboarding emails"
     | { readonly type: "tenant"; readonly tenantId: string }
     | { readonly type: "partner"; readonly tenantId: string; readonly partnerId: string };
   ```
+- API `AuthenticatedScope` becomes the same three-way union after middleware restores the stored session scope. Partner scope requires non-empty trusted `tenantId` and stored `partnerId`; `AuthorizationReadyRequestContext` requires active session state and a positive membership authorization version.
 - Introduce lookup boundary separate from stored scope:
   ```ts
   type SessionLookupBoundary =
@@ -869,9 +828,12 @@ git commit -m "feat: deliver Partner onboarding emails"
 
 **Why this change is required:** on a tenant hostname the middleware cannot know `partnerId` before reading the opaque session. Requiring an exact `SessionScope` before lookup would force the browser to resend Partner authority on every request. The repository instead looks up selector + exact hostname within an expected platform/tenant-host boundary, returns the stored scope, and the use case validates that stored tenant matches the trusted hostname-resolved tenant.
 
-- [ ] **Step 1: Write RED session tests**
+- [ ] **Step 1: Write RED session and request-context tests**
 
 Cover:
+- API authenticated request-context currently rejects Partner scope before this task;
+- after the change, Partner request scope requires non-empty `tenantId` + `partnerId`;
+- Partner request scope is authorization-ready only with active state + positive membership epoch;
 - tenant-host lookup may return a tenant or Partner session whose stored `tenantId` matches the resolved tenant;
 - tenant-host lookup rejects a Partner session from another tenant;
 - platform host rejects tenant/Partner sessions;
@@ -969,7 +931,12 @@ git commit -m "feat: bind opaque sessions to Partner scope"
 
 ### Task 7: Build authoritative Partner permission loading and stale-authority reconciliation
 
+**Execution reconciliation:** Task 7 is where the shared authorization contract becomes truly Partner-aware. Task 1 only published stable identifiers; Task 6 made stored/authenticated Partner session scope possible.
+
 **Files:**
+- Modify: `packages/contracts/src/auth/authorization-context.ts`
+- Modify: `packages/contracts/src/auth/index.ts`
+- Modify: `packages/contracts/tests/authorization-context.test.ts`
 - Modify: `apps/api/src/modules/authorization/application/ports/authorization-repository.port.ts`
 - Modify: `apps/api/src/modules/authorization/application/use-cases/build-authorization-context.use-case.ts`
 - Modify tests
@@ -984,7 +951,25 @@ git commit -m "feat: bind opaque sessions to Partner scope"
 - Test: `apps/api/test/partner-authorization-concurrency.e2e.test.ts`
 
 **Interfaces:**
-- Produces:
+- Extends `AuthorizationContext.scope` with:
+
+```ts
+type PartnerAuthorizationScope = {
+  readonly type: "partner";
+  readonly tenantId: string;
+  readonly tenantSlug: string;
+  readonly partnerId: string;
+};
+
+type ActivePartnerAuthorizationContext = AuthorizationContext & {
+  readonly scope: PartnerAuthorizationScope;
+  readonly membershipId: string;
+  readonly membershipStatus: "active";
+  readonly membershipAuthorizationVersion: number;
+};
+```
+
+- Produces authoritative repository result:
 
 ```ts
 interface PartnerCurrentScopeAuthority {
@@ -1336,7 +1321,11 @@ git commit -m "feat: manage Partner memberships"
 
 ### Task 10: Expose Partner HTTP APIs, session-scope selection, stable errors, and OpenAPI
 
+**Execution reconciliation:** Task 10 removes the Task 1 compatibility block that temporarily rejects `tenant.partner.*` in Tenant RBAC HTTP. Once real tenant Partner routes are permission-protected, existing Sprint 2 tenant custom roles may delegate those catalog-delegable permissions through the normal grant policy.
+
 **Files:**
+- Modify: `apps/api/src/modules/authorization/infrastructure/http/tenant-rbac.dto.ts`
+- Modify: `apps/api/src/modules/authorization/infrastructure/http/tenant-rbac.dto.test.ts`
 - Create:
   `partner/infrastructure/http/partner-public.controller.ts`
   `partner/infrastructure/http/tenant-partners.controller.ts`
@@ -1387,9 +1376,11 @@ Session:
 POST /auth/session/partner-scope
 ```
 
-- [ ] **Step 1: Write RED controller/API tests**
+- [ ] **Step 1: Write RED controller/API and tenant-role delegation tests**
 
 Assert:
+- `tenant.partner.*` is accepted again by Tenant RBAC create/update DTO parsing once Partner tenant routes exist;
+- tenant custom-role grant policy remains the existing Sprint 2 policy rather than a Partner-specific bypass;
 - no request DTO accepts `tenantId`;
 - Partner self DTOs/routes do not accept `partnerId`;
 - exact tenant hostname is required;
@@ -1410,7 +1401,9 @@ pnpm --filter @booking-os/api test:e2e -- partner-api.e2e.test.ts
 
 Expected: FAIL because routes are absent.
 
-- [ ] **Step 3: Implement controllers using current conventions**
+- [ ] **Step 3: Implement controllers and re-enable tenant Partner-permission delegation**
+
+Remove the temporary Task 1 `!key.startsWith("tenant.partner.")` filter from Tenant RBAC HTTP parsing and update its regression test to accept the four `tenant.partner.*` permissions. Do this only in the same task that introduces the protected tenant Partner routes below.
 
 Use:
 - `@SupportedApi()`;
