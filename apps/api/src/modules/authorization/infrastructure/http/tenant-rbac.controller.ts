@@ -18,7 +18,13 @@ import {
   Put,
   UseGuards,
 } from "@nestjs/common";
-import { ApiOkResponse, ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
+import {
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from "@nestjs/swagger";
 
 import { SupportedApi } from "../../../../api-visibility/api-visibility.decorator.js";
 import { RequestContextStorage } from "../../../../common/request-context/request-context.storage.js";
@@ -58,17 +64,17 @@ import {
   TenantRbacPermissionUnknownError,
 } from "../../domain/tenant-rbac/tenant-rbac.errors.js";
 import {
-  type ArchiveTenantCustomRoleRequestDto,
-  type CreateTenantCustomRoleRequestDto,
+  ArchiveTenantCustomRoleRequestDto,
+  CreateTenantCustomRoleRequestDto,
   parseArchiveTenantCustomRoleRequest,
   parseCreateTenantCustomRoleRequest,
   parseReplaceTenantCustomRolePermissionsRequest,
   parseUpdateTenantCustomRoleRequest,
-  type ReplaceTenantCustomRolePermissionsRequestDto,
+  ReplaceTenantCustomRolePermissionsRequestDto,
   TenantCustomRoleAssignmentResponseDto,
   TenantCustomRoleResponseDto,
   TenantRbacPermissionResponseDto,
-  type UpdateTenantCustomRoleRequestDto,
+  UpdateTenantCustomRoleRequestDto,
 } from "./tenant-rbac.dto.js";
 
 function requireUuid(value: unknown, field: "roleId" | "membershipId"): string {
@@ -151,7 +157,7 @@ export class TenantRbacController {
   @HttpCode(201)
   @Header("Cache-Control", "private, no-store")
   @ApiOperation({ operationId: "createTenantRbacRole" })
-  @ApiOkResponse({ type: TenantCustomRoleResponseDto })
+  @ApiCreatedResponse({ type: TenantCustomRoleResponseDto })
   async createRole(
     @Body() body: CreateTenantCustomRoleRequestDto,
     @CurrentAuthorizationContext() authorization: AuthorizationContext,
