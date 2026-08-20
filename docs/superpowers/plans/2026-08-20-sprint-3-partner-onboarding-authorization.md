@@ -97,17 +97,26 @@ Shared files are modified only where their existing ownership requires Partner-s
 
 ### Task 1: Extend the code-owned authorization vocabulary for Partner scope
 
+**Execution correction — 2026-08-20 source audit**
+
+- `packages/auth/src/authorization.ts` is the exhaustive runtime `Record<SystemRole, ...>` mapping and is part of Task 1. Adding Partner system roles without updating this file makes the runtime/type contract incomplete.
+- `packages/auth/src/index.ts` already exports the authorization, permission-catalog, permission, and role modules needed by this task; no Task 1 edit is required.
+- `packages/contracts/src/index.ts` already re-exports `./auth/index.js`; no Task 1 edit is required.
+- `packages/contracts/src/request-context.ts` owns tenant execution/transaction authority and remains deferred to Task 7. Task 1 only extends the API authenticated request-context scope/guards.
+- Existing closed-catalog tests are updated in place rather than duplicated into a new Partner-only vocabulary test.
+
 **Files:**
 - Modify: `packages/auth/src/roles.ts`
 - Modify: `packages/auth/src/permissions.ts`
 - Modify: `packages/auth/src/permission-catalog.ts`
-- Modify: `packages/auth/src/index.ts`
-- Modify: `packages/auth/tests/authorization.test.ts` if it already owns role/permission assertions; otherwise create `packages/auth/tests/partner-authorization-vocabulary.test.ts`
+- Modify: `packages/auth/src/authorization.ts`
+- Modify: `packages/auth/tests/authorization.test.ts`
+- Modify: `packages/auth/tests/permission-catalog.test.ts`
 - Modify: `packages/contracts/src/auth/authorization-context.ts`
-- Modify: `packages/contracts/src/request-context.ts`
-- Modify: `packages/contracts/src/index.ts`
+- Modify: `packages/contracts/src/auth/index.ts`
+- Modify: `packages/contracts/tests/authorization-context.test.ts`
 - Modify: `apps/api/src/common/request-context/request-context.types.ts`
-- Test: `apps/api/src/common/request-context/request-context.types.test.ts` if present; otherwise create it
+- Create: `apps/api/src/common/request-context/request-context.types.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -134,16 +143,13 @@ Shared files are modified only where their existing ownership requires Partner-s
   };
   ```
 - Produces `PermissionCatalogEntry.scopeLevel: "platform" | "tenant" | "partner"`.
+- Produces exact runtime role-permission mappings for tenant Partner-management roles and the two Partner system roles.
 
-- [ ] **Step 1: Write RED auth-package tests for exact Partner roles, permissions, scope levels, and delegability**
+- [ ] **Step 1: Write RED tests for exact Partner roles, permissions, runtime mappings, scope levels, and request-context guards**
+
+Update the existing closed auth catalogs first:
 
 ```ts
-import {
-  getPermissionCatalogEntry,
-  PERMISSION_KEYS,
-  SYSTEM_ROLES,
-} from "../src/index.js";
-
 assert.equal(SYSTEM_ROLES.partnerOwner, "partner_owner");
 assert.equal(SYSTEM_ROLES.partnerMember, "partner_member");
 
@@ -166,6 +172,29 @@ assert.equal(getPermissionCatalogEntry(PERMISSION_KEYS.partnerProfileRead)?.scop
 assert.equal(getPermissionCatalogEntry(PERMISSION_KEYS.partnerMembershipInvite)?.scopeLevel, "partner");
 ```
 
+Add runtime mapping expectations:
+
+```ts
+assert.deepEqual(getPermissions(SYSTEM_ROLES.partnerOwner), [
+  PERMISSION_KEYS.partnerProfileRead,
+  PERMISSION_KEYS.partnerProfileUpdate,
+  PERMISSION_KEYS.partnerMembershipRead,
+  PERMISSION_KEYS.partnerMembershipInvite,
+  PERMISSION_KEYS.partnerMembershipRevoke,
+]);
+
+assert.deepEqual(getPermissions(SYSTEM_ROLES.partnerMember), [
+  PERMISSION_KEYS.partnerProfileRead,
+  PERMISSION_KEYS.partnerMembershipRead,
+]);
+```
+
+Add contract and request-context expectations proving:
+- `AuthorizationContext.scope` accepts exact Partner `tenantId + tenantSlug + partnerId`;
+- `ActivePartnerAuthorizationContext` requires active membership + positive membership authorization version;
+- authenticated Partner request scope requires non-empty `tenantId` and `partnerId`;
+- Partner request scope is authorization-ready only when session state is active and membership authorization version is positive.
+
 Partner permission constants are exactly:
 
 ```ts
@@ -182,21 +211,21 @@ partnerMembershipRevoke: "partner.membership.revoke",
 
 Use catalog metadata:
 - tenant Partner-management permissions: tenant-scoped and delegable;
-- Partner permissions: partner-scoped;
-- `partnerMembershipInvite` / `partnerMembershipRevoke` are not used for custom Partner RBAC in Sprint 3A because Partner custom RBAC does not exist.
+- Partner permissions: partner-scoped and non-delegable in Sprint 3A because Partner custom RBAC does not yet exist.
 
-- [ ] **Step 2: Run RED vocabulary tests**
+- [ ] **Step 2: Run RED vocabulary/contract/guard tests**
 
 Run:
 
 ```bash
 pnpm --filter @booking-os/auth test
 pnpm --filter @booking-os/contracts test
+pnpm --filter @booking-os/api test -- request-context
 ```
 
-Expected: FAIL because `partner_owner`, `partner_member`, Partner permission constants, Partner catalog scope, and Partner authorization-context types do not exist.
+Expected: FAIL because Partner roles, Partner permissions, Partner runtime mappings, Partner authorization-context types, and Partner request guards do not exist.
 
-- [ ] **Step 3: Implement minimal vocabulary and contract extension**
+- [ ] **Step 3: Implement minimal vocabulary, runtime role mappings, and contract extension**
 
 Add to `SYSTEM_ROLES`:
 
@@ -209,6 +238,28 @@ Extend `PermissionCatalogEntry.scopeLevel`:
 
 ```ts
 readonly scopeLevel: "platform" | "tenant" | "partner";
+```
+
+Extend `ROLE_PERMISSIONS` exactly:
+
+```text
+tenant_owner
+tenant_admin
+  + tenant.partner.read
+  + tenant.partner.review
+  + tenant.partner.approve
+  + tenant.partner.suspend
+
+partner_owner
+  partner.profile.read
+  partner.profile.update
+  partner.membership.read
+  partner.membership.invite
+  partner.membership.revoke
+
+partner_member
+  partner.profile.read
+  partner.membership.read
 ```
 
 Extend authorization context:
@@ -225,7 +276,13 @@ readonly scope:
     };
 ```
 
-Extend request-context authentication scope:
+Export `ActivePartnerAuthorizationContext` from `packages/contracts/src/auth/index.ts`.
+
+Do not edit `packages/contracts/src/request-context.ts` in this task; transaction/execution authority is Task 7.
+
+- [ ] **Step 4: Add Partner-aware API request-context scope and guards**
+
+Extend:
 
 ```ts
 export type AuthenticatedScope =
@@ -234,15 +291,15 @@ export type AuthenticatedScope =
   | { readonly type: "partner"; readonly tenantId: string; readonly partnerId: string };
 ```
 
-Keep `RequestContext.tenantId` as the canonical tenant execution key; do not add client-derived Partner authority to base request context.
-
-- [ ] **Step 4: Add Partner-aware request-context guards**
-
 `isAuthenticatedRequestContext()` accepts Partner scope only when both `tenantId` and `partnerId` are non-empty strings.
 
-`AuthorizationReadyRequestContext` accepts Partner scope only with a positive `membershipAuthorizationVersion`.
+`AuthorizationReadyRequestContext` accepts Partner scope only with:
+- session state `active`;
+- positive `membershipAuthorizationVersion`.
 
-- [ ] **Step 5: Run GREEN package/type tests**
+Keep `RequestContext.tenantId` as the canonical tenant execution key; do not add client-derived Partner authority to base execution contracts here.
+
+- [ ] **Step 5: Run GREEN focused and repository type verification**
 
 ```bash
 pnpm --filter @booking-os/auth test
@@ -256,7 +313,19 @@ Expected: PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add packages/auth packages/contracts apps/api/src/common/request-context
+git add \
+  packages/auth/src/roles.ts \
+  packages/auth/src/permissions.ts \
+  packages/auth/src/permission-catalog.ts \
+  packages/auth/src/authorization.ts \
+  packages/auth/tests/authorization.test.ts \
+  packages/auth/tests/permission-catalog.test.ts \
+  packages/contracts/src/auth/authorization-context.ts \
+  packages/contracts/src/auth/index.ts \
+  packages/contracts/tests/authorization-context.test.ts \
+  apps/api/src/common/request-context/request-context.types.ts \
+  apps/api/src/common/request-context/request-context.types.test.ts
+
 git commit -m "feat: define Partner authorization scope"
 ```
 
