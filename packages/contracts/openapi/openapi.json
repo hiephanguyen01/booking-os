@@ -52,6 +52,18 @@
         ],
         "type": "object"
       },
+      "ArchiveTenantCustomRoleRequestDto": {
+        "properties": {
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "expectedVersion"
+        ],
+        "type": "object"
+      },
       "AuthorizationContextResponseDto": {
         "properties": {
           "membershipAuthorizationVersion": {
@@ -165,6 +177,51 @@
         },
         "required": [
           "email"
+        ],
+        "type": "object"
+      },
+      "CreateTenantCustomRoleRequestDto": {
+        "properties": {
+          "description": {
+            "maxLength": 500,
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "permissionKeys": {
+            "items": {
+              "enum": [
+                "tenant.membership.read",
+                "tenant.membership.admin.invite",
+                "tenant.membership.admin.suspend",
+                "tenant.membership.admin.revoke",
+                "tenant.membership.owner.promote",
+                "tenant.membership.owner.demote",
+                "tenant.security.session.read",
+                "tenant.security.session.revoke",
+                "tenant.rbac.permission.read",
+                "tenant.rbac.role.read",
+                "tenant.rbac.role.create",
+                "tenant.rbac.role.update",
+                "tenant.rbac.role.archive",
+                "tenant.rbac.role.permission.grant",
+                "tenant.rbac.role.permission.revoke",
+                "tenant.rbac.assignment.read",
+                "tenant.rbac.assignment.grant",
+                "tenant.rbac.assignment.revoke"
+              ],
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "name",
+          "permissionKeys"
         ],
         "type": "object"
       },
@@ -416,6 +473,46 @@
           "id",
           "state",
           "scope"
+        ],
+        "type": "object"
+      },
+      "ReplaceTenantCustomRolePermissionsRequestDto": {
+        "properties": {
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "permissionKeys": {
+            "items": {
+              "enum": [
+                "tenant.membership.read",
+                "tenant.membership.admin.invite",
+                "tenant.membership.admin.suspend",
+                "tenant.membership.admin.revoke",
+                "tenant.membership.owner.promote",
+                "tenant.membership.owner.demote",
+                "tenant.security.session.read",
+                "tenant.security.session.revoke",
+                "tenant.rbac.permission.read",
+                "tenant.rbac.role.read",
+                "tenant.rbac.role.create",
+                "tenant.rbac.role.update",
+                "tenant.rbac.role.archive",
+                "tenant.rbac.role.permission.grant",
+                "tenant.rbac.role.permission.revoke",
+                "tenant.rbac.assignment.read",
+                "tenant.rbac.assignment.grant",
+                "tenant.rbac.assignment.revoke"
+              ],
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "permissionKeys",
+          "expectedVersion"
         ],
         "type": "object"
       },
@@ -867,6 +964,28 @@
           "scopeLevel",
           "delegable",
           "description"
+        ],
+        "type": "object"
+      },
+      "UpdateTenantCustomRoleRequestDto": {
+        "properties": {
+          "description": {
+            "maxLength": 500,
+            "nullable": true,
+            "type": "string"
+          },
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "name": {
+            "maxLength": 100,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "expectedVersion"
         ],
         "type": "object"
       }
@@ -1881,8 +2000,18 @@
       "post": {
         "operationId": "createTenantRbacRole",
         "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTenantCustomRoleRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
@@ -1913,6 +2042,16 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArchiveTenantCustomRoleRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -1973,6 +2112,16 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTenantCustomRoleRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -2005,6 +2154,16 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceTenantCustomRolePermissionsRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {

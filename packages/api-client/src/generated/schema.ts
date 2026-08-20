@@ -569,6 +569,9 @@ export interface components {
             /** Format: uuid */
             readonly id: string;
         };
+        readonly ArchiveTenantCustomRoleRequestDto: {
+            readonly expectedVersion: number;
+        };
         readonly AuthorizationContextResponseDto: {
             readonly membershipAuthorizationVersion?: number;
             /** Format: uuid */
@@ -602,6 +605,11 @@ export interface components {
         readonly CreateTenantAdminInvitationRequestDto: {
             /** Format: email */
             readonly email: string;
+        };
+        readonly CreateTenantCustomRoleRequestDto: {
+            readonly description?: string | null;
+            readonly name: string;
+            readonly permissionKeys: readonly ("tenant.membership.read" | "tenant.membership.admin.invite" | "tenant.membership.admin.suspend" | "tenant.membership.admin.revoke" | "tenant.membership.owner.promote" | "tenant.membership.owner.demote" | "tenant.security.session.read" | "tenant.security.session.revoke" | "tenant.rbac.permission.read" | "tenant.rbac.role.read" | "tenant.rbac.role.create" | "tenant.rbac.role.update" | "tenant.rbac.role.archive" | "tenant.rbac.role.permission.grant" | "tenant.rbac.role.permission.revoke" | "tenant.rbac.assignment.read" | "tenant.rbac.assignment.grant" | "tenant.rbac.assignment.revoke")[];
         };
         readonly CurrentAuthenticationResponseDto: {
             readonly actor: components["schemas"]["ActorDto"];
@@ -679,6 +687,10 @@ export interface components {
             readonly scope: components["schemas"]["SessionScopeDto"];
             /** @enum {string} */
             readonly state: "active" | "invitation_pending";
+        };
+        readonly ReplaceTenantCustomRolePermissionsRequestDto: {
+            readonly expectedVersion: number;
+            readonly permissionKeys: readonly ("tenant.membership.read" | "tenant.membership.admin.invite" | "tenant.membership.admin.suspend" | "tenant.membership.admin.revoke" | "tenant.membership.owner.promote" | "tenant.membership.owner.demote" | "tenant.security.session.read" | "tenant.security.session.revoke" | "tenant.rbac.permission.read" | "tenant.rbac.role.read" | "tenant.rbac.role.create" | "tenant.rbac.role.update" | "tenant.rbac.role.archive" | "tenant.rbac.role.permission.grant" | "tenant.rbac.role.permission.revoke" | "tenant.rbac.assignment.read" | "tenant.rbac.assignment.grant" | "tenant.rbac.assignment.revoke")[];
         };
         readonly RequestIdentityPasswordResetDto: {
             /** Format: email */
@@ -799,6 +811,11 @@ export interface components {
             readonly key: "tenant.membership.read" | "tenant.membership.admin.invite" | "tenant.membership.admin.suspend" | "tenant.membership.admin.revoke" | "tenant.membership.owner.promote" | "tenant.membership.owner.demote" | "tenant.security.session.read" | "tenant.security.session.revoke" | "tenant.rbac.permission.read" | "tenant.rbac.role.read" | "tenant.rbac.role.create" | "tenant.rbac.role.update" | "tenant.rbac.role.archive" | "tenant.rbac.role.permission.grant" | "tenant.rbac.role.permission.revoke" | "tenant.rbac.assignment.read" | "tenant.rbac.assignment.grant" | "tenant.rbac.assignment.revoke";
             /** @enum {string} */
             readonly scopeLevel: "tenant";
+        };
+        readonly UpdateTenantCustomRoleRequestDto: {
+            readonly description?: string | null;
+            readonly expectedVersion: number;
+            readonly name: string;
         };
     };
     responses: never;
@@ -1537,9 +1554,13 @@ export interface operations {
             readonly path?: never;
             readonly cookie?: never;
         };
-        readonly requestBody?: never;
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["CreateTenantCustomRoleRequestDto"];
+            };
+        };
         readonly responses: {
-            readonly 200: {
+            readonly 201: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
@@ -1579,7 +1600,11 @@ export interface operations {
             };
             readonly cookie?: never;
         };
-        readonly requestBody?: never;
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["ArchiveTenantCustomRoleRequestDto"];
+            };
+        };
         readonly responses: {
             readonly 200: {
                 headers: {
@@ -1600,7 +1625,11 @@ export interface operations {
             };
             readonly cookie?: never;
         };
-        readonly requestBody?: never;
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["UpdateTenantCustomRoleRequestDto"];
+            };
+        };
         readonly responses: {
             readonly 200: {
                 headers: {
@@ -1621,7 +1650,11 @@ export interface operations {
             };
             readonly cookie?: never;
         };
-        readonly requestBody?: never;
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["ReplaceTenantCustomRolePermissionsRequestDto"];
+            };
+        };
         readonly responses: {
             readonly 200: {
                 headers: {
