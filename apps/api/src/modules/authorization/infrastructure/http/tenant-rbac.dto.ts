@@ -3,8 +3,8 @@ import { BadRequestException } from "@nestjs/common";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { z } from "zod";
 
-const TENANT_PERMISSION_KEYS = Object.values(PERMISSION_KEYS).filter((key) =>
-  key.startsWith("tenant."),
+const TENANT_PERMISSION_KEYS = Object.values(PERMISSION_KEYS).filter(
+  (key) => key.startsWith("tenant.") && !key.startsWith("tenant.partner."),
 );
 const ROLE_NAME_MAX_LENGTH = 100;
 const ROLE_DESCRIPTION_MAX_LENGTH = 500;
