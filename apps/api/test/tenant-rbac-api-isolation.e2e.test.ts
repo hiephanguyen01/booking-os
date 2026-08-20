@@ -196,6 +196,18 @@ async function seed(createSession: CreateSessionUseCase): Promise<void> {
     },
   });
 
+  await runTenantTestTransaction(prisma, TENANT_ID, async (transaction) => {
+    await transaction.$executeRaw`
+      INSERT INTO "tenant_custom_roles" (
+        "id", "tenant_id", "name", "normalized_name", "version", "created_at", "updated_at"
+      ) VALUES (
+        ${CURRENT_ROLE_ID}::uuid, ${TENANT_ID}::uuid,
+        'Current Tenant Assignment Role', 'current tenant assignment role', 1,
+        ${now}::timestamptz, ${now}::timestamptz
+      )
+    `;
+  });
+
   await runTenantTestTransaction(prisma, OTHER_TENANT_ID, async (transaction) => {
     await transaction.$executeRaw`
       INSERT INTO "tenant_custom_roles" (
