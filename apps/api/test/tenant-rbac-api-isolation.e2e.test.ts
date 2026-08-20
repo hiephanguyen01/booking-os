@@ -311,7 +311,7 @@ test("foreign Tenant RBAC role IDs remain hidden from the current tenant", async
     .set("host", TENANT_HOSTNAME)
     .set("cookie", sessionCookie)
     .expect(404);
-  assert.fail(`foreign role response: ${JSON.stringify(foreignRole.body)}`);
+  assert.equal(foreignRole.body.error, "TENANT_CUSTOM_ROLE_NOT_FOUND");
 });
 
 test.skip("foreign Tenant RBAC membership IDs remain hidden from the current tenant", async () => {
