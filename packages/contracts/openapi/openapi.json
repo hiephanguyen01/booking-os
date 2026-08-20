@@ -563,6 +563,109 @@
         ],
         "type": "object"
       },
+      "TenantCustomRoleAssignmentResponseDto": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "membershipId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "revokedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "roleId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "tenantId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "membershipId",
+          "roleId",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "TenantCustomRoleResponseDto": {
+        "properties": {
+          "archivedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "description": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "normalizedName": {
+            "type": "string"
+          },
+          "permissionKeys": {
+            "items": {
+              "enum": [
+                "tenant.membership.read",
+                "tenant.membership.admin.invite",
+                "tenant.membership.admin.suspend",
+                "tenant.membership.admin.revoke",
+                "tenant.membership.owner.promote",
+                "tenant.membership.owner.demote",
+                "tenant.security.session.read",
+                "tenant.security.session.revoke",
+                "tenant.rbac.permission.read",
+                "tenant.rbac.role.read",
+                "tenant.rbac.role.create",
+                "tenant.rbac.role.update",
+                "tenant.rbac.role.archive",
+                "tenant.rbac.role.permission.grant",
+                "tenant.rbac.role.permission.revoke",
+                "tenant.rbac.assignment.read",
+                "tenant.rbac.assignment.grant",
+                "tenant.rbac.assignment.revoke"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "tenantId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "name",
+          "normalizedName",
+          "version",
+          "permissionKeys"
+        ],
+        "type": "object"
+      },
       "TenantInvitationAcceptedResponseDto": {
         "properties": {
           "accepted": {
@@ -718,6 +821,52 @@
           "ownerMembershipId",
           "ownerInvitationId",
           "replayed"
+        ],
+        "type": "object"
+      },
+      "TenantRbacPermissionResponseDto": {
+        "properties": {
+          "delegable": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "key": {
+            "enum": [
+              "tenant.membership.read",
+              "tenant.membership.admin.invite",
+              "tenant.membership.admin.suspend",
+              "tenant.membership.admin.revoke",
+              "tenant.membership.owner.promote",
+              "tenant.membership.owner.demote",
+              "tenant.security.session.read",
+              "tenant.security.session.revoke",
+              "tenant.rbac.permission.read",
+              "tenant.rbac.role.read",
+              "tenant.rbac.role.create",
+              "tenant.rbac.role.update",
+              "tenant.rbac.role.archive",
+              "tenant.rbac.role.permission.grant",
+              "tenant.rbac.role.permission.revoke",
+              "tenant.rbac.assignment.read",
+              "tenant.rbac.assignment.grant",
+              "tenant.rbac.assignment.revoke"
+            ],
+            "type": "string"
+          },
+          "scopeLevel": {
+            "enum": [
+              "tenant"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "scopeLevel",
+          "delegable",
+          "description"
         ],
         "type": "object"
       }
@@ -1562,6 +1711,315 @@
         "summary": "",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/api/tenant/rbac/memberships/{membershipId}/roles": {
+      "get": {
+        "operationId": "listTenantMembershipRbacRoles",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "membershipId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TenantCustomRoleResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "tenant-rbac"
+        ]
+      }
+    },
+    "/api/tenant/rbac/memberships/{membershipId}/roles/{roleId}": {
+      "delete": {
+        "operationId": "revokeTenantMembershipRbacRole",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "roleId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "membershipId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "tenant-rbac"
+        ]
+      },
+      "post": {
+        "operationId": "grantTenantMembershipRbacRole",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "roleId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "membershipId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantCustomRoleAssignmentResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "tenant-rbac"
+        ]
+      }
+    },
+    "/api/tenant/rbac/permissions": {
+      "get": {
+        "operationId": "listTenantRbacPermissions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TenantRbacPermissionResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "tenant-rbac"
+        ]
+      }
+    },
+    "/api/tenant/rbac/roles": {
+      "get": {
+        "operationId": "listTenantRbacRoles",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TenantCustomRoleResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "tenant-rbac"
+        ]
+      },
+      "post": {
+        "operationId": "createTenantRbacRole",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantCustomRoleResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "tenant-rbac"
+        ]
+      }
+    },
+    "/api/tenant/rbac/roles/{roleId}": {
+      "delete": {
+        "operationId": "archiveTenantRbacRole",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "roleId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantCustomRoleResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "tenant-rbac"
+        ]
+      },
+      "get": {
+        "operationId": "getTenantRbacRole",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "roleId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantCustomRoleResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "tenant-rbac"
+        ]
+      },
+      "patch": {
+        "operationId": "updateTenantRbacRole",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "roleId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantCustomRoleResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "tenant-rbac"
+        ]
+      }
+    },
+    "/api/tenant/rbac/roles/{roleId}/permissions": {
+      "put": {
+        "operationId": "replaceTenantRbacRolePermissions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "roleId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantCustomRoleResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "tenant-rbac"
         ]
       }
     }
