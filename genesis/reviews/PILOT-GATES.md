@@ -17,6 +17,17 @@ These checks close only the Sprint 1B Platform/Tenant identity-access slice; the
 - [x] Transactional security audit, bounded metrics, dependency audit, and committed-secret scanning are protected gates.
 - [x] Identity-access recovery and first Platform-administrator bootstrap procedures have explicit owners and reviewed runbooks.
 
+### Sprint 2 dynamic RBAC checkpoint
+
+These checks close only the tenant dynamic-RBAC backend slice. Platform/Partner custom roles and the full Role Builder UI remain deferred until their backend scopes and governance exist.
+
+- [x] Tenant custom roles, permission mappings, and membership assignments are same-tenant constrained and FORCE-RLS protected through the normal application role.
+- [x] System roles remain immutable; custom roles contribute effective permissions without widening system `roleKeys`.
+- [x] Owner-governed mutations enforce delegability/actor-held boundaries, optimistic versions, authorization-version invalidation, transactional audit, and stable safe HTTP errors.
+- [x] Required replace/archive/grant/revoke races and stale-authority reconciliation are executable PostgreSQL evidence.
+- [x] `S2-RBAC01`–`S2-RBAC16` are protected by `pnpm verify:dynamic-rbac`, while Sprint 1B identity access, build/browser, production config, dependency audit, and committed-secret scan remain blocking regressions.
+- [x] Operational recovery guidance covers accidental assignment, permission expansion, archived-role impact, stale authority/session reconciliation, and RBAC mutation outage without deleting RBAC history.
+
 ## Booking and Availability
 
 - [ ] Concurrent requests cannot exceed resource capacity.
