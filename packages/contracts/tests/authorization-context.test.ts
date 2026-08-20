@@ -2,13 +2,20 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  type ActivePartnerAuthorizationContext,
   AUTHORIZATION_PERMISSION_KEYS,
   AUTHORIZATION_ROLE_KEYS,
   type AuthorizationContext,
 } from "../src/auth/index.js";
 
 test("authorization catalogs expose the approved stable identifiers", () => {
-  assert.deepEqual(AUTHORIZATION_ROLE_KEYS, ["platform_admin", "tenant_owner", "tenant_admin"]);
+  assert.deepEqual(AUTHORIZATION_ROLE_KEYS, [
+    "platform_admin",
+    "tenant_owner",
+    "tenant_admin",
+    "partner_owner",
+    "partner_member",
+  ]);
   assert.deepEqual(AUTHORIZATION_PERMISSION_KEYS, [
     "platform.security.audit.read",
     "platform.security.session.revoke",
@@ -32,6 +39,15 @@ test("authorization catalogs expose the approved stable identifiers", () => {
     "tenant.rbac.assignment.read",
     "tenant.rbac.assignment.grant",
     "tenant.rbac.assignment.revoke",
+    "tenant.partner.read",
+    "tenant.partner.review",
+    "tenant.partner.approve",
+    "tenant.partner.suspend",
+    "partner.profile.read",
+    "partner.profile.update",
+    "partner.membership.read",
+    "partner.membership.invite",
+    "partner.membership.revoke",
   ]);
 });
 
@@ -74,4 +90,32 @@ test("tenant authorization context carries active membership authority", () => {
   });
   assert.equal(context.membershipStatus, "active");
   assert.equal(context.membershipAuthorizationVersion, 3);
+});
+
+test("Partner authorization context carries trusted Partner membership authority", () => {
+  const context: ActivePartnerAuthorizationContext = {
+    userId: "00000000-0000-4000-8000-000000000021",
+    sessionId: "00000000-0000-4000-8000-000000000022",
+    scope: {
+      type: "partner",
+      tenantId: "00000000-0000-4000-8000-000000000023",
+      tenantSlug: "acme",
+      partnerId: "00000000-0000-4000-8000-000000000024",
+    },
+    membershipId: "00000000-0000-4000-8000-000000000025",
+    membershipStatus: "active",
+    roleKeys: ["partner_owner"],
+    permissionKeys: ["partner.profile.read", "partner.membership.invite"],
+    userAuthorizationVersion: 4,
+    membershipAuthorizationVersion: 5,
+  };
+
+  assert.deepEqual(context.scope, {
+    type: "partner",
+    tenantId: "00000000-0000-4000-8000-000000000023",
+    tenantSlug: "acme",
+    partnerId: "00000000-0000-4000-8000-000000000024",
+  });
+  assert.equal(context.membershipStatus, "active");
+  assert.equal(context.membershipAuthorizationVersion, 5);
 });

@@ -2,6 +2,8 @@ export const SYSTEM_ROLES = {
   platformAdmin: "platform_admin",
   tenantOwner: "tenant_owner",
   tenantAdmin: "tenant_admin",
+  partnerOwner: "partner_owner",
+  partnerMember: "partner_member",
 } as const;
 
 export type SystemRole = (typeof SYSTEM_ROLES)[keyof typeof SYSTEM_ROLES];

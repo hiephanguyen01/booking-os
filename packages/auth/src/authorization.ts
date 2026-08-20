@@ -27,6 +27,10 @@ export const ROLE_PERMISSIONS: Readonly<Record<SystemRole, readonly PermissionKe
     PERMISSION_KEYS.tenantRbacAssignmentRead,
     PERMISSION_KEYS.tenantRbacAssignmentGrant,
     PERMISSION_KEYS.tenantRbacAssignmentRevoke,
+    PERMISSION_KEYS.tenantPartnerRead,
+    PERMISSION_KEYS.tenantPartnerReview,
+    PERMISSION_KEYS.tenantPartnerApprove,
+    PERMISSION_KEYS.tenantPartnerSuspend,
   ],
   [SYSTEM_ROLES.tenantAdmin]: [
     PERMISSION_KEYS.tenantMembershipRead,
@@ -38,6 +42,21 @@ export const ROLE_PERMISSIONS: Readonly<Record<SystemRole, readonly PermissionKe
     PERMISSION_KEYS.tenantRbacPermissionRead,
     PERMISSION_KEYS.tenantRbacRoleRead,
     PERMISSION_KEYS.tenantRbacAssignmentRead,
+    PERMISSION_KEYS.tenantPartnerRead,
+    PERMISSION_KEYS.tenantPartnerReview,
+    PERMISSION_KEYS.tenantPartnerApprove,
+    PERMISSION_KEYS.tenantPartnerSuspend,
+  ],
+  [SYSTEM_ROLES.partnerOwner]: [
+    PERMISSION_KEYS.partnerProfileRead,
+    PERMISSION_KEYS.partnerProfileUpdate,
+    PERMISSION_KEYS.partnerMembershipRead,
+    PERMISSION_KEYS.partnerMembershipInvite,
+    PERMISSION_KEYS.partnerMembershipRevoke,
+  ],
+  [SYSTEM_ROLES.partnerMember]: [
+    PERMISSION_KEYS.partnerProfileRead,
+    PERMISSION_KEYS.partnerMembershipRead,
   ],
 };
 
