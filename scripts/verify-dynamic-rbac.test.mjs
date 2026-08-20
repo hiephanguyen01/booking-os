@@ -16,10 +16,7 @@ async function readOptional(path) {
 }
 
 test("Task 9 exposes the dedicated dynamic RBAC verification command", () => {
-  assert.equal(
-    packageJson.scripts["verify:dynamic-rbac"],
-    "node scripts/verify-dynamic-rbac.mjs",
-  );
+  assert.equal(packageJson.scripts["verify:dynamic-rbac"], "node scripts/verify-dynamic-rbac.mjs");
 });
 
 test("Task 9 keeps dynamic RBAC verification inside Foundation after identity access and before build", () => {
@@ -36,7 +33,10 @@ test("Task 9 keeps dynamic RBAC verification inside Foundation after identity ac
 });
 
 test("Task 9 protected CI runs dynamic RBAC acceptance between identity access and build", () => {
-  assert.match(ciWorkflow, /dynamic-rbac:\n {4}name: Sprint 2 dynamic RBAC acceptance\n {4}needs: identity-access/u);
+  assert.match(
+    ciWorkflow,
+    /dynamic-rbac:\n {4}name: Sprint 2 dynamic RBAC acceptance\n {4}needs: identity-access/u,
+  );
   assert.match(ciWorkflow, /run: pnpm verify:dynamic-rbac/u);
   assert.match(ciWorkflow, /build:\n {4}name: Build\n {4}needs: dynamic-rbac/u);
 });
