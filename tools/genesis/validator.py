@@ -57,6 +57,39 @@ SPRINT_1B_RECOVERY_COMMANDS = (
     "pnpm verify:foundation",
 )
 SPRINT_1B_OWNER_DOMAINS = ("Identity", "Sessions", "Memberships", "Authorization")
+
+SPRINT_2_MARKER = Path(
+    "docs/superpowers/plans/2026-08-16-sprint-2-tenant-dynamic-rbac.md"
+)
+SPRINT_2_FEATURE = Path("docs/features/FEATURE-0003-tenant-dynamic-rbac.md")
+SPRINT_2_PATTERN = Path("docs/patterns/PATTERN-0004-tenant-dynamic-rbac-authority.md")
+SPRINT_2_RECOVERY_RUNBOOK = Path("docs/runbooks/tenant-dynamic-rbac-recovery.md")
+SPRINT_2_CHECKPOINT = Path(
+    "docs/superpowers/checkpoints/2026-08-16-sprint-2-dynamic-rbac-closeout.md"
+)
+SPRINT_2_EXECUTION_PLAN = Path("docs/plan/90-DAY-EXECUTION.md")
+SPRINT_2_PILOT_GATES = Path("genesis/reviews/PILOT-GATES.md")
+SPRINT_2_REQUIRED_ARTIFACTS = (
+    SPRINT_2_FEATURE,
+    SPRINT_2_PATTERN,
+    SPRINT_2_RECOVERY_RUNBOOK,
+    SPRINT_2_CHECKPOINT,
+)
+SPRINT_2_REFERENCES = (
+    "../superpowers/specs/2026-08-16-sprint-2-tenant-dynamic-rbac-design.md",
+    "../superpowers/plans/2026-08-16-sprint-2-tenant-dynamic-rbac.md",
+)
+SPRINT_2_VERIFY_COMMAND = "pnpm verify:dynamic-rbac"
+SPRINT_2_RECOVERY_SECTIONS = (
+    "Accidental role assignment",
+    "Accidental permission expansion",
+    "Archived role impact",
+    "Stale authority and session reconciliation",
+    "RBAC mutation outage",
+)
+SPRINT_2_OWNER_DOMAIN = "Authorization"
+SPRINT_2_DELIVERY_MARKER = "Sprint 2 dynamic RBAC"
+
 RUNBOOK_SECRET_SAFETY_SENTENCE = "never place secret values on the command line"
 INLINE_SECRET_PATTERN = re.compile(
     r"(?i)\b(?:password|token|secret|cookie)\b\s*=\s*(?![\"']?\$|<|REDACTED\b|YOUR_)[^\s`]+"
@@ -227,6 +260,58 @@ def _validate_runbook_commands(
     return failures
 
 
+def _linked_targets(text: str) -> set[str]:
+    return {
+        match.group(1).strip().split("#", 1)[0]
+        for match in MARKDOWN_LINK_PATTERN.finditer(text)
+    }
+
+
+def _validate_artifact_references(
+    root: Path,
+    path: Path,
+    references: tuple[str, ...],
+    label: str,
+) -> list[ValidationFailure]:
+    text = _read_required_text(root, path)
+    if text is None:
+        return []
+
+    failures: list[ValidationFailure] = []
+    link_targets = _linked_targets(text)
+    for reference in references:
+        if reference not in link_targets:
+            failures.append(
+                ValidationFailure(path, f"missing required {label} reference: {reference}")
+            )
+            continue
+        resolved = (root / path.parent / reference).resolve()
+        if not resolved.is_file():
+            failures.append(
+                ValidationFailure(path, f"{label} reference target does not exist: {reference}")
+            )
+    return failures
+
+
+def _validate_domain_owner(root: Path, domain: str) -> list[ValidationFailure]:
+    owners_text = _read_required_text(root, DOMAIN_OWNERS_PATH)
+    if owners_text is None:
+        return [ValidationFailure(DOMAIN_OWNERS_PATH, f"{domain} domain owner must be assigned")]
+
+    match = re.search(
+        rf"^\|\s*{re.escape(domain)}\s*\|\s*([^|]+)\|",
+        owners_text,
+        re.MULTILINE,
+    )
+    if match is None:
+        return [ValidationFailure(DOMAIN_OWNERS_PATH, f"{domain} domain owner must be assigned")]
+
+    owner = match.group(1).strip().strip("`")
+    if not owner or owner == "unassigned":
+        return [ValidationFailure(DOMAIN_OWNERS_PATH, f"{domain} domain owner must be assigned")]
+    return []
+
+
 def _validate_sprint_1b_closeout(root: Path) -> list[ValidationFailure]:
     if not (root / SPRINT_1B_MARKER).is_file():
         return []
@@ -249,28 +334,14 @@ def _validate_sprint_1b_closeout(root: Path) -> list[ValidationFailure]:
                 ValidationFailure(SPRINT_1B_FEATURE, "Sprint 1B feature must have status: active")
             )
 
-        link_targets = {
-            match.group(1).strip().split("#", 1)[0]
-            for match in MARKDOWN_LINK_PATTERN.finditer(feature_text)
-        }
-        for reference in SPRINT_1B_FEATURE_REFERENCES:
-            if reference not in link_targets:
-                failures.append(
-                    ValidationFailure(
-                        SPRINT_1B_FEATURE,
-                        f"missing required Sprint 1B reference: {reference}",
-                    )
-                )
-                continue
-            resolved = (root / SPRINT_1B_FEATURE.parent / reference).resolve()
-            if not resolved.is_file():
-                failures.append(
-                    ValidationFailure(
-                        SPRINT_1B_FEATURE,
-                        f"Sprint 1B reference target does not exist: {reference}",
-                    )
-                )
-
+    failures.extend(
+        _validate_artifact_references(
+            root,
+            SPRINT_1B_FEATURE,
+            SPRINT_1B_FEATURE_REFERENCES,
+            "Sprint 1B",
+        )
+    )
     failures.extend(
         _validate_runbook_commands(
             root,
@@ -281,23 +352,83 @@ def _validate_sprint_1b_closeout(root: Path) -> list[ValidationFailure]:
     failures.extend(
         _validate_runbook_commands(root, SPRINT_1B_RECOVERY_RUNBOOK, SPRINT_1B_RECOVERY_COMMANDS)
     )
-
-    owners_text = _read_required_text(root, DOMAIN_OWNERS_PATH)
     for domain in SPRINT_1B_OWNER_DOMAINS:
-        if owners_text is None:
-            failures.append(ValidationFailure(DOMAIN_OWNERS_PATH, f"{domain} domain owner must be assigned"))
-            continue
-        match = re.search(
-            rf"^\|\s*{re.escape(domain)}\s*\|\s*([^|]+)\|",
-            owners_text,
-            re.MULTILINE,
+        failures.extend(_validate_domain_owner(root, domain))
+
+    return failures
+
+
+def _validate_sprint_2_closeout(root: Path) -> list[ValidationFailure]:
+    if not (root / SPRINT_2_MARKER).is_file():
+        return []
+
+    failures: list[ValidationFailure] = []
+    for path in SPRINT_2_REQUIRED_ARTIFACTS:
+        if not (root / path).is_file():
+            failures.append(
+                ValidationFailure(path, "missing required Sprint 2 closeout artifact")
+            )
+
+    for path, label in (
+        (SPRINT_2_FEATURE, "Sprint 2 feature"),
+        (SPRINT_2_PATTERN, "Sprint 2 pattern"),
+    ):
+        text = _read_required_text(root, path)
+        if text is not None:
+            try:
+                artifact = parse_frontmatter(text)
+            except FrontmatterError:
+                artifact = None
+            if artifact is not None and artifact.metadata.get("status") != "active":
+                failures.append(ValidationFailure(path, f"{label} must have status: active"))
+        failures.extend(
+            _validate_artifact_references(root, path, SPRINT_2_REFERENCES, label)
         )
-        if match is None:
-            failures.append(ValidationFailure(DOMAIN_OWNERS_PATH, f"{domain} domain owner must be assigned"))
+
+    feature_text = _read_required_text(root, SPRINT_2_FEATURE)
+    if feature_text is not None and SPRINT_2_VERIFY_COMMAND not in feature_text:
+        failures.append(
+            ValidationFailure(
+                SPRINT_2_FEATURE,
+                f"missing required verification command: {SPRINT_2_VERIFY_COMMAND}",
+            )
+        )
+
+    failures.extend(
+        _validate_runbook_commands(
+            root,
+            SPRINT_2_RECOVERY_RUNBOOK,
+            (SPRINT_2_VERIFY_COMMAND,),
+        )
+    )
+    recovery_text = _read_required_text(root, SPRINT_2_RECOVERY_RUNBOOK)
+    if recovery_text is not None:
+        sections = _sections(recovery_text)
+        for section in SPRINT_2_RECOVERY_SECTIONS:
+            if section not in sections:
+                failures.append(
+                    ValidationFailure(
+                        SPRINT_2_RECOVERY_RUNBOOK,
+                        f"missing required recovery section: {section}",
+                    )
+                )
+
+    failures.extend(_validate_domain_owner(root, SPRINT_2_OWNER_DOMAIN))
+
+    for path in (SPRINT_2_EXECUTION_PLAN, SPRINT_2_PILOT_GATES):
+        text = _read_required_text(root, path)
+        if text is None:
+            failures.append(
+                ValidationFailure(path, "missing required Sprint 2 delivery reconciliation artifact")
+            )
             continue
-        owner = match.group(1).strip().strip("`")
-        if not owner or owner == "unassigned":
-            failures.append(ValidationFailure(DOMAIN_OWNERS_PATH, f"{domain} domain owner must be assigned"))
+        if SPRINT_2_DELIVERY_MARKER not in text or SPRINT_2_VERIFY_COMMAND not in text:
+            failures.append(
+                ValidationFailure(
+                    path,
+                    f"missing Sprint 2 dynamic RBAC delivery marker: {SPRINT_2_VERIFY_COMMAND}",
+                )
+            )
 
     return failures
 
@@ -341,4 +472,5 @@ def validate_repository(root: Path) -> list[ValidationFailure]:
                 ids[artifact_id] = relative_path
 
     failures.extend(_validate_sprint_1b_closeout(root))
+    failures.extend(_validate_sprint_2_closeout(root))
     return sorted(failures, key=lambda failure: (failure.path.as_posix(), failure.message))
