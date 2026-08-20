@@ -47,7 +47,7 @@ test("S2-RBAC04 tenant RBAC role APIs remain custom-role-only and fail closed fo
   ]);
   await expectEvidence(
     "apps/api/src/modules/authorization/infrastructure/persistence/prisma/prisma-tenant-custom-role-repository.adapter.ts",
-    [/tenantCustomRole/u, /tenantId/u],
+    [/tenant_custom_roles/u, /tenantId/u],
   );
 });
 
