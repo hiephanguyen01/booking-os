@@ -49,6 +49,17 @@ jobs:
       - name: Reject stale generated artifacts
         run: pnpm api:check-generated
 
+      - name: Upload regenerated API artifacts for diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regenerated-api-artifacts
+          path: |
+            packages/contracts/openapi/openapi.json
+            packages/api-client/src/generated/schema.ts
+            packages/api-client/src/generated/client.ts
+          retention-days: 1
+
       - name: Typecheck generated API client
         run: pnpm --filter @booking-os/api-client typecheck
 
