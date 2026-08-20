@@ -323,14 +323,16 @@ test("current tenant RBAC membership roles can be listed", async () => {
   assert.ok(Array.isArray(currentMembership.body));
 });
 
-test.skip("foreign Tenant RBAC membership IDs remain hidden from the current tenant", async () => {
+test("foreign Tenant RBAC membership IDs remain hidden from the current tenant", async () => {
   const foreignMembership = await request(app.getHttpServer())
     .get(`/api/tenant/rbac/memberships/${OTHER_MEMBERSHIP_ID}/roles`)
     .set("host", TENANT_HOSTNAME)
     .set("cookie", sessionCookie)
     .expect(404);
-  assert.equal(foreignMembership.body.code, "MEMBERSHIP_REQUIRED");
+  assert.equal(foreignMembership.body.error, "MEMBERSHIP_REQUIRED");
+});
 
+test.skip("foreign Tenant RBAC assignment mutations remain hidden from the current tenant", async () => {
   const csrfToken = await readCsrfToken();
   const foreignAssignment = await request(app.getHttpServer())
     .post(`/api/tenant/rbac/memberships/${OTHER_MEMBERSHIP_ID}/roles/${CURRENT_ROLE_ID}`)
