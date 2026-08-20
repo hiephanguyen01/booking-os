@@ -7,7 +7,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -48,6 +48,28 @@ jobs:
 
       - name: Reject stale generated artifacts
         run: pnpm api:check-generated
+
+      - name: Commit regenerated API artifacts to PR branch
+        if: failure() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          rm -rf /tmp/regenerated-api-artifacts
+          mkdir -p /tmp/regenerated-api-artifacts/contracts/openapi
+          mkdir -p /tmp/regenerated-api-artifacts/api-client/src/generated
+          cp packages/contracts/openapi/openapi.json /tmp/regenerated-api-artifacts/contracts/openapi/openapi.json
+          cp packages/api-client/src/generated/schema.ts /tmp/regenerated-api-artifacts/api-client/src/generated/schema.ts
+          cp packages/api-client/src/generated/client.ts /tmp/regenerated-api-artifacts/api-client/src/generated/client.ts
+          git checkout -B "$HEAD_REF" "origin/$HEAD_REF"
+          cp /tmp/regenerated-api-artifacts/contracts/openapi/openapi.json packages/contracts/openapi/openapi.json
+          cp /tmp/regenerated-api-artifacts/api-client/src/generated/schema.ts packages/api-client/src/generated/schema.ts
+          cp /tmp/regenerated-api-artifacts/api-client/src/generated/client.ts packages/api-client/src/generated/client.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/contracts/openapi/openapi.json packages/api-client/src/generated/schema.ts packages/api-client/src/generated/schema.ts packages/api-client/src/generated/client.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "chore(api): refresh generated OpenAPI artifacts"
+          git push origin HEAD:"$HEAD_REF"
 
       - name: Typecheck generated API client
         run: pnpm --filter @booking-os/api-client typecheck
