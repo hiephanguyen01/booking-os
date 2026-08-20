@@ -12,10 +12,14 @@ test("Task 7 exposes the dedicated identity-access verification command", () => 
   );
 });
 
-test("Task 7 CI runs identity-access acceptance before build", () => {
+test("Task 7 CI keeps identity-access acceptance as a protected prerequisite before build", () => {
   assert.match(ciWorkflow, /identity-access:\n {4}name: Identity access acceptance/u);
   assert.match(ciWorkflow, /run: pnpm verify:identity-access/u);
-  assert.match(ciWorkflow, /build:\n {4}name: Build\n {4}needs: identity-access/u);
+  assert.match(
+    ciWorkflow,
+    /dynamic-rbac:\n {4}name: Sprint 2 dynamic RBAC acceptance\n {4}needs: identity-access/u,
+  );
+  assert.match(ciWorkflow, /build:\n {4}name: Build\n {4}needs: dynamic-rbac/u);
 });
 
 test("Task 7 preserves the identity-access gate inside Foundation verification", () => {
