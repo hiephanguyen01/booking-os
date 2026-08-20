@@ -301,7 +301,7 @@ test("current tenant RBAC base fixture can list roles", async () => {
   assert.ok(Array.isArray(response.body));
 });
 
-test.skip("current tenant owner can create a custom role", async () => {
+test("current tenant owner can create a custom role", async () => {
   await createCurrentRole();
 });
 
