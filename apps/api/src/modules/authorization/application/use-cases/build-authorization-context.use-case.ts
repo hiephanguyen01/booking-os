@@ -44,11 +44,13 @@ function validateCatalog(authority: CurrentScopeAuthority): {
     KNOWN_PERMISSIONS,
   );
   const expectedPrefix = authority.scope.type === "platform" ? "platform." : "tenant.";
+  const invalidRole = (role: AuthorizationRoleKey): boolean =>
+    authority.scope.type === "platform"
+      ? role !== "platform_admin"
+      : role !== "tenant_owner" && role !== "tenant_admin";
   if (
     roleKeys.length === 0 ||
-    roleKeys.some((role) =>
-      authority.scope.type === "platform" ? role !== "platform_admin" : role === "platform_admin",
-    ) ||
+    roleKeys.some(invalidRole) ||
     permissionKeys.some((permission) => !permission.startsWith(expectedPrefix))
   ) {
     throw new AuthorizationAuthorityInvalidError();
