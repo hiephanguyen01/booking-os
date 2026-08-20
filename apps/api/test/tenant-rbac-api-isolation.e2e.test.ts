@@ -314,14 +314,16 @@ test("foreign Tenant RBAC role IDs remain hidden from the current tenant", async
   assert.equal(foreignRole.body.error, "TENANT_CUSTOM_ROLE_NOT_FOUND");
 });
 
-test.skip("foreign Tenant RBAC membership IDs remain hidden from the current tenant", async () => {
+test("current tenant RBAC membership roles can be listed", async () => {
   const currentMembership = await request(app.getHttpServer())
     .get(`/api/tenant/rbac/memberships/${OWNER_MEMBERSHIP_ID}/roles`)
     .set("host", TENANT_HOSTNAME)
     .set("cookie", sessionCookie)
     .expect(200);
   assert.ok(Array.isArray(currentMembership.body));
+});
 
+test.skip("foreign Tenant RBAC membership IDs remain hidden from the current tenant", async () => {
   const foreignMembership = await request(app.getHttpServer())
     .get(`/api/tenant/rbac/memberships/${OTHER_MEMBERSHIP_ID}/roles`)
     .set("host", TENANT_HOSTNAME)
