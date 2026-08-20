@@ -292,7 +292,7 @@ test("current tenant RBAC base fixture seeds an authenticated session", () => {
   assert.ok(sessionCookie.startsWith(`${BOOKING_SESSION_COOKIE}=`));
 });
 
-test.skip("current tenant RBAC base fixture can list roles", async () => {
+test("current tenant RBAC base fixture can list roles", async () => {
   const response = await request(app.getHttpServer())
     .get("/api/tenant/rbac/roles")
     .set("host", TENANT_HOSTNAME)
