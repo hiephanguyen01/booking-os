@@ -10,7 +10,9 @@ async function source(path: string): Promise<string> {
 
 async function expectEvidence(path: string, patterns: readonly RegExp[]): Promise<void> {
   const contents = await source(path);
-  for (const pattern of patterns) assert.match(contents, pattern);
+  for (const pattern of patterns) {
+    assert.match(contents, pattern, `missing evidence in ${path}: ${pattern}`);
+  }
 }
 
 test("S2-RBAC01 owner create/read is exercised through the tenant RBAC HTTP API", async () => {
