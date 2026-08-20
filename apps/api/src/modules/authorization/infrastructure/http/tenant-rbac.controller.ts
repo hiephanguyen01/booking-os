@@ -19,6 +19,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
+  ApiBody,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
@@ -157,6 +158,7 @@ export class TenantRbacController {
   @HttpCode(201)
   @Header("Cache-Control", "private, no-store")
   @ApiOperation({ operationId: "createTenantRbacRole" })
+  @ApiBody({ type: CreateTenantCustomRoleRequestDto })
   @ApiCreatedResponse({ type: TenantCustomRoleResponseDto })
   async createRole(
     @Body() body: CreateTenantCustomRoleRequestDto,
@@ -205,6 +207,7 @@ export class TenantRbacController {
   @Header("Cache-Control", "private, no-store")
   @ApiOperation({ operationId: "updateTenantRbacRole" })
   @ApiParam({ name: "roleId", type: String, format: "uuid" })
+  @ApiBody({ type: UpdateTenantCustomRoleRequestDto })
   @ApiOkResponse({ type: TenantCustomRoleResponseDto })
   async updateRole(
     @Param("roleId") roleId: string,
@@ -234,6 +237,7 @@ export class TenantRbacController {
   @Header("Cache-Control", "private, no-store")
   @ApiOperation({ operationId: "replaceTenantRbacRolePermissions" })
   @ApiParam({ name: "roleId", type: String, format: "uuid" })
+  @ApiBody({ type: ReplaceTenantCustomRolePermissionsRequestDto })
   @ApiOkResponse({ type: TenantCustomRoleResponseDto })
   async replaceRolePermissions(
     @Param("roleId") roleId: string,
@@ -262,6 +266,7 @@ export class TenantRbacController {
   @Header("Cache-Control", "private, no-store")
   @ApiOperation({ operationId: "archiveTenantRbacRole" })
   @ApiParam({ name: "roleId", type: String, format: "uuid" })
+  @ApiBody({ type: ArchiveTenantCustomRoleRequestDto })
   @ApiOkResponse({ type: TenantCustomRoleResponseDto })
   async archiveRole(
     @Param("roleId") roleId: string,
