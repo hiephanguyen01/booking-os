@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test, { after, before, beforeEach } from "node:test";
 
-import { PERMISSION_KEYS, SYSTEM_ROLES, type PermissionKey } from "@booking-os/auth";
+import { PERMISSION_KEYS, type PermissionKey, SYSTEM_ROLES } from "@booking-os/auth";
 import { type Prisma, PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
