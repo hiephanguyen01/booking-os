@@ -194,6 +194,25 @@ BEFORE INSERT OR UPDATE OF "tenant_id", "membership_id", "role_id"
 ON "tenant_custom_role_assignments"
 FOR EACH ROW EXECUTE FUNCTION validate_tenant_custom_role_assignment();
 
+CREATE OR REPLACE FUNCTION prevent_tenant_custom_role_assignment_reactivation()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF OLD."revoked_at" IS NOT NULL AND NEW."revoked_at" IS NULL THEN
+    RAISE EXCEPTION 'revoked tenant custom role assignment cannot be reactivated' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER "tenant_custom_role_assignments_prevent_reactivation"
+BEFORE UPDATE OF "revoked_at"
+ON "tenant_custom_role_assignments"
+FOR EACH ROW EXECUTE FUNCTION prevent_tenant_custom_role_assignment_reactivation();
+
 ALTER TABLE "tenant_custom_roles" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "tenant_custom_roles" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "tenant_custom_role_permissions" ENABLE ROW LEVEL SECURITY;
@@ -235,5 +254,7 @@ GRANT SELECT, INSERT, UPDATE ON TABLE "tenant_custom_role_assignments" TO bookin
 
 REVOKE ALL ON FUNCTION validate_tenant_custom_role_permission() FROM PUBLIC;
 REVOKE ALL ON FUNCTION validate_tenant_custom_role_assignment() FROM PUBLIC;
+REVOKE ALL ON FUNCTION prevent_tenant_custom_role_assignment_reactivation() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION validate_tenant_custom_role_permission() TO booking_app;
 GRANT EXECUTE ON FUNCTION validate_tenant_custom_role_assignment() TO booking_app;
+GRANT EXECUTE ON FUNCTION prevent_tenant_custom_role_assignment_reactivation() TO booking_app;
