@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { mkdir, writeFile } from "node:fs/promises";
 import test, { after, before, beforeEach } from "node:test";
 
 import { PERMISSION_KEYS, type PermissionKey } from "@booking-os/auth";
@@ -166,6 +167,8 @@ test("archive racing direct permission mapping cannot leave a mapping on the arc
     roleArchived: Boolean(roles[0]?.archivedAt),
     mappingCount,
   });
+  await mkdir(".diagnostics", { recursive: true });
+  await writeFile(".diagnostics/tenant-rbac-permission-race.json", `${diagnostic}\n`, "utf8");
 
   assert.equal(
     observedBlockedInsert,
