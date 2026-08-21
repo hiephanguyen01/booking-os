@@ -242,6 +242,27 @@ BEFORE INSERT OR UPDATE OF "tenant_id", "membership_id", "role_id"
 ON "tenant_custom_role_assignments"
 FOR EACH ROW EXECUTE FUNCTION validate_tenant_custom_role_assignment();
 
+CREATE OR REPLACE FUNCTION prevent_tenant_custom_role_assignment_identity_update()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $
+BEGIN
+  IF OLD."tenant_id" IS DISTINCT FROM NEW."tenant_id"
+    OR OLD."membership_id" IS DISTINCT FROM NEW."membership_id"
+    OR OLD."role_id" IS DISTINCT FROM NEW."role_id" THEN
+    RAISE EXCEPTION 'tenant custom role assignment identity cannot be modified' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$;
+
+CREATE TRIGGER "tenant_custom_role_assignments_prevent_identity_update"
+BEFORE UPDATE OF "tenant_id", "membership_id", "role_id"
+ON "tenant_custom_role_assignments"
+FOR EACH ROW EXECUTE FUNCTION prevent_tenant_custom_role_assignment_identity_update();
+
 CREATE OR REPLACE FUNCTION prevent_tenant_custom_role_assignment_reactivation()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -304,9 +325,11 @@ REVOKE ALL ON FUNCTION prevent_archived_tenant_custom_role_update() FROM PUBLIC;
 REVOKE ALL ON FUNCTION validate_tenant_custom_role_permission() FROM PUBLIC;
 REVOKE ALL ON FUNCTION prevent_archived_tenant_custom_role_permission_delete() FROM PUBLIC;
 REVOKE ALL ON FUNCTION validate_tenant_custom_role_assignment() FROM PUBLIC;
+REVOKE ALL ON FUNCTION prevent_tenant_custom_role_assignment_identity_update() FROM PUBLIC;
 REVOKE ALL ON FUNCTION prevent_tenant_custom_role_assignment_reactivation() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION prevent_archived_tenant_custom_role_update() TO booking_app;
 GRANT EXECUTE ON FUNCTION validate_tenant_custom_role_permission() TO booking_app;
 GRANT EXECUTE ON FUNCTION prevent_archived_tenant_custom_role_permission_delete() TO booking_app;
 GRANT EXECUTE ON FUNCTION validate_tenant_custom_role_assignment() TO booking_app;
+GRANT EXECUTE ON FUNCTION prevent_tenant_custom_role_assignment_identity_update() TO booking_app;
 GRANT EXECUTE ON FUNCTION prevent_tenant_custom_role_assignment_reactivation() TO booking_app;
