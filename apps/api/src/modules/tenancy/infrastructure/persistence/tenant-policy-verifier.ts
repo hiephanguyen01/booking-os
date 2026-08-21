@@ -2,7 +2,7 @@ import type { PoolClient, QueryResultRow } from "pg";
 
 import type { TenantOwnedTablePolicy } from "./tenant-policy-manifest.js";
 
-const REQUIRED_PRIVILEGES = Object.freeze(["DELETE", "INSERT", "SELECT", "UPDATE"]);
+const DEFAULT_REQUIRED_PRIVILEGES = Object.freeze(["DELETE", "INSERT", "SELECT", "UPDATE"]);
 
 interface TableRow extends QueryResultRow {
   readonly rls_enabled: boolean;
@@ -333,11 +333,13 @@ async function inspectTable(
         .map((row) => row.privilege_type.toUpperCase()),
     ),
   ].sort();
-  const missingPrivileges = REQUIRED_PRIVILEGES.filter(
+  const requiredPrivileges: readonly string[] =
+    policy.requiredPrivileges ?? DEFAULT_REQUIRED_PRIVILEGES;
+  const missingPrivileges = requiredPrivileges.filter(
     (privilege) => !applicationPrivileges.includes(privilege),
   );
   const excessivePrivileges = applicationPrivileges.filter(
-    (privilege) => !REQUIRED_PRIVILEGES.includes(privilege),
+    (privilege) => !requiredPrivileges.includes(privilege),
   );
   if (publicPrivileges.length > 0) {
     failures.push(`${policy.table}: PUBLIC has table privileges ${publicPrivileges.join(", ")}`);
