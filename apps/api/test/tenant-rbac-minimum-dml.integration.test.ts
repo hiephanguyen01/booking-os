@@ -10,9 +10,7 @@ after(async () => {
 });
 
 test("booking_app receives only the minimum DML required by tenant custom RBAC", async () => {
-  const rows = await prisma.$queryRaw<
-    readonly { table_name: string; privilege_type: string }[]
-  >`
+  const rows = await prisma.$queryRaw<readonly { table_name: string; privilege_type: string }[]>`
     SELECT table_name, privilege_type
     FROM information_schema.table_privileges
     WHERE table_schema = 'public'
@@ -26,17 +24,15 @@ test("booking_app receives only the minimum DML required by tenant custom RBAC",
   `;
 
   const actual = Object.fromEntries(
-    [
-      "tenant_custom_roles",
-      "tenant_custom_role_permissions",
-      "tenant_custom_role_assignments",
-    ].map((tableName) => [
-      tableName,
-      rows
-        .filter((row) => row.table_name === tableName)
-        .map((row) => row.privilege_type)
-        .sort(),
-    ]),
+    ["tenant_custom_roles", "tenant_custom_role_permissions", "tenant_custom_role_assignments"].map(
+      (tableName) => [
+        tableName,
+        rows
+          .filter((row) => row.table_name === tableName)
+          .map((row) => row.privilege_type)
+          .sort(),
+      ],
+    ),
   );
 
   assert.deepEqual(actual, {
