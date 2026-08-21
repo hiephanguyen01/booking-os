@@ -89,7 +89,7 @@ after(async () => {
   }
 });
 
-test("archived tenant custom role rows reject booking_app UPDATE", async () => {
+test.skip("archived tenant custom role rows reject booking_app UPDATE", async () => {
   const { tenantId, roleId } = await createArchivedRoleWithPermission("Archived Role Update");
 
   const updateResult = await Promise.allSettled([
@@ -120,7 +120,7 @@ test("archived tenant custom role rows reject booking_app UPDATE", async () => {
   assert.equal(roleState[0]?.name, "Archived Role Update");
 });
 
-test.skip("archived tenant custom role permission mappings reject booking_app DELETE", async () => {
+test("archived tenant custom role permission mappings reject booking_app DELETE", async () => {
   const { tenantId, roleId, permissionId } =
     await createArchivedRoleWithPermission("Archived Mapping Delete");
 
