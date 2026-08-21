@@ -47,6 +47,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build auth workspace
+        run: pnpm --filter @booking-os/auth build
+
       - name: Generate Prisma client
         run: pnpm --filter @booking-os/api prisma:generate
 
