@@ -19,6 +19,7 @@ enum UserStatus {
 enum IdentityScopeType {
   platform
   tenant
+  partner
 
   @@map("identity_scope_type")
 }
@@ -35,6 +36,7 @@ enum AuthSessionState {
 enum RoleScopeLevel {
   platform
   tenant
+  partner
 
   @@map("role_scope_level")
 }
@@ -65,6 +67,76 @@ enum MembershipInvitationStatus {
   @@map("membership_invitation_status")
 }
 
+enum PartnerType {
+  individual
+  company
+
+  @@map("partner_type")
+}
+
+enum PartnerStatus {
+  draft
+  pendingReview @map("pending_review")
+  active
+  inactive
+  suspended
+  cancelled
+
+  @@map("partner_status")
+}
+
+enum PartnerMembershipStatus {
+  invited
+  active
+  suspended
+  revoked
+
+  @@map("partner_membership_status")
+}
+
+enum PartnerMembershipInvitationStatus {
+  pending
+  accepted
+  revoked
+  expired
+
+  @@map("partner_membership_invitation_status")
+}
+
+enum PartnerVerificationCheckType {
+  identity
+  businessRegistration @map("business_registration")
+  payoutAccount        @map("payout_account")
+  managementRights     @map("management_rights")
+
+  @@map("partner_verification_check_type")
+}
+
+enum PartnerVerificationCheckStatus {
+  pending
+  submitted
+  verified
+  rejected
+
+  @@map("partner_verification_check_status")
+}
+
+enum PartnerPayoutAccountStatus {
+  pending
+  verified
+  rejected
+
+  @@map("partner_payout_account_status")
+}
+
+enum PartnerReviewOutcome {
+  changesRequested @map("changes_requested")
+  approved
+  rejected
+
+  @@map("partner_review_outcome")
+}
+
 model Tenant {
   id                      String                     @id @db.Uuid
   slug                    String                     @unique
@@ -83,34 +155,42 @@ model Tenant {
   authSessionTokens       AuthSessionToken[]
   securityAuditEvents     TenantSecurityAuditEvent[]
   customRoles             TenantCustomRole[]
+  partners                Partner[]
 
   @@index([status])
   @@map("tenants")
 }
 
 model User {
-  id                            String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  normalizedEmail               String                     @unique @map("normalized_email")
-  displayEmail                  String                     @map("display_email")
-  status                        UserStatus                 @default(pendingActivation)
-  authorizationVersion          Int                        @default(1) @map("authorization_version")
-  activatedAt                   DateTime?                  @db.Timestamptz(6) @map("activated_at")
-  suspendedAt                   DateTime?                  @db.Timestamptz(6) @map("suspended_at")
-  disabledAt                    DateTime?                  @db.Timestamptz(6) @map("disabled_at")
-  createdAt                     DateTime                   @default(now()) @db.Timestamptz(6) @map("created_at")
-  updatedAt                     DateTime                   @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
-  passwordCredential            PasswordCredential?
-  activationTokens              AccountActivationToken[]
-  passwordResetTokens           PasswordResetToken[]
-  memberships                   TenantMembership[]
-  membershipInvitationsReceived MembershipInvitation[]     @relation("MembershipInvitationInvitee")
-  membershipInvitationsSent     MembershipInvitation[]     @relation("MembershipInvitationInviter")
-  roleAssignments               RoleAssignment[]
-  authSessions                  AuthSession[]
-  auditEventsAsActor            SecurityAuditEvent[]       @relation("SecurityAuditActor")
-  auditEventsAsSubject          SecurityAuditEvent[]       @relation("SecurityAuditSubject")
-  tenantAuditEventsAsActor      TenantSecurityAuditEvent[] @relation("TenantSecurityAuditActor")
-  tenantAuditEventsAsSubject    TenantSecurityAuditEvent[] @relation("TenantSecurityAuditSubject")
+  id                                   String                          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  normalizedEmail                      String                          @unique @map("normalized_email")
+  displayEmail                         String                          @map("display_email")
+  status                               UserStatus                      @default(pendingActivation)
+  authorizationVersion                 Int                             @default(1) @map("authorization_version")
+  activatedAt                          DateTime?                       @db.Timestamptz(6) @map("activated_at")
+  suspendedAt                          DateTime?                       @db.Timestamptz(6) @map("suspended_at")
+  disabledAt                           DateTime?                       @db.Timestamptz(6) @map("disabled_at")
+  createdAt                            DateTime                        @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt                            DateTime                        @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
+  passwordCredential                   PasswordCredential?
+  activationTokens                     AccountActivationToken[]
+  passwordResetTokens                  PasswordResetToken[]
+  memberships                          TenantMembership[]
+  membershipInvitationsReceived        MembershipInvitation[]          @relation("MembershipInvitationInvitee")
+  membershipInvitationsSent            MembershipInvitation[]          @relation("MembershipInvitationInviter")
+  roleAssignments                      RoleAssignment[]
+  authSessions                         AuthSession[]
+  auditEventsAsActor                   SecurityAuditEvent[]            @relation("SecurityAuditActor")
+  auditEventsAsSubject                 SecurityAuditEvent[]            @relation("SecurityAuditSubject")
+  tenantAuditEventsAsActor             TenantSecurityAuditEvent[]      @relation("TenantSecurityAuditActor")
+  tenantAuditEventsAsSubject           TenantSecurityAuditEvent[]      @relation("TenantSecurityAuditSubject")
+  partnerMemberships                   PartnerMembership[]
+  partnerInvitationsReceived           PartnerMembershipInvitation[]   @relation("PartnerMembershipInvitationInvitee")
+  partnerInvitationsSent               PartnerMembershipInvitation[]   @relation("PartnerMembershipInvitationInviter")
+  partnerRegistrationVerifications     PartnerRegistrationVerification[]
+  partnerVerificationChecksReviewed    PartnerVerificationCheck[]      @relation("PartnerVerificationCheckReviewer")
+  partnerReviewDecisions               PartnerReviewDecision[]         @relation("PartnerReviewDecisionActor")
+  partnerLifecycleHistoryAsActor       PartnerLifecycleHistory[]       @relation("PartnerLifecycleActor")
 
   @@index([status])
   @@map("users")
@@ -242,6 +322,7 @@ model AuthSession {
   userId                         String            @db.Uuid @map("user_id")
   scopeType                      IdentityScopeType @map("scope_type")
   tenantId                       String?           @db.Uuid @map("tenant_id")
+  partnerId                      String?           @db.Uuid @map("partner_id")
   hostname                       String
   state                          AuthSessionState  @default(active)
   authorizationVersion           Int               @map("authorization_version")
@@ -257,10 +338,12 @@ model AuthSession {
   updatedAt                      DateTime           @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
   user                           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   tenant                         Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner                        Partner?           @relation(fields: [partnerId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "auth_sessions_partner_tenant_fkey")
   tokens                         AuthSessionToken[]
 
   @@index([userId])
   @@index([tenantId])
+  @@index([partnerId])
   @@index([hostname, state])
   @@index([idleExpiresAt, absoluteExpiresAt])
   @@map("auth_sessions")
@@ -271,6 +354,7 @@ model AuthSessionToken {
   sessionId        String            @db.Uuid @map("session_id")
   scopeType        IdentityScopeType @map("scope_type")
   tenantId         String?           @db.Uuid @map("tenant_id")
+  partnerId        String?           @db.Uuid @map("partner_id")
   selector         String            @unique
   tokenHash        String            @db.Char(64) @map("token_hash")
   issuedAt         DateTime          @default(now()) @db.Timestamptz(6) @map("issued_at")
@@ -282,25 +366,28 @@ model AuthSessionToken {
   revokedAt        DateTime?         @db.Timestamptz(6) @map("revoked_at")
   session          AuthSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   tenant           Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner          Partner?          @relation(fields: [partnerId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "auth_session_tokens_partner_tenant_fkey")
   successorToken   AuthSessionToken? @relation("AuthSessionTokenSuccessor", fields: [successorTokenId], references: [id], onDelete: SetNull)
   predecessorToken AuthSessionToken? @relation("AuthSessionTokenSuccessor")
 
   @@index([sessionId])
   @@index([tenantId])
+  @@index([partnerId])
   @@index([expiresAt])
   @@map("auth_session_tokens")
 }
 
 model Role {
-  id                    String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  key                   String                 @unique
-  scopeLevel            RoleScopeLevel         @map("scope_level")
-  isSystem              Boolean                @default(true) @map("is_system")
-  createdAt             DateTime               @default(now()) @db.Timestamptz(6) @map("created_at")
-  updatedAt             DateTime               @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
-  rolePermissions       RolePermission[]
-  assignments           RoleAssignment[]
-  membershipInvitations MembershipInvitation[]
+  id                           String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key                          String                        @unique
+  scopeLevel                   RoleScopeLevel                @map("scope_level")
+  isSystem                     Boolean                       @default(true) @map("is_system")
+  createdAt                    DateTime                      @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt                    DateTime                      @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
+  rolePermissions              RolePermission[]
+  assignments                  RoleAssignment[]
+  membershipInvitations        MembershipInvitation[]
+  partnerMembershipInvitations PartnerMembershipInvitation[]
 
   @@map("roles")
 }
@@ -335,31 +422,216 @@ model RoleAssignment {
   roleId     String         @db.Uuid @map("role_id")
   scopeLevel RoleScopeLevel @map("scope_level")
   tenantId   String?        @db.Uuid @map("tenant_id")
+  partnerId  String?        @db.Uuid @map("partner_id")
   createdAt  DateTime       @default(now()) @db.Timestamptz(6) @map("created_at")
   revokedAt  DateTime?      @db.Timestamptz(6) @map("revoked_at")
   user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   role       Role           @relation(fields: [roleId], references: [id], onDelete: Restrict)
   tenant     Tenant?        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner    Partner?       @relation(fields: [partnerId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "role_assignments_partner_tenant_fkey")
 
   @@index([userId])
   @@index([roleId])
   @@index([tenantId])
+  @@index([partnerId])
   @@map("role_assignments")
 }
 
+model Partner {
+  id                     String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId               String                         @db.Uuid @map("tenant_id")
+  type                   PartnerType
+  displayName            String                         @map("display_name")
+  legalName              String?                        @map("legal_name")
+  businessRegistrationNo String?                        @map("business_registration_no")
+  contactEmail           String?                        @map("contact_email")
+  contactPhone           String?                        @map("contact_phone")
+  status                 PartnerStatus                  @default(draft)
+  version                Int                            @default(1)
+  approvedAt             DateTime?                      @db.Timestamptz(6) @map("approved_at")
+  suspendedAt            DateTime?                      @db.Timestamptz(6) @map("suspended_at")
+  cancelledAt            DateTime?                      @db.Timestamptz(6) @map("cancelled_at")
+  createdAt              DateTime                       @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt              DateTime                       @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
+  tenant                 Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships            PartnerMembership[]
+  membershipInvitations  PartnerMembershipInvitation[]
+  registrationChecks     PartnerRegistrationVerification[]
+  verificationChecks     PartnerVerificationCheck[]
+  payoutAccount          PartnerPayoutAccount?
+  reviewDecisions        PartnerReviewDecision[]
+  lifecycleHistory       PartnerLifecycleHistory[]
+  roleAssignments        RoleAssignment[]
+  authSessions           AuthSession[]
+  authSessionTokens      AuthSessionToken[]
+
+  @@unique([id, tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@map("partners")
+}
+
+model PartnerMembership {
+  id                   String                          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId             String                          @db.Uuid @map("tenant_id")
+  partnerId            String                          @db.Uuid @map("partner_id")
+  userId               String                          @db.Uuid @map("user_id")
+  status               PartnerMembershipStatus         @default(invited)
+  authorizationVersion Int                             @default(1) @map("authorization_version")
+  acceptedAt           DateTime?                       @db.Timestamptz(6) @map("accepted_at")
+  suspendedAt          DateTime?                       @db.Timestamptz(6) @map("suspended_at")
+  revokedAt            DateTime?                       @db.Timestamptz(6) @map("revoked_at")
+  createdAt            DateTime                        @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt            DateTime                        @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
+  partner              Partner                         @relation(fields: [partnerId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "partner_memberships_partner_tenant_fkey")
+  user                 User                            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invitationsSent      PartnerMembershipInvitation[]   @relation("PartnerMembershipInvitationInviterMembership")
+
+  @@unique([partnerId, userId])
+  @@unique([id, tenantId, partnerId])
+  @@index([tenantId, partnerId, status])
+  @@index([userId])
+  @@map("partner_memberships")
+}
+
+model PartnerMembershipInvitation {
+  id                    String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId              String                            @db.Uuid @map("tenant_id")
+  partnerId             String                            @db.Uuid @map("partner_id")
+  normalizedEmail       String                            @map("normalized_email")
+  invitedUserId         String?                           @db.Uuid @map("invited_user_id")
+  intendedRoleKey       String                            @map("intended_role_key")
+  status                PartnerMembershipInvitationStatus @default(pending)
+  hostname              String
+  selector              String                            @unique
+  tokenHash             String                            @db.Char(64) @map("token_hash")
+  expiresAt             DateTime                          @db.Timestamptz(6) @map("expires_at")
+  consumedAt            DateTime?                         @db.Timestamptz(6) @map("consumed_at")
+  revokedAt             DateTime?                         @db.Timestamptz(6) @map("revoked_at")
+  invitedByUserId       String                            @db.Uuid @map("invited_by_user_id")
+  invitedByMembershipId String                            @db.Uuid @map("invited_by_membership_id")
+  createdAt             DateTime                          @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt             DateTime                          @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
+  partner               Partner                           @relation(fields: [partnerId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "partner_membership_invitations_partner_tenant_fkey")
+  invitedUser           User?                             @relation("PartnerMembershipInvitationInvitee", fields: [invitedUserId], references: [id], onDelete: SetNull)
+  invitedByUser         User                              @relation("PartnerMembershipInvitationInviter", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+  invitedByMembership   PartnerMembership                 @relation("PartnerMembershipInvitationInviterMembership", fields: [invitedByMembershipId, tenantId, partnerId], references: [id, tenantId, partnerId], onDelete: Restrict, map: "partner_membership_invitations_inviter_membership_fkey")
+  intendedRole          Role                              @relation(fields: [intendedRoleKey], references: [key], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([tenantId, partnerId])
+  @@index([invitedUserId])
+  @@index([invitedByUserId])
+  @@index([expiresAt])
+  @@map("partner_membership_invitations")
+}
+
+model PartnerRegistrationVerification {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String    @db.Uuid @map("tenant_id")
+  partnerId  String    @db.Uuid @map("partner_id")
+  userId     String    @db.Uuid @map("user_id")
+  hostname   String
+  selector   String    @unique
+  tokenHash  String    @db.Char(64) @map("token_hash")
+  expiresAt  DateTime  @db.Timestamptz(6) @map("expires_at")
+  consumedAt DateTime? @db.Timestamptz(6) @map("consumed_at")
+  revokedAt  DateTime? @db.Timestamptz(6) @map("revoked_at")
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6) @map("created_at")
+  partner    Partner   @relation(fields: [partnerId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "partner_registration_verifications_partner_tenant_fkey")
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, partnerId])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("partner_registration_verifications")
+}
+
+model PartnerVerificationCheck {
+  id                String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String                         @db.Uuid @map("tenant_id")
+  partnerId         String                         @db.Uuid @map("partner_id")
+  checkType         PartnerVerificationCheckType   @map("check_type")
+  status            PartnerVerificationCheckStatus @default(pending)
+  evidenceReference String?                        @map("evidence_reference")
+  reviewedByUserId  String?                        @db.Uuid @map("reviewed_by_user_id")
+  submittedAt       DateTime?                      @db.Timestamptz(6) @map("submitted_at")
+  reviewedAt        DateTime?                      @db.Timestamptz(6) @map("reviewed_at")
+  metadata          Json                           @default("{}")
+  createdAt         DateTime                       @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt         DateTime                       @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
+  partner           Partner                        @relation(fields: [partnerId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "partner_verification_checks_partner_tenant_fkey")
+  reviewedByUser    User?                          @relation("PartnerVerificationCheckReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, partnerId, checkType])
+  @@index([tenantId, partnerId, status])
+  @@index([reviewedByUserId])
+  @@map("partner_verification_checks")
+}
+
+model PartnerPayoutAccount {
+  id               String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String                     @db.Uuid @map("tenant_id")
+  partnerId        String                     @db.Uuid @map("partner_id")
+  status           PartnerPayoutAccountStatus @default(pending)
+  accountReference String?                    @map("account_reference")
+  verifiedAt       DateTime?                  @db.Timestamptz(6) @map("verified_at")
+  createdAt        DateTime                   @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt        DateTime                   @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
+  partner          Partner                    @relation(fields: [partnerId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "partner_payout_accounts_partner_tenant_fkey")
+
+  @@unique([partnerId, tenantId])
+  @@index([tenantId, status])
+  @@map("partner_payout_accounts")
+}
+
+model PartnerReviewDecision {
+  id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String               @db.Uuid @map("tenant_id")
+  partnerId      String               @db.Uuid @map("partner_id")
+  partnerVersion Int                  @map("partner_version")
+  outcome        PartnerReviewOutcome
+  reasonCode     String?              @map("reason_code")
+  reason         String?
+  actorId        String               @db.Uuid @map("actor_id")
+  createdAt      DateTime             @default(now()) @db.Timestamptz(6) @map("created_at")
+  partner        Partner              @relation(fields: [partnerId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "partner_review_decisions_partner_tenant_fkey")
+  actor          User                 @relation("PartnerReviewDecisionActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, partnerId, createdAt])
+  @@index([actorId])
+  @@map("partner_review_decisions")
+}
+
+model PartnerLifecycleHistory {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String        @db.Uuid @map("tenant_id")
+  partnerId      String        @db.Uuid @map("partner_id")
+  previousStatus PartnerStatus? @map("previous_status")
+  nextStatus     PartnerStatus @map("next_status")
+  actorId        String?       @db.Uuid @map("actor_id")
+  reasonCode     String?       @map("reason_code")
+  createdAt      DateTime      @default(now()) @db.Timestamptz(6) @map("created_at")
+  partner        Partner       @relation(fields: [partnerId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "partner_lifecycle_history_partner_tenant_fkey")
+  actor          User?         @relation("PartnerLifecycleActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, partnerId, createdAt])
+  @@index([actorId])
+  @@map("partner_lifecycle_history")
+}
+
 model TenantCustomRole {
-  id             String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId       String                       @db.Uuid @map("tenant_id")
-  name           String
-  normalizedName String                       @map("normalized_name")
-  description    String?
-  version        Int                          @default(1)
-  archivedAt     DateTime?                    @db.Timestamptz(6) @map("archived_at")
-  createdAt      DateTime                     @default(now()) @db.Timestamptz(6) @map("created_at")
-  updatedAt      DateTime                     @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
-  tenant         Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id              String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String                       @db.Uuid @map("tenant_id")
+  name            String
+  normalizedName  String                       @map("normalized_name")
+  description     String?
+  version         Int                          @default(1)
+  archivedAt      DateTime?                    @db.Timestamptz(6) @map("archived_at")
+  createdAt       DateTime                     @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt       DateTime                     @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
+  tenant          Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   rolePermissions TenantCustomRolePermission[]
-  assignments    TenantCustomRoleAssignment[]
+  assignments     TenantCustomRoleAssignment[]
 
   @@unique([id, tenantId])
   @@index([tenantId])

@@ -36,6 +36,18 @@ const systemRoles = [
     scopeLevel: RoleScopeLevel.tenant,
     isSystem: true,
   },
+  {
+    id: "00000000-0000-4000-8000-000000000104",
+    key: "partner_owner",
+    scopeLevel: RoleScopeLevel.partner,
+    isSystem: true,
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000105",
+    key: "partner_member",
+    scopeLevel: RoleScopeLevel.partner,
+    isSystem: true,
+  },
 ] as const;
 
 const permissionDefinitions = [
@@ -171,6 +183,60 @@ const permissionDefinitions = [
     scopeLevel: RoleScopeLevel.tenant,
     description: "Revoke tenant custom-role assignments.",
   },
+  {
+    id: "00000000-0000-4000-8000-000000000229",
+    key: "tenant.partner.read",
+    scopeLevel: RoleScopeLevel.tenant,
+    description: "Read tenant Partners.",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000230",
+    key: "tenant.partner.review",
+    scopeLevel: RoleScopeLevel.tenant,
+    description: "Review tenant Partner onboarding submissions.",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000231",
+    key: "tenant.partner.approve",
+    scopeLevel: RoleScopeLevel.tenant,
+    description: "Approve tenant Partners.",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000232",
+    key: "tenant.partner.suspend",
+    scopeLevel: RoleScopeLevel.tenant,
+    description: "Suspend tenant Partners.",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000233",
+    key: "partner.profile.read",
+    scopeLevel: RoleScopeLevel.partner,
+    description: "Read the active Partner profile.",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000234",
+    key: "partner.profile.update",
+    scopeLevel: RoleScopeLevel.partner,
+    description: "Update the active Partner profile.",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000235",
+    key: "partner.membership.read",
+    scopeLevel: RoleScopeLevel.partner,
+    description: "Read Partner memberships.",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000236",
+    key: "partner.membership.invite",
+    scopeLevel: RoleScopeLevel.partner,
+    description: "Invite Partner members.",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000237",
+    key: "partner.membership.revoke",
+    scopeLevel: RoleScopeLevel.partner,
+    description: "Revoke Partner members.",
+  },
 ] as const;
 
 const permissionKeysByRole = {
@@ -199,6 +265,10 @@ const permissionKeysByRole = {
     "tenant.rbac.assignment.read",
     "tenant.rbac.assignment.grant",
     "tenant.rbac.assignment.revoke",
+    "tenant.partner.read",
+    "tenant.partner.review",
+    "tenant.partner.approve",
+    "tenant.partner.suspend",
   ],
   tenant_admin: [
     "tenant.membership.read",
@@ -210,7 +280,19 @@ const permissionKeysByRole = {
     "tenant.rbac.permission.read",
     "tenant.rbac.role.read",
     "tenant.rbac.assignment.read",
+    "tenant.partner.read",
+    "tenant.partner.review",
+    "tenant.partner.approve",
+    "tenant.partner.suspend",
   ],
+  partner_owner: [
+    "partner.profile.read",
+    "partner.profile.update",
+    "partner.membership.read",
+    "partner.membership.invite",
+    "partner.membership.revoke",
+  ],
+  partner_member: ["partner.profile.read", "partner.membership.read"],
 } as const;
 
 async function seedTenantProbe(tenantId: string, value: string): Promise<void> {
