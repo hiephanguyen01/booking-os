@@ -48,6 +48,7 @@ import { UpdateTenantCustomRoleUseCase } from "../../application/use-cases/tenan
 import {
   CurrentAuthorizationContext,
   PermissionGuard,
+  RequiresAnyPermission,
   RequiresPermission,
 } from "../../authorization.http.js";
 import {
@@ -232,7 +233,10 @@ export class TenantRbacController {
   }
 
   @SessionRequired()
-  @RequiresPermission(PERMISSION_KEYS.tenantRbacRolePermissionGrant)
+  @RequiresAnyPermission(
+    PERMISSION_KEYS.tenantRbacRolePermissionGrant,
+    PERMISSION_KEYS.tenantRbacRolePermissionRevoke,
+  )
   @Put("roles/:roleId/permissions")
   @Header("Cache-Control", "private, no-store")
   @ApiOperation({ operationId: "replaceTenantRbacRolePermissions" })
