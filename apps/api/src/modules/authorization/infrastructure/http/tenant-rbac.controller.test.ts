@@ -221,10 +221,7 @@ test("permission replacement route admits grant or revoke authority before diff-
       REQUIRES_PERMISSION_METADATA,
       TenantRbacController.prototype.replaceRolePermissions,
     ),
-    [
-      PERMISSION_KEYS.tenantRbacRolePermissionGrant,
-      PERMISSION_KEYS.tenantRbacRolePermissionRevoke,
-    ],
+    [PERMISSION_KEYS.tenantRbacRolePermissionGrant, PERMISSION_KEYS.tenantRbacRolePermissionRevoke],
   );
 });
 
