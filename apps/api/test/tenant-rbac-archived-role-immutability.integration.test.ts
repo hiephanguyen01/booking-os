@@ -89,7 +89,7 @@ after(async () => {
   }
 });
 
-test.skip("archived tenant custom role rows reject booking_app UPDATE", async () => {
+test("archived tenant custom role rows reject booking_app UPDATE", async () => {
   const { tenantId, roleId } = await createArchivedRoleWithPermission("Archived Role Update");
 
   const updateResult = await Promise.allSettled([
