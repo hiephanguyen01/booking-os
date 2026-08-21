@@ -1,0 +1,68 @@
+name: Tenant RBAC permission race diagnostic
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    name: Capture permission race outcome
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: booking
+          POSTGRES_PASSWORD: booking
+          POSTGRES_DB: booking_os_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U booking -d booking_os_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://booking:booking@127.0.0.1:5432/booking_os_test
+      NODE_ENV: test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @booking-os/api prisma:generate
+
+      - name: Apply database migrations
+        run: pnpm --filter @booking-os/api prisma:migrate:deploy
+
+      - name: Run focused permission-race test
+        run: >-
+          pnpm --filter @booking-os/api exec node --test --test-concurrency=1 --import tsx
+          test/tenant-rbac-permission-mapping-concurrency.e2e.test.ts
+
+      - name: Upload permission-race diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tenant-rbac-permission-race-diagnostic
+          path: apps/api/.diagnostics/tenant-rbac-permission-race.json
+          if-no-files-found: error
+          retention-days: 1
