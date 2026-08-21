@@ -151,27 +151,9 @@ test("all tenant custom RBAC tables use the canonical FORCE-RLS tenant contract"
     assert.doesNotMatch(policy.qual ?? "", /app\.current_tenant_id/);
     assert.doesNotMatch(policy.with_check ?? "", /app\.current_tenant_id/);
   }
-
-  const grants = await prisma.$queryRaw<readonly { table_name: string; privilege_type: string }[]>`
-    SELECT table_name, privilege_type
-    FROM information_schema.table_privileges
-    WHERE table_schema = 'public'
-      AND table_name = ANY(${expectedTables}::text[])
-      AND grantee = 'booking_app'
-    ORDER BY table_name, privilege_type
-  `;
-  for (const table of expectedTables) {
-    assert.deepEqual(
-      grants
-        .filter((grant) => grant.table_name === table)
-        .map((grant) => grant.privilege_type)
-        .sort(),
-      ["DELETE", "INSERT", "SELECT", "UPDATE"],
-    );
-  }
 });
 
-test("foreign and missing tenant context deny CRUD across all custom-RBAC tables", async () => {
+test("foreign and missing tenant context deny all granted DML across custom-RBAC tables", async () => {
   const tenantAId = await createTenant();
   const tenantBId = await createTenant();
   const membershipId = await createActiveMembership(tenantAId);
@@ -251,18 +233,6 @@ test("foreign and missing tenant context deny CRUD across all custom-RBAC tables
     );
     assert.equal(updatedRoles, 0);
 
-    assert.equal(
-      await runAsTenant<number>(
-        deniedTenantId,
-        (transaction) => transaction.$executeRaw`
-          UPDATE "tenant_custom_role_permissions"
-          SET "created_at" = CURRENT_TIMESTAMP
-          WHERE "role_id" = ${roleId}::uuid AND "permission_id" = ${permissionId}::uuid
-        `,
-      ),
-      0,
-    );
-
     const updatedAssignments = await runAsTenant(
       deniedTenantId,
       (transaction) => transaction.$executeRaw`
@@ -315,14 +285,6 @@ test("foreign and missing tenant context deny CRUD across all custom-RBAC tables
       ),
     );
 
-    const deletedRoles = await runAsTenant(
-      deniedTenantId,
-      (transaction) => transaction.$executeRaw`
-        DELETE FROM "tenant_custom_roles" WHERE "id" = ${roleId}::uuid
-      `,
-    );
-    assert.equal(deletedRoles, 0);
-
     assert.equal(
       await runAsTenant<number>(
         deniedTenantId,
@@ -333,14 +295,6 @@ test("foreign and missing tenant context deny CRUD across all custom-RBAC tables
       ),
       0,
     );
-
-    const deletedAssignments = await runAsTenant(
-      deniedTenantId,
-      (transaction) => transaction.$executeRaw`
-        DELETE FROM "tenant_custom_role_assignments" WHERE "id" = ${assignmentId}::uuid
-      `,
-    );
-    assert.equal(deletedAssignments, 0);
   }
 
   const visibleSourceRows = await runAsTenant(tenantAId, async (transaction) => ({
@@ -357,6 +311,93 @@ test("foreign and missing tenant context deny CRUD across all custom-RBAC tables
     `,
   }));
   assert.deepEqual(visibleSourceRows, {
+    roles: [{ id: roleId }],
+    mappings: [{ role_id: roleId }],
+    assignments: [{ id: assignmentId }],
+  });
+});
+
+test("booking_app cannot bypass role and assignment lifecycle semantics with extra DML", async () => {
+  const tenantId = await createTenant();
+  const membershipId = await createActiveMembership(tenantId);
+  const roleId = randomUUID();
+  const assignmentId = randomUUID();
+  const tenantPermission = await prisma.$queryRaw<readonly { id: string }[]>`
+    SELECT "id" FROM "permissions" WHERE "key" = 'tenant.membership.read'
+  `;
+  const permissionId = tenantPermission[0]?.id;
+  assert.ok(permissionId);
+
+  await runAsTenant(tenantId, async (transaction) => {
+    await transaction.$executeRaw`
+      INSERT INTO "tenant_custom_roles" (
+        "id", "tenant_id", "name", "normalized_name", "version", "created_at", "updated_at"
+      ) VALUES (
+        ${roleId}::uuid, ${tenantId}::uuid, 'Lifecycle Role', 'lifecycle role', 1,
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+      )
+    `;
+    await transaction.$executeRaw`
+      INSERT INTO "tenant_custom_role_permissions" (
+        "tenant_id", "role_id", "permission_id", "created_at"
+      ) VALUES (
+        ${tenantId}::uuid, ${roleId}::uuid, ${permissionId}::uuid, CURRENT_TIMESTAMP
+      )
+    `;
+    await transaction.$executeRaw`
+      INSERT INTO "tenant_custom_role_assignments" (
+        "id", "tenant_id", "membership_id", "role_id", "created_at"
+      ) VALUES (
+        ${assignmentId}::uuid, ${tenantId}::uuid, ${membershipId}::uuid, ${roleId}::uuid,
+        CURRENT_TIMESTAMP
+      )
+    `;
+  });
+
+  await assert.rejects(
+    runAsTenant(
+      tenantId,
+      (transaction) => transaction.$executeRaw`
+        DELETE FROM "tenant_custom_roles" WHERE "id" = ${roleId}::uuid
+      `,
+    ),
+    /permission denied/i,
+  );
+  await assert.rejects(
+    runAsTenant(
+      tenantId,
+      (transaction) => transaction.$executeRaw`
+        UPDATE "tenant_custom_role_permissions"
+        SET "created_at" = CURRENT_TIMESTAMP
+        WHERE "role_id" = ${roleId}::uuid AND "permission_id" = ${permissionId}::uuid
+      `,
+    ),
+    /permission denied/i,
+  );
+  await assert.rejects(
+    runAsTenant(
+      tenantId,
+      (transaction) => transaction.$executeRaw`
+        DELETE FROM "tenant_custom_role_assignments" WHERE "id" = ${assignmentId}::uuid
+      `,
+    ),
+    /permission denied/i,
+  );
+
+  const rowsAfterDeniedWrites = await runAsTenant(tenantId, async (transaction) => ({
+    roles: await transaction.$queryRaw<readonly { id: string }[]>`
+      SELECT "id" FROM "tenant_custom_roles" WHERE "id" = ${roleId}::uuid
+    `,
+    mappings: await transaction.$queryRaw<readonly { role_id: string }[]>`
+      SELECT "role_id"
+      FROM "tenant_custom_role_permissions"
+      WHERE "role_id" = ${roleId}::uuid AND "permission_id" = ${permissionId}::uuid
+    `,
+    assignments: await transaction.$queryRaw<readonly { id: string }[]>`
+      SELECT "id" FROM "tenant_custom_role_assignments" WHERE "id" = ${assignmentId}::uuid
+    `,
+  }));
+  assert.deepEqual(rowsAfterDeniedWrites, {
     roles: [{ id: roleId }],
     mappings: [{ role_id: roleId }],
     assignments: [{ id: assignmentId }],
