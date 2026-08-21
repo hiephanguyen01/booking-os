@@ -31,6 +31,7 @@ import {
   PERMISSION_GUARD_EXEMPT_METADATA,
   type PermissionGuardExemption,
   REQUIRES_PERMISSION_METADATA,
+  type RequiredPermissionMetadata,
 } from "./requires-permission.decorator.js";
 
 const AUTHORIZATION_CONTEXT_REQUEST_KEY = Symbol("AUTHORIZATION_CONTEXT_REQUEST_KEY");
@@ -49,6 +50,12 @@ function firstHeaderValue(value: string | readonly string[] | undefined): string
   return typeof value === "string" ? value : value?.[0];
 }
 
+function requiredPermissions(
+  requirement: RequiredPermissionMetadata,
+): readonly [PermissionKey, ...PermissionKey[]] {
+  return typeof requirement === "string" ? [requirement] : requirement;
+}
+
 function sameScope(
   authenticated: AuthenticatedRequestContext,
   authorization: AuthorizationContext,
@@ -64,7 +71,7 @@ function sameScope(
 function isAllowed(
   authenticated: AuthenticatedRequestContext,
   authorization: AuthorizationContext,
-  permission: PermissionKey,
+  permissions: readonly PermissionKey[],
   reconciled: boolean,
 ): boolean {
   return (
@@ -78,7 +85,7 @@ function isAllowed(
     sameScope(authenticated, authorization) &&
     (authorization.scope.type === "platform" ||
       (authorization.membershipStatus === "active" && Boolean(authorization.membershipId))) &&
-    authorization.permissionKeys.includes(permission)
+    permissions.some((permission) => authorization.permissionKeys.includes(permission))
   );
 }
 
@@ -128,11 +135,11 @@ export class PermissionGuard implements CanActivate {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const permission = this.reflector.getAllAndOverride<PermissionKey>(
+    const requirement = this.reflector.getAllAndOverride<RequiredPermissionMetadata>(
       REQUIRES_PERMISSION_METADATA,
       [context.getHandler(), context.getClass()],
     );
-    if (!permission) {
+    if (!requirement) {
       const exemption = this.reflector.getAllAndOverride<PermissionGuardExemption>(
         PERMISSION_GUARD_EXEMPT_METADATA,
         [context.getHandler(), context.getClass()],
@@ -140,15 +147,17 @@ export class PermissionGuard implements CanActivate {
       if (exemption === "invitation_pending") return true;
       throw new ForbiddenException("A permission declaration is required.");
     }
+    const permissions = requiredPermissions(requirement);
+    const auditPermission = permissions[0];
 
     const authenticated = this.requestContext.getAuthenticated();
     if (!authenticated) throw new UnauthorizedException("Authentication is required.");
     if (authenticated.sessionState !== "active") {
-      await this.recordDenial(authenticated, permission, "session_inactive");
+      await this.recordDenial(authenticated, auditPermission, "session_inactive");
       throw new ForbiddenException("An active session is required.");
     }
     if (!isAuthorizationReadyRequestContext(authenticated)) {
-      await this.recordDenial(authenticated, permission, "authorization_snapshot_missing");
+      await this.recordDenial(authenticated, auditPermission, "authorization_snapshot_missing");
       throw new ForbiddenException("Authorization snapshots are required.");
     }
     const request = context.switchToHttp().getRequest<PermissionRequest>();
@@ -170,13 +179,13 @@ export class PermissionGuard implements CanActivate {
     } catch (error: unknown) {
       const reason = denialReason(error);
       if (reason) {
-        await this.recordDenial(authenticated, permission, reason);
+        await this.recordDenial(authenticated, auditPermission, reason);
         throw new ForbiddenException("Authoritative permission is required.");
       }
       throw error;
     }
-    if (!isAllowed(authenticated, authorization, permission, reconciled)) {
-      await this.recordDenial(authenticated, permission, "authority_mismatch");
+    if (!isAllowed(authenticated, authorization, permissions, reconciled)) {
+      await this.recordDenial(authenticated, auditPermission, "authority_mismatch");
       throw new ForbiddenException("Authoritative permission is required.");
     }
 
