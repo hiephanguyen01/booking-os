@@ -112,6 +112,25 @@ CREATE INDEX "tenant_custom_role_assignments_membership_id_idx"
 CREATE INDEX "tenant_custom_role_assignments_role_id_idx"
   ON "tenant_custom_role_assignments" ("role_id");
 
+CREATE OR REPLACE FUNCTION prevent_archived_tenant_custom_role_update()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF OLD."archived_at" IS NOT NULL THEN
+    RAISE EXCEPTION 'archived tenant custom role cannot be modified' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER "tenant_custom_roles_prevent_archived_update"
+BEFORE UPDATE
+ON "tenant_custom_roles"
+FOR EACH ROW EXECUTE FUNCTION prevent_archived_tenant_custom_role_update();
+
 CREATE OR REPLACE FUNCTION validate_tenant_custom_role_permission()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -152,6 +171,35 @@ CREATE TRIGGER "tenant_custom_role_permissions_validate"
 BEFORE INSERT OR UPDATE OF "tenant_id", "role_id", "permission_id"
 ON "tenant_custom_role_permissions"
 FOR EACH ROW EXECUTE FUNCTION validate_tenant_custom_role_permission();
+
+CREATE OR REPLACE FUNCTION prevent_archived_tenant_custom_role_permission_delete()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  role_archived_at timestamptz;
+BEGIN
+  SELECT "archived_at" INTO role_archived_at
+  FROM "tenant_custom_roles"
+  WHERE "id" = OLD."role_id" AND "tenant_id" = OLD."tenant_id"
+  FOR SHARE;
+
+  IF NOT FOUND THEN
+    RETURN OLD;
+  END IF;
+  IF role_archived_at IS NOT NULL THEN
+    RAISE EXCEPTION 'archived tenant custom role permissions cannot be removed' USING ERRCODE = '23514';
+  END IF;
+  RETURN OLD;
+END;
+$$;
+
+CREATE TRIGGER "tenant_custom_role_permissions_prevent_archived_delete"
+BEFORE DELETE
+ON "tenant_custom_role_permissions"
+FOR EACH ROW EXECUTE FUNCTION prevent_archived_tenant_custom_role_permission_delete();
 
 CREATE OR REPLACE FUNCTION validate_tenant_custom_role_assignment()
 RETURNS trigger
@@ -252,9 +300,13 @@ GRANT SELECT, INSERT, UPDATE ON TABLE "tenant_custom_roles" TO booking_app;
 GRANT SELECT, INSERT, DELETE ON TABLE "tenant_custom_role_permissions" TO booking_app;
 GRANT SELECT, INSERT, UPDATE ON TABLE "tenant_custom_role_assignments" TO booking_app;
 
+REVOKE ALL ON FUNCTION prevent_archived_tenant_custom_role_update() FROM PUBLIC;
 REVOKE ALL ON FUNCTION validate_tenant_custom_role_permission() FROM PUBLIC;
+REVOKE ALL ON FUNCTION prevent_archived_tenant_custom_role_permission_delete() FROM PUBLIC;
 REVOKE ALL ON FUNCTION validate_tenant_custom_role_assignment() FROM PUBLIC;
 REVOKE ALL ON FUNCTION prevent_tenant_custom_role_assignment_reactivation() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION prevent_archived_tenant_custom_role_update() TO booking_app;
 GRANT EXECUTE ON FUNCTION validate_tenant_custom_role_permission() TO booking_app;
+GRANT EXECUTE ON FUNCTION prevent_archived_tenant_custom_role_permission_delete() TO booking_app;
 GRANT EXECUTE ON FUNCTION validate_tenant_custom_role_assignment() TO booking_app;
 GRANT EXECUTE ON FUNCTION prevent_tenant_custom_role_assignment_reactivation() TO booking_app;
