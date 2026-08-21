@@ -1,3 +1,5 @@
+import "reflect-metadata";
+
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -16,6 +18,7 @@ import {
   TenantCustomRoleVersionConflictError,
   TenantRbacPermissionGrantNotAllowedError,
 } from "../../domain/tenant-rbac/tenant-rbac.errors.js";
+import { REQUIRES_PERMISSION_METADATA } from "./requires-permission.decorator.js";
 import { TenantRbacController } from "./tenant-rbac.controller.js";
 
 const TENANT_ID = "30000000-0000-4000-8000-000000000001";
@@ -210,6 +213,19 @@ test("routes delegate guard-built authority without accepting tenantId from tran
   for (const [, input] of calls) {
     assert.equal(Object.hasOwn(input as object, "tenantId"), false);
   }
+});
+
+test("permission replacement route admits grant or revoke authority before diff-level checks", () => {
+  assert.deepEqual(
+    Reflect.getMetadata(
+      REQUIRES_PERMISSION_METADATA,
+      TenantRbacController.prototype.replaceRolePermissions,
+    ),
+    [
+      PERMISSION_KEYS.tenantRbacRolePermissionGrant,
+      PERMISSION_KEYS.tenantRbacRolePermissionRevoke,
+    ],
+  );
 });
 
 test("create role rejects tenantId supplied by the transport", async () => {
