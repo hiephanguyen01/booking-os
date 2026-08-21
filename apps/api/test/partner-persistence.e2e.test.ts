@@ -91,10 +91,10 @@ after(async () => {
   for (const tenantId of [TENANT_A_ID, TENANT_B_ID]) {
     if (await relationExists("partners")) {
       await withTenant(tenantId, async (client) => {
-        await client.query(
-          "DELETE FROM partners WHERE id IN ($1::uuid, $2::uuid)",
-          [PARTNER_A_ID, PARTNER_B_ID],
-        );
+        await client.query("DELETE FROM partners WHERE id IN ($1::uuid, $2::uuid)", [
+          PARTNER_A_ID,
+          PARTNER_B_ID,
+        ]);
       });
     }
   }
@@ -251,9 +251,7 @@ test("composite Partner foreign keys reject cross-tenant relationships", async (
 });
 
 test("Partner role assignment shape and active-membership requirements fail closed", async () => {
-  const role = await pool.query<{ id: string }>(
-    "SELECT id FROM roles WHERE key = 'partner_owner'",
-  );
+  const role = await pool.query<{ id: string }>("SELECT id FROM roles WHERE key = 'partner_owner'");
   assert.equal(role.rowCount, 1);
   const partnerOwnerRoleId = role.rows[0]?.id;
   assert.ok(partnerOwnerRoleId);
