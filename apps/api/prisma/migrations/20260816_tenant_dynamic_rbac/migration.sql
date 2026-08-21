@@ -247,7 +247,7 @@ RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
-AS $
+AS $assignment_identity$
 BEGIN
   IF OLD."tenant_id" IS DISTINCT FROM NEW."tenant_id"
     OR OLD."membership_id" IS DISTINCT FROM NEW."membership_id"
@@ -256,7 +256,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$assignment_identity$;
 
 CREATE TRIGGER "tenant_custom_role_assignments_prevent_identity_update"
 BEFORE UPDATE OF "tenant_id", "membership_id", "role_id"
