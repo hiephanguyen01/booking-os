@@ -151,12 +151,6 @@ test("active custom-role assignments reject booking_app membership retargeting",
     `,
   );
 
-  assert.equal(
-    updateResult[0]?.status,
-    "rejected",
-    "assignment identity UPDATE must be rejected",
-  );
-  assert.deepEqual(assignmentState, [
-    { membership_id: OWNER_MEMBERSHIP_ID, role_id: ROLE_ID },
-  ]);
+  assert.equal(updateResult[0]?.status, "rejected", "assignment identity UPDATE must be rejected");
+  assert.deepEqual(assignmentState, [{ membership_id: OWNER_MEMBERSHIP_ID, role_id: ROLE_ID }]);
 });
