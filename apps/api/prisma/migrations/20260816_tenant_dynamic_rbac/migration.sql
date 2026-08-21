@@ -228,9 +228,9 @@ CREATE POLICY "tenant_custom_role_assignments_tenant_isolation" ON "tenant_custo
 REVOKE ALL PRIVILEGES ON TABLE "tenant_custom_roles" FROM booking_app;
 REVOKE ALL PRIVILEGES ON TABLE "tenant_custom_role_permissions" FROM booking_app;
 REVOKE ALL PRIVILEGES ON TABLE "tenant_custom_role_assignments" FROM booking_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "tenant_custom_roles" TO booking_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "tenant_custom_role_permissions" TO booking_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "tenant_custom_role_assignments" TO booking_app;
+GRANT SELECT, INSERT, UPDATE ON TABLE "tenant_custom_roles" TO booking_app;
+GRANT SELECT, INSERT, DELETE ON TABLE "tenant_custom_role_permissions" TO booking_app;
+GRANT SELECT, INSERT, UPDATE ON TABLE "tenant_custom_role_assignments" TO booking_app;
 
 REVOKE ALL ON FUNCTION validate_tenant_custom_role_permission() FROM PUBLIC;
 REVOKE ALL ON FUNCTION validate_tenant_custom_role_assignment() FROM PUBLIC;
