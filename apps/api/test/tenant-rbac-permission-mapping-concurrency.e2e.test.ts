@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
 import test, { after, before, beforeEach } from "node:test";
 
 import { PERMISSION_KEYS, SYSTEM_ROLES, type PermissionKey } from "@booking-os/auth";
@@ -178,11 +177,18 @@ test("archive racing direct permission mapping cannot leave a mapping on the arc
       }
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
+    assert.equal(
+      observedBlockedInsert,
+      true,
+      "permission write must reach the blocked mapping INSERT",
+    );
   } finally {
     releaseArchive();
   }
 
   const [archiveResult, insertResult] = await Promise.allSettled([archivePromise, insertPromise]);
+  assert.equal(archiveResult.status, "fulfilled");
+  assert.equal(insertResult.status, "rejected");
 
   const roles = await prisma.$queryRaw<readonly { archivedAt: Date | null }[]>`
     SELECT "archived_at" AS "archivedAt"
@@ -196,36 +202,6 @@ test("archive racing direct permission mapping cannot leave a mapping on the arc
       AND "role_id" = ${ROLE_ID}::uuid
       AND "permission_id" = ${permissionId}::uuid
   `;
-  const mappingCount = Number(mappings[0]?.count ?? 0n);
-  const diagnostic = JSON.stringify({
-    observedBlockedInsert,
-    archiveStatus: archiveResult.status,
-    insertStatus: insertResult.status,
-    roleArchived: Boolean(roles[0]?.archivedAt),
-    mappingCount,
-  });
-  await mkdir(".diagnostics", { recursive: true });
-  await writeFile(".diagnostics/tenant-rbac-permission-race.json", `${diagnostic}\n`, "utf8");
-
-  assert.equal(
-    observedBlockedInsert,
-    true,
-    `permission write must reach the blocked mapping INSERT; diagnostic=${diagnostic}`,
-  );
-  assert.equal(
-    archiveResult.status,
-    "fulfilled",
-    `archive transaction must commit; diagnostic=${diagnostic}`,
-  );
-  assert.equal(
-    insertResult.status,
-    "rejected",
-    `permission mapping must be rejected; diagnostic=${diagnostic}`,
-  );
-  assert.ok(roles[0]?.archivedAt, `role must remain archived; diagnostic=${diagnostic}`);
-  assert.equal(
-    mappingCount,
-    0,
-    `archived role must not retain the mapping; diagnostic=${diagnostic}`,
-  );
+  assert.ok(roles[0]?.archivedAt);
+  assert.equal(Number(mappings[0]?.count ?? 0n), 0);
 });
