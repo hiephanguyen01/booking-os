@@ -24,7 +24,7 @@ Partner registration
 → Partner-scoped session
 → onboarding profile/evidence/payout account
 → submit
-→ tenant review / changes requested
+→ tenant verification/review / changes requested
 → approve
 → operationally active Partner
 ```
@@ -59,8 +59,8 @@ Sprint 3 must:
 3. support public Partner registration using a secure email verification link;
 4. reuse shared password, opaque-session, hostname, CSRF, token-secrecy, authorization-version, audit, and abuse-protection invariants;
 5. create a Partner aggregate supporting `individual` and `company` applications;
-6. let a Partner edit a draft/changes-requested application, submit it, and inspect review findings;
-7. let authorized tenant operators review, request changes, approve, or reject the application;
+6. let a Partner edit a draft/changes-requested application, submit it, and inspect review findings/verification state;
+7. let authorized tenant operators review verification items, request changes, approve, or reject the application;
 8. activate inventory eligibility only after approval;
 9. support Partner suspend/reactivate/cancel lifecycle operations with owner-governed authority;
 10. make Partner-owned persistence tenant-owned, same-tenant constrained, and FORCE-RLS protected;
@@ -80,7 +80,7 @@ The following are explicitly outside Sprint 3:
 - Partner custom roles or a full Partner Role Builder UI;
 - Platform custom roles;
 - Partner team invitation/member-management product UI;
-- automatic KYC/eKYC, mandatory video verification, or mandatory physical site visits;
+- automatic eKYC, mandatory video verification, or mandatory physical site visits;
 - public object-storage URLs for verification evidence;
 - tenant-level subscription, plan, or entitlement implementation unless a later explicit plan schedules it;
 - partner-level PostgreSQL RLS using `app.partner_id`;
@@ -119,7 +119,7 @@ Rules:
 - Partner domain code imports no NestJS, Prisma, HTTP, object-storage SDK, logger, queue, environment, or crypto-provider types.
 - Partner application ports expose no Prisma transaction client, Express/Fastify types, provider SDK objects, or signed-URL implementation details.
 - Controllers invoke application use cases only.
-- Partner persistence adapters may consume exported Identity/Sessions/Authorization application contracts but never their infrastructure directories or tables directly from application/domain code.
+- Partner adapters may consume exported Identity/Sessions/Authorization application contracts but never import another module's infrastructure directory.
 - Another module may consume Partner behavior only through explicit application-facing contracts.
 - Existing foundation code is touched only where the Partner scope genuinely extends the shared kernel.
 
@@ -130,8 +130,8 @@ Rules:
 - global User identity;
 - normalized email identity;
 - password credentials;
-- password reset and account activation security primitives;
-- secure token/hash primitives used through exported application ports.
+- password reset and password-policy behavior;
+- secure token/hash primitives exposed through application ports.
 
 `SessionsModule` continues to own:
 
@@ -149,9 +149,9 @@ Rules:
 `PartnersModule` owns:
 
 - Partner aggregate and lifecycle;
-- PartnerMembership and PartnerRoleAssignment persistence;
+- PartnerRegistration, PartnerMembership, and PartnerRoleAssignment persistence;
 - Partner application/profile;
-- Partner verification records;
+- Partner verification records and tenant verification decisions;
 - Partner review findings;
 - Partner evidence metadata and storage authorization;
 - Partner payout-account metadata and encryption port usage;
@@ -202,6 +202,8 @@ RoleScopeLevel:
   partner
 ```
 
+The enum addition does not by itself widen every existing identity token flow. Existing account-activation/password-reset flows keep their current allowed scope shapes until an explicit Partner recovery/activation contract needs otherwise. Partner registration uses the dedicated registration/continuation contract in this design rather than relying on a pre-existing TenantMembership activation token.
+
 ### 6.3 Current-scope-only authority
 
 A Partner session never unions Tenant permissions into Partner permissions, even when the same User also has an active TenantMembership.
@@ -237,19 +239,27 @@ partner_membership_authorization_version
 
 Partner scope does not require `TenantMembership.authorization_version`.
 
-Required scope-shape constraint:
+Required session scope-shape constraint:
 
 ```text
-platform: tenant_id IS NULL  AND partner_id IS NULL
+platform: tenant_id IS NULL     AND partner_id IS NULL
 tenant:   tenant_id IS NOT NULL AND partner_id IS NULL
 partner:  tenant_id IS NOT NULL AND partner_id IS NOT NULL
 ```
 
-`AuthSessionToken` carries/validates matching scope and tenant/partner shape where the existing duplicated scope fields are retained. Wrong-host, wrong-tenant, wrong-partner, wrong-scope, stale-version, suspended Partner, inactive PartnerMembership, or inactive User fail before product use-case execution.
+`AuthSessionToken` carries/validates matching scope and tenant/partner shape where the existing duplicated scope fields are retained. Wrong-host, wrong-tenant, wrong-partner, wrong-scope, stale-version, suspended/cancelled Partner, inactive PartnerMembership, or inactive User fail before product use-case execution.
+
+### 6.5 Generic system-role assignment boundary
+
+Partner system roles are **not** assigned through the existing generic `role_assignments` table. That table remains the Platform/Tenant system-role assignment mechanism. Sprint 3 adds `partner_role_assignments`, tied structurally to `PartnerMembership`.
+
+Database/catalog verification must reject Partner-scope roles in generic `role_assignments`, and must reject Platform/Tenant roles in `partner_role_assignments`. This prevents a Partner role from becoming ambient User/Tenant authority.
 
 ## 7. Partner registration and identity establishment
 
 ### 7.1 Public registration contract
+
+Partner registration is available only on a trusted, active tenant hostname. Tenant identity comes from host resolution and is never supplied as a public request authority field.
 
 The public start endpoint is enumeration-safe:
 
@@ -257,7 +267,7 @@ The public start endpoint is enumeration-safe:
 POST /partner-registration/start
 ```
 
-Input contains the normalized registration email plus the minimal request data required to send a verification link. The public response never reveals whether the email already belongs to a global User, existing Partner, pending registration, or ineligible account.
+Input contains the registration email plus the minimal request data required to send a verification link. The public response never reveals whether the email already belongs to a global User, existing Partner, pending registration, or ineligible account.
 
 Canonical response intent:
 
@@ -266,48 +276,62 @@ If the address can be used for Partner registration,
 verification instructions will be sent.
 ```
 
-### 7.2 Registration challenge
+### 7.2 PartnerRegistration record
 
-Partner registration uses a dedicated purpose-bound challenge while reusing the shared secure-token/hash/delivery infrastructure through application ports.
-
-Conceptual record:
+Partner registration has a durable tenant-owned intent record with a single-use email secret and a separately rotated single-use continuation secret:
 
 ```text
-PartnerRegistrationChallenge
+PartnerRegistration
 ├── id
 ├── tenant_id
 ├── normalized_email
 ├── hostname
-├── selector
-├── token_hash
-├── expires_at
-├── consumed_at
-├── revoked_at
-├── created_at
-└── request_fingerprint / abuse metadata where approved
+├── status: pending_email | email_verified | completed | revoked | expired
+├── email_selector
+├── email_token_hash
+├── email_expires_at
+├── email_consumed_at
+├── continuation_selector
+├── continuation_token_hash
+├── continuation_expires_at
+├── continuation_consumed_at
+├── verified_at
+├── completed_at
+└── created_at
 ```
 
-The challenge is:
+Raw email/continuation secrets are never stored. Selector + keyed digest/hash is stored at rest.
+
+Starting a registration does not create a global User row for an unverified email. New global identity creation is deferred until verified registration continuation, preventing unauthenticated requests from filling the global User table with arbitrary third-party emails.
+
+### 7.3 Email verification exchange
+
+The email verification secret is:
 
 - single-use;
 - short-lived;
 - hostname-bound;
 - tenant-bound;
 - purpose-bound to Partner registration;
-- selector + keyed digest/hash at rest;
-- raw secret excluded from logs, audit, metrics, and persistence.
+- excluded from logs, audit, metrics, persistence, and referrers.
 
-Starting a registration does not have to create a global User row for an unverified email. New global identity creation is deferred until verified registration completion, preventing unauthenticated requests from filling the global User table with arbitrary third-party emails.
-
-### 7.3 Verification link
-
-Email links place the raw one-time secret in a browser fragment where feasible:
+Email links place the raw secret in a browser fragment where feasible:
 
 ```text
 https://<tenant-host>/partner/register/verify#<secret>
 ```
 
-The browser/BFF scrubs the fragment before the secret can reach normal navigation, referrer, analytics, or server access logs, then performs the same-origin exchange.
+The browser/BFF scrubs the fragment before normal navigation, referrer, analytics, or server access logging, then performs the same-origin exchange.
+
+Successful exchange atomically:
+
+1. locks the PartnerRegistration;
+2. validates and consumes the email token;
+3. sets registration status to `email_verified` and `verified_at`;
+4. rotates to a new short-lived registration continuation selector/hash;
+5. returns the raw continuation only through a host-only, `Secure`, `HttpOnly`, `SameSite=Lax`, `Path=/`, no-`Domain` continuation cookie owned by the same-origin flow.
+
+The email secret cannot be exchanged twice. The continuation is a separate secret and is consumed only when Partner establishment commits.
 
 ### 7.4 Existing-user and new-user branches
 
@@ -315,43 +339,52 @@ Email ownership and account authentication are distinct.
 
 **Existing active User:**
 
-- verification proves control of the registration email;
-- the email link alone does not silently mint a full session for an already-active existing account;
-- the actor authenticates using the existing credential/session flow before Partner establishment is committed;
-- password-reset uses the existing shared recovery flow when needed;
-- registration completion verifies the authenticated User matches the verified normalized email.
+- email verification proves control of the registration email;
+- the registration continuation alone does not mint a full session for an existing active account;
+- the actor authenticates using the normal shared credential/session flow;
+- password-reset uses the existing recovery flow when needed;
+- completion requires both the authenticated User and a valid registration continuation whose normalized email matches that User.
 
 **New User:**
 
-- successful email verification authorizes the new-account continuation;
-- the shared identity flow establishes the global User and password credential/activation state;
-- Partner establishment is committed only after the new identity is valid for authentication;
-- final Partner session issuance occurs after the establishment transaction commits.
+- email verification plus the valid continuation authorizes the new-account setup path;
+- IdentityModule applies the existing password policy and creates/activates the global User through an exported application contract;
+- account setup may commit before Partner establishment; an active global User without a Partner is safe and the still-valid continuation permits retry;
+- Partner establishment requires an authenticated session for the newly established User plus the matching continuation.
 
-This preserves one global identity and avoids using Partner registration as a password bypass for an existing account.
+The design deliberately does not require global identity creation and Partner establishment to be one cross-module database transaction. The security invariant is instead that Partner establishment itself is atomic and retryable, while a failed Partner transaction never consumes the continuation.
 
 ### 7.5 Atomic Partner establishment
 
-The establishment transaction creates:
+`CompletePartnerRegistration` requires:
+
+- active trusted tenant;
+- valid authenticated global User;
+- valid, unconsumed registration continuation on the same host/tenant;
+- normalized registration email matching the authenticated User;
+- registration not already completed/revoked/expired.
+
+One Partner transaction atomically:
 
 ```text
-Partner
-+ active initial PartnerMembership
-+ partner_owner PartnerRoleAssignment
-+ initial Partner/application history
-+ required audit event
-+ required outbox event
-+ consumed registration establishment marker
+consume registration continuation
++ mark PartnerRegistration completed
++ create Partner
++ create active initial PartnerMembership
++ create partner_owner PartnerRoleAssignment
++ append initial Partner/application history
++ append required audit
++ append required outbox
 ```
 
-The transaction is idempotent under concurrent verification/completion. It cannot leave:
+The transaction is idempotent under concurrent completion. It cannot leave:
 
 - a Partner with no initial owner membership;
 - an owner membership pointing at a different tenant/Partner;
-- duplicate Partners for the same establishment request;
-- a consumed registration establishment that never committed its Partner state.
+- duplicate Partner establishment for one registration;
+- a consumed continuation when the Partner transaction rolled back.
 
-Session issue/rotation happens only after the establishment transaction commits.
+Partner session issue/scope rotation happens only after this transaction commits.
 
 ## 8. Domain model
 
@@ -397,7 +430,8 @@ submitted
 Rules:
 
 - `draft` and `changes_requested` permit Partner-owned application edits.
-- `submitted` freezes review material against Partner self-service mutation.
+- `submitted` freezes Partner-owned review material against self-service mutation.
+- tenant reviewers may update verification decisions while the application is `submitted`.
 - `changes_requested` reopens Partner-owned application fields while preserving review history.
 - `approved` is terminal for the original onboarding application.
 - `rejected` is terminal for the original onboarding application.
@@ -485,7 +519,9 @@ changes_required
 rejected
 ```
 
-Approval requires every type-required verification item to be `verified`.
+Only authorized tenant review use cases may mark a verification item `verified`, `changes_required`, or `rejected`. Partner self-service never directly chooses verification status.
+
+When an editable application replaces evidence or payout-account material for a kind, the corresponding verification item is reset to `pending` in the same application transaction. Approval requires every type-required verification item to be `verified`.
 
 ### 8.6 Partner review findings
 
@@ -539,13 +575,14 @@ PartnerPayoutAccount
 ├── account_number_last4
 ├── account_number_fingerprint
 ├── encryption_key_version
-├── verification_status
 ├── version
 ├── created_at
 └── superseded_at
 ```
 
 Only one non-superseded payout account exists per Partner. Replacement creates a new record and supersedes the old one.
+
+Payout verification state is **not duplicated** on this table. `PartnerVerificationItem(kind = payout_account)` is the canonical verification state. Read DTOs may compose that status from the verification item.
 
 ### 8.9 Partner membership
 
@@ -562,7 +599,7 @@ PartnerMembership
 └── revoked_at
 ```
 
-Status:
+Status vocabulary is reserved for Partner member-management evolution:
 
 ```text
 active
@@ -570,7 +607,7 @@ suspended
 revoked
 ```
 
-Initial registration creates one active owner membership. Active PartnerMembership means the user may enter the Partner scope; it does not imply the Partner is operationally active.
+Sprint 3 public flows create only the initial active owner membership. Sprint 3 exposes no Partner member suspend/revoke/invite endpoint. Active PartnerMembership means the user may enter the Partner scope; it does not imply the Partner is operationally active.
 
 The authority invariant is:
 
@@ -606,7 +643,7 @@ PartnerRoleAssignment
 
 The database/application validates that the assigned Role has `scope_level = partner` and is an approved system role. Partner custom-role tables are deferred.
 
-Sprint 3 creates only the initiating `partner_owner` assignment through the public product flow. `partner_admin` is seeded as the Partner system-role foundation but no Sprint 3 team-management endpoint grants additional memberships.
+Sprint 3 creates only the initiating `partner_owner` assignment through the public product flow. `partner_admin` is seeded as the Partner system-role foundation but no Sprint 3 team-management endpoint grants additional memberships or role assignments.
 
 ### 8.11 Partner status history
 
@@ -625,7 +662,7 @@ PartnerStatusHistory
 
 History is append-only and is not the current authority source. Current state lives on `Partner`.
 
-## 9. Submission and review rules
+## 9. Submission, verification, and review rules
 
 ### 9.1 Submit eligibility
 
@@ -653,28 +690,50 @@ Missing requirements reject deterministically without partial mutation.
 
 ### 9.2 Submitted application freeze
 
-Once submitted, Partner self-service cannot alter review-relevant profile, payout, verification, or evidence data until the tenant requests changes. This makes a submission version reviewable as a coherent snapshot.
+Once submitted, Partner self-service cannot alter review-relevant profile, payout, or evidence data until the tenant requests changes. Tenant reviewers may record verification decisions/findings while the submission remains frozen. This makes a submission version reviewable as a coherent snapshot.
 
-### 9.3 Request changes
+### 9.3 Tenant verification decisions
+
+Tenant review use cases own verification status transitions:
+
+```text
+pending → verified
+pending → changes_required
+pending → rejected
+changes_required → verified      (after Partner correction/resubmission)
+changes_required → rejected
+```
+
+Each decision requires:
+
+- same-tenant Partner resource access;
+- `tenant.partner.verification.review`;
+- expected verification-item version;
+- bounded reason code/message for `changes_required` or `rejected`;
+- audit metadata with no evidence binary or payout secret.
+
+Marking an item `changes_required` does not itself unlock Partner editing. `RequestPartnerChanges` is the aggregate command that transitions the application to `changes_requested` after findings/verification decisions are recorded.
+
+### 9.4 Request changes
 
 `RequestPartnerChanges`:
 
 - requires current `submitted` state;
-- inserts immutable findings;
+- requires at least one actionable review finding or `changes_required` verification item;
 - moves application to `changes_requested`;
 - increments Partner version once;
 - appends history/audit/outbox atomically.
 
-Resubmission preserves all previous review findings/history.
+Resubmission preserves all previous review findings/history. Replaced evidence/payout material resets its verification item to `pending` before resubmission.
 
-### 9.4 Approval
+### 9.5 Approval
 
 Approval requires, under lock:
 
 - application is `submitted`;
 - `expectedVersion` matches;
 - all required verification kinds are present and `verified`;
-- active payout account exists and its verification requirement is satisfied;
+- active payout account exists;
 - required evidence is in a safe/reviewable scan state;
 - no blocking unresolved review condition remains;
 - current actor has tenant approval authority and same-tenant resource access.
@@ -690,7 +749,7 @@ security/business audit insert
 outbox insert
 ```
 
-### 9.5 Rejection
+### 9.6 Rejection
 
 Rejection:
 
@@ -700,7 +759,7 @@ Rejection:
 - leaves operational state `inactive`;
 - preserves memberships, evidence, payout records, findings, audit, and history.
 
-### 9.6 Suspend/reactivate/cancel
+### 9.7 Suspend/reactivate/cancel
 
 - suspend: `active → suspended`;
 - reactivate: `suspended → active`, only while application remains approved;
@@ -708,6 +767,8 @@ Rejection:
 - cancel is terminal.
 
 Suspend, reactivate, and cancel increment `Partner.authorization_version` because they change Partner-scope authority/eligibility for every member.
+
+An erroneous approval is corrected operationally by suspension and an audited follow-up; the historical `approved` onboarding decision is not silently rewritten.
 
 ## 10. Permission catalog and grant policy
 
@@ -723,7 +784,8 @@ partner.profile.update
 partner.application.read
 partner.application.submit
 partner.verification.read
-partner.verification.update
+partner.verification.evidence.read
+partner.verification.evidence.upload
 partner.payout_account.read
 partner.payout_account.update
 partner.review_finding.read
@@ -738,10 +800,13 @@ Initial system-role mapping:
 | `partner.application.read` | yes | yes |
 | `partner.application.submit` | yes | yes |
 | `partner.verification.read` | yes | yes |
-| `partner.verification.update` | yes | yes |
+| `partner.verification.evidence.read` | yes | yes |
+| `partner.verification.evidence.upload` | yes | yes |
 | `partner.payout_account.read` | yes | yes, masked only |
 | `partner.payout_account.update` | yes | no |
 | `partner.review_finding.read` | yes | yes |
+
+Partner permissions never authorize changing tenant reviewer verification decisions.
 
 All payout-account read DTOs are masked; no generic endpoint returns the raw decrypted account number.
 
@@ -752,6 +817,8 @@ Initial tenant permissions:
 ```text
 tenant.partner.read
 tenant.partner.verification.read
+tenant.partner.verification.evidence.read
+tenant.partner.verification.review
 tenant.partner.payout_account.read
 tenant.partner.application.review
 tenant.partner.application.approve
@@ -767,6 +834,8 @@ System-role defaults:
 |---|---:|---:|
 | `tenant.partner.read` | yes | yes |
 | `tenant.partner.verification.read` | yes | yes |
+| `tenant.partner.verification.evidence.read` | yes | yes |
+| `tenant.partner.verification.review` | yes | yes |
 | `tenant.partner.payout_account.read` | yes, masked | yes, masked |
 | `tenant.partner.application.review` | yes | yes |
 | `tenant.partner.application.approve` | yes | yes |
@@ -782,6 +851,8 @@ The following may be tenant-delegable through the Sprint 2 custom-role machinery
 ```text
 tenant.partner.read
 tenant.partner.verification.read
+tenant.partner.verification.evidence.read
+tenant.partner.verification.review
 tenant.partner.payout_account.read
 tenant.partner.application.review
 tenant.partner.application.approve
@@ -805,7 +876,7 @@ Permission alone never bypasses same-tenant resource policy or lifecycle/state v
 Tenant-owned Sprint 3 tables include:
 
 ```text
-partner_registration_challenges
+partner_registrations
 partners
 partner_profiles
 partner_memberships
@@ -884,19 +955,20 @@ FK (partner_membership_id, tenant_id, partner_id)
 
 No child record may be retargeted across Tenant or Partner identity through UPDATE.
 
-### 11.4 Stable/monotonic database guards
+### 11.4 Stable/append-only database guards
 
 Normal `booking_app` direct DML must be structurally unable to:
 
 - rewrite `partners.id` or `partners.tenant_id`;
-- rewrite PartnerMembership `(tenant_id, partner_id, user_id)` identity;
-- rewrite PartnerRoleAssignment `(tenant_id, partner_id, partner_membership_id, role_id)` identity;
-- change revoked PartnerMembership/PartnerRoleAssignment back to active by clearing `revoked_at`;
 - rewrite evidence object identity (`tenant_id`, `partner_id`, `object_key`, checksum, uploader) after insert;
 - update/delete append-only PartnerStatusHistory;
-- rewrite immutable reviewer-authored finding fields.
+- rewrite immutable reviewer-authored finding fields;
+- insert a Partner-scope role into generic `role_assignments`;
+- insert a Platform/Tenant role into `partner_role_assignments`.
 
-Database triggers/constraints protect only structural impossibilities. Application transitions, permission checks, verification completeness, audit orchestration, and business state machines remain use-case responsibilities.
+PartnerMembership and PartnerRoleAssignment are append-only under normal Sprint 3 DML: the application role does not receive UPDATE/DELETE on those tables. Future Partner member-management work must introduce explicit lifecycle use cases and monotonic revocation guards before widening DML.
+
+Database triggers/constraints protect structural impossibilities. Application transitions, permission checks, verification completeness, audit orchestration, and business state machines remain use-case responsibilities.
 
 ### 11.5 Minimum DML
 
@@ -904,11 +976,11 @@ Proposed normal application privileges:
 
 | Table | `booking_app` |
 |---|---|
-| `partner_registration_challenges` | `SELECT, INSERT, UPDATE` |
+| `partner_registrations` | `SELECT, INSERT, UPDATE` |
 | `partners` | `SELECT, INSERT, UPDATE` |
 | `partner_profiles` | `SELECT, INSERT, UPDATE` |
-| `partner_memberships` | `SELECT, INSERT, UPDATE` |
-| `partner_role_assignments` | `SELECT, INSERT, UPDATE` |
+| `partner_memberships` | `SELECT, INSERT` |
+| `partner_role_assignments` | `SELECT, INSERT` |
 | `partner_verification_items` | `SELECT, INSERT, UPDATE` |
 | `partner_review_findings` | `SELECT, INSERT, UPDATE` |
 | `partner_evidence` | `SELECT, INSERT, UPDATE` |
@@ -942,7 +1014,8 @@ authorized Partner request
 → finalize
 → server verifies expected metadata/checksum
 → persist PartnerEvidence
-→ scan/quarantine state
+→ malware-scan adapter
+→ clean or quarantined
 ```
 
 Download flow:
@@ -950,7 +1023,7 @@ Download flow:
 ```text
 authorized Partner/tenant reviewer request
 → authoritative resource policy
-→ safe/reviewable evidence state
+→ clean evidence state
 → short-lived signed GET or controlled server stream
 ```
 
@@ -965,7 +1038,7 @@ Initial restrictions:
 - original filename sanitized and used only as display metadata;
 - executable/public HTML rendering prohibited;
 - risky document types forced to attachment disposition;
-- reviewer consumption blocked until scan state is safe.
+- reviewer consumption blocked until scan state is `clean`.
 
 Scan status:
 
@@ -975,7 +1048,7 @@ clean
 quarantined
 ```
 
-If an external malware scanner adapter is not available in the first implementation task, the system must fail closed: an unscanned object cannot satisfy approval eligibility.
+Sprint 3 requires an `EvidenceScannerPort` and an implementation usable in local/CI plus a production-safe configured adapter. Provider choice belongs to the implementation plan; no adapter may mark content `clean` without performing the configured scan/validation contract.
 
 ## 13. Payout-account security
 
@@ -988,7 +1061,7 @@ Application-facing crypto port encrypts the full account number before persisten
 - keyed fingerprint for equality/duplicate detection where required;
 - key version for rotation/migration.
 
-Default read DTO:
+Default read DTO composes canonical verification state from `PartnerVerificationItem(kind = payout_account)`:
 
 ```text
 bankCode
@@ -1005,9 +1078,12 @@ Replacement uses append/supersede:
 ```text
 old account → superseded_at = now
 new account → INSERT
+payout_account verification item → pending
 ```
 
-One active-current record is enforced with a partial unique index on `(tenant_id, partner_id) WHERE superseded_at IS NULL`.
+Those changes occur in one Partner transaction while the application is editable.
+
+One active-current payout row is enforced with a partial unique index on `(tenant_id, partner_id) WHERE superseded_at IS NULL`.
 
 ## 14. Application use cases
 
@@ -1017,24 +1093,33 @@ One active-current record is enforced with a partial unique index on `(tenant_id
 - `VerifyPartnerRegistrationEmail`
 - `CompletePartnerRegistration`
 
+New-user identity setup is performed through an exported Identity application contract and the normal shared credential policy; existing users authenticate through the existing login flow.
+
 ### 14.2 Partner self-service
 
 - `GetPartnerSelf`
 - `GetPartnerApplication`
 - `UpdatePartnerProfile`
+- `GetPartnerVerification`
+- `ListPartnerEvidence`
 - `CreatePartnerEvidenceUploadIntent`
 - `FinalizePartnerEvidence`
 - `SetPartnerPayoutAccount`
-- `GetPartnerVerification`
 - `GetPartnerReviewFindings`
 - `SubmitPartnerApplication`
 
 `/partner/me/*` use cases derive Partner identity from the authoritative Partner session. They do not accept `tenantId` or `partnerId` as trust context.
 
+Partner use cases never directly set verification status to `verified`, `changes_required`, or `rejected`.
+
 ### 14.3 Tenant operations
 
 - `ListPartners`
 - `GetPartnerForReview`
+- `GetPartnerEvidenceForReview`
+- `VerifyPartnerVerificationItem`
+- `MarkPartnerVerificationChangesRequired`
+- `RejectPartnerVerificationItem`
 - `RequestPartnerChanges`
 - `ApprovePartner`
 - `RejectPartner`
@@ -1068,7 +1153,7 @@ A transaction adapter:
 Use cases that require multiple rows acquire locks in this order:
 
 ```text
-identity/registration prerequisite where required
+registration prerequisite where required
 → Partner
 → PartnerMembership
 → PartnerRoleAssignment
@@ -1086,7 +1171,11 @@ No mutation uses the reverse order.
 
 Profile, payout, evidence-finalize, and other review-material mutations lock the Partner root before child mutation. Submit locks Partner first and validates all required child state under the same transaction. This serializes edit-vs-submit races and makes a submitted version coherent.
 
-### 15.3 Submit
+### 15.3 Verification decision
+
+Tenant verification decisions lock Partner first, require `submitted`, then lock the target verification item. They use target-item `expectedVersion` so two reviewers cannot silently overwrite one another.
+
+### 15.4 Submit
 
 `SubmitPartnerApplication(expectedVersion)`:
 
@@ -1100,20 +1189,20 @@ lock Partner
 → append history/audit/outbox
 ```
 
-### 15.4 Request changes
+### 15.5 Request changes
 
 ```text
 lock Partner
 → expectedVersion
 → require submitted
 → validate tenant review authority
-→ insert immutable findings
+→ require actionable finding or changes_required verification item
 → application_status = changes_requested
 → Partner.version += 1
 → history/audit/outbox
 ```
 
-### 15.5 Approve
+### 15.6 Approve
 
 ```text
 lock Partner
@@ -1121,7 +1210,7 @@ lock Partner
 → require submitted
 → lock/read required verification items
 → lock/read active payout account
-→ validate evidence safe/reviewable
+→ validate evidence clean/reviewable
 → validate no blocking review condition
 → application_status = approved
 → operational_status = active
@@ -1129,7 +1218,7 @@ lock Partner
 → history/audit/outbox
 ```
 
-### 15.6 Reject
+### 15.7 Reject
 
 ```text
 lock Partner
@@ -1141,7 +1230,7 @@ lock Partner
 → history/audit/outbox
 ```
 
-### 15.7 Suspend/reactivate/cancel
+### 15.8 Suspend/reactivate/cancel
 
 Each command locks Partner, validates current state and expected version, applies the transition, advances Partner version, advances `Partner.authorization_version`, and appends required history/audit/outbox in the same transaction.
 
@@ -1155,17 +1244,15 @@ Partner.authorization_version
 PartnerMembership.authorization_version
 ```
 
-Authority-changing examples:
+Sprint 3 authority-changing examples:
 
 - Partner operational `active → suspended`;
-- Partner operational `active|suspended → cancelled`;
-- PartnerMembership suspend/revoke/reactivate-via-new-record semantics;
-- PartnerRoleAssignment grant/revoke;
-- future Partner custom-role authority mutations.
+- Partner operational `suspended → active`;
+- Partner operational `active|suspended → cancelled`.
 
-Partner-wide authority change increments `Partner.authorization_version` once, invalidating all Partner sessions without mass-updating every membership row.
+Partner-wide authority change increments `Partner.authorization_version` once, invalidating all Partner sessions without mass-updating membership rows.
 
-Membership-specific authority change increments `PartnerMembership.authorization_version` for that member.
+`PartnerMembership.authorization_version` is part of the scope foundation for later member-management mutations but remains stable for the initiating owner in Sprint 3 because member suspend/revoke/grant use cases are deferred.
 
 Protected requests reconcile versions and current state before executing Partner product logic.
 
@@ -1180,7 +1267,7 @@ GET    /partner/me
 GET    /partner/me/application
 PATCH  /partner/me/profile
 GET    /partner/me/verification
-PUT    /partner/me/verification/:kind
+GET    /partner/me/evidence
 GET    /partner/me/payout-account
 PUT    /partner/me/payout-account
 GET    /partner/me/review-findings
@@ -1194,6 +1281,10 @@ POST   /partner/me/evidence/:evidenceId/finalize
 ```text
 GET  /tenant/partners
 GET  /tenant/partners/:partnerId
+GET  /tenant/partners/:partnerId/evidence/:evidenceId
+POST /tenant/partners/:partnerId/verifications/:kind/verify
+POST /tenant/partners/:partnerId/verifications/:kind/changes-required
+POST /tenant/partners/:partnerId/verifications/:kind/reject
 POST /tenant/partners/:partnerId/request-changes
 POST /tenant/partners/:partnerId/approve
 POST /tenant/partners/:partnerId/reject
@@ -1202,11 +1293,13 @@ POST /tenant/partners/:partnerId/reactivate
 POST /tenant/partners/:partnerId/cancel
 ```
 
-State transitions use explicit command endpoints. Clients cannot PATCH arbitrary `applicationStatus` or `operationalStatus` fields.
+Evidence content is returned only through the authorized storage/download boundary, not embedded as normal JSON.
+
+State transitions use explicit command endpoints. Clients cannot PATCH arbitrary `applicationStatus`, `operationalStatus`, or verification status fields.
 
 ### 17.3 Mutation contract
 
-Sensitive transitions include `expectedVersion` and bounded reason data where applicable.
+Sensitive transitions include `expectedVersion` and bounded reason data where applicable. Verification decisions include verification-item `expectedVersion`.
 
 Version mismatch returns a stable 409 conflict. Clients refetch; the API does not silently retry stale business intent.
 
@@ -1219,12 +1312,16 @@ PARTNER_NOT_FOUND
 PARTNER_APPLICATION_INVALID_STATE
 PARTNER_APPLICATION_INCOMPLETE
 PARTNER_VERSION_CONFLICT
+PARTNER_VERIFICATION_VERSION_CONFLICT
 PARTNER_VERIFICATION_INCOMPLETE
 PARTNER_MEMBERSHIP_INACTIVE
 PARTNER_OPERATION_FORBIDDEN
 PARTNER_REGISTRATION_TOKEN_INVALID
 PARTNER_REGISTRATION_TOKEN_EXPIRED
 PARTNER_REGISTRATION_TOKEN_CONSUMED
+PARTNER_REGISTRATION_CONTINUATION_INVALID
+PARTNER_REGISTRATION_CONTINUATION_EXPIRED
+PARTNER_REGISTRATION_CONTINUATION_CONSUMED
 PARTNER_EVIDENCE_NOT_SAFE
 ```
 
@@ -1240,7 +1337,9 @@ approved exact Origin
 + valid host-bound opaque session
 ```
 
-Sensitive Partner/current-authorization responses use private/no-store semantics. Browser JavaScript never reads the session cookie.
+The short-lived Partner-registration continuation cookie is purpose-limited and does not authorize normal Partner APIs. Existing active Users must still authenticate normally before completion.
+
+Sensitive Partner/current-authorization responses use private/no-store semantics. Browser JavaScript never reads session or registration-continuation cookies.
 
 ## 18. Concurrency and idempotency
 
@@ -1250,20 +1349,20 @@ Required real PostgreSQL concurrency evidence:
 S3-CON01  profile edit vs submit
 S3-CON02  payout-account replace vs submit
 S3-CON03  evidence finalize vs submit
-S3-CON04  approve vs request-changes
-S3-CON05  approve vs reject
-S3-CON06  two concurrent approvals
-S3-CON07  stale reviewer expectedVersion vs newer resubmission
-S3-CON08  suspend vs cancel
-S3-CON09  reactivate vs cancel
-S3-CON10  registration verification double-submit
-S3-CON11  same registration token consumed concurrently
-S3-CON12  duplicate registration completion cannot create duplicate Partner establishment
-S3-CON13  suspended Partner stale session cannot execute protected Partner use case
-S3-CON14  revoked/suspended PartnerMembership stale session cannot execute protected Partner use case
+S3-CON04  concurrent verification decisions on the same verification item
+S3-CON05  approve vs request-changes
+S3-CON06  approve vs reject
+S3-CON07  two concurrent approvals
+S3-CON08  stale reviewer expectedVersion vs newer resubmission
+S3-CON09  suspend vs cancel
+S3-CON10  reactivate vs cancel
+S3-CON11  registration email-token double exchange
+S3-CON12  same registration continuation consumed concurrently
+S3-CON13  duplicate registration completion cannot create duplicate Partner establishment
+S3-CON14  suspended/cancelled Partner stale session cannot execute protected Partner use case
 ```
 
-Registration completion is naturally idempotent through consumed challenge/establishment identity and transaction constraints.
+Registration completion is naturally idempotent through consumed continuation/registration identity and transaction constraints.
 
 Lifecycle/review commands use current-state validation + `expectedVersion`. A repeated stale command must not create a second history/audit/outbox event.
 
@@ -1284,16 +1383,16 @@ Required structural/RLS acceptance:
 ```text
 S3-DB01 Tenant A cannot SELECT Partner of Tenant B under booking_app.
 S3-DB02 Tenant A cannot INSERT a child row referencing Tenant B Partner.
-S3-DB03 PartnerMembership cannot be retargeted to another tenant or Partner.
-S3-DB04 PartnerRoleAssignment cannot be retargeted to another tenant/Partner/membership/role identity.
-S3-DB05 Partner/PartnerMembership stable identity cannot be rewritten through direct UPDATE.
-S3-DB06 Revoked membership/role assignment cannot be reactivated by clearing revoked_at.
+S3-DB03 PartnerMembership cannot reference/retarget another tenant or Partner identity.
+S3-DB04 PartnerRoleAssignment cannot reference/retarget another tenant/Partner/membership identity.
+S3-DB05 Partner stable id/tenant_id cannot be rewritten through direct UPDATE.
+S3-DB06 booking_app cannot UPDATE/DELETE PartnerMembership or PartnerRoleAssignment in Sprint 3.
 S3-DB07 Evidence object identity/checksum/uploader cannot be rewritten.
 S3-DB08 PartnerStatusHistory cannot be UPDATE/DELETE by booking_app.
 S3-DB09 booking_app has exact required minimum DML and no excess DML.
 S3-DB10 Missing app.tenant_id fails closed.
 S3-DB11 FORCE RLS remains enabled and forced for every Partner-owned table.
-S3-DB12 Partner-scope RoleAssignment validation accepts only approved partner-scope system roles.
+S3-DB12 Generic role_assignments rejects Partner-scope roles; partner_role_assignments accepts only approved Partner-scope system roles.
 ```
 
 Same-tenant Partner A/Partner B authorization is proved at application/API acceptance because tenant RLS intentionally does not provide nested Partner isolation.
@@ -1305,25 +1404,26 @@ Primary Sprint 3 acceptance IDs:
 | ID | Acceptance |
 |---|---|
 | `S3-PARTNER01` | Registration start is enumeration-safe and does not disclose account/Partner existence. |
-| `S3-PARTNER02` | Email verification challenge is single-use, purpose/host/tenant-bound, hashed at rest, and raw-secret-safe. |
-| `S3-PARTNER03` | Registration completion atomically establishes Partner + active initial PartnerMembership + `partner_owner`; concurrent retry does not duplicate establishment. |
+| `S3-PARTNER02` | Email verification token is single-use, purpose/host/tenant-bound, hashed at rest, and rotates to a separate short-lived HttpOnly continuation. |
+| `S3-PARTNER03` | Registration completion atomically consumes continuation and establishes Partner + active initial PartnerMembership + `partner_owner`; concurrent retry does not duplicate establishment. |
 | `S3-PARTNER04` | Existing global User is reused; new registration does not create a parallel credential/account system. |
 | `S3-PARTNER05` | Partner session is exact-host/current-scope bound and reconciles User + Partner + PartnerMembership authorization versions. |
-| `S3-PARTNER06` | Draft/changes-requested may edit; submitted application review material is frozen. |
+| `S3-PARTNER06` | Draft/changes-requested may edit; submitted Partner-owned review material is frozen while tenant verification decisions remain allowed. |
 | `S3-PARTNER07` | Submit requires complete type-specific profile, payout, evidence, and declarations. |
-| `S3-PARTNER08` | Request-changes creates immutable findings; resubmit preserves review history. |
-| `S3-PARTNER09` | Approve validates required verification/evidence under lock and atomically makes the Partner approved + active. |
-| `S3-PARTNER10` | Reject is state-safe and preserves history/evidence/membership records. |
-| `S3-PARTNER11` | Inactive/pending Partner may authenticate for onboarding but cannot pass future operational inventory policy. |
-| `S3-PARTNER12` | Suspend/reactivate/cancel follow the state machine; cancel is terminal; Partner authorization-version invalidates stale sessions. |
-| `S3-PARTNER13` | Partner A cannot read/write Partner B resources inside the same tenant through Partner self-service/resource policy. |
-| `S3-PARTNER14` | Tenant A cannot read/write Tenant B Partner data through API or booking_app; missing tenant context fails closed. |
-| `S3-PARTNER15` | Composite FK and stable-identity guards prevent cross-tenant/cross-Partner retargeting and historical authority reactivation. |
-| `S3-PARTNER16` | Evidence storage is private, server-keyed, scan-gated, append/supersede, and unauthorized access fails closed. |
-| `S3-PARTNER17` | Payout account is encrypted at rest, masked in DTOs, excluded from raw audit/logs, and replacement preserves history. |
-| `S3-PARTNER18` | Required registration/review/lifecycle/stale-authority races converge deterministically on PostgreSQL. |
-| `S3-PARTNER19` | Partner scope never unions Tenant permissions; explicit scope switch rotates session authority. |
-| `S3-PARTNER20` | Partner registration for an existing active User requires normal account authentication before establishment; email verification alone is not a password bypass. |
+| `S3-PARTNER08` | Partner cannot self-verify; only tenant verification-review authority can change verification decisions, with optimistic versioning and audit. |
+| `S3-PARTNER09` | Request-changes creates/preserves immutable findings and reopens Partner editing without rewriting review history. |
+| `S3-PARTNER10` | Approve validates all required verification/evidence under lock and atomically makes the Partner approved + active. |
+| `S3-PARTNER11` | Reject is state-safe and preserves history/evidence/membership records. |
+| `S3-PARTNER12` | Draft/submitted/changes-requested Partner with operational `inactive` may authenticate for onboarding but cannot pass future operational inventory policy. |
+| `S3-PARTNER13` | Suspend/reactivate/cancel follow the state machine; cancel is terminal; Partner authorization-version invalidates stale sessions. |
+| `S3-PARTNER14` | Partner A cannot read/write Partner B resources inside the same tenant through Partner self-service/resource policy. |
+| `S3-PARTNER15` | Tenant A cannot read/write Tenant B Partner data through API or booking_app; missing tenant context fails closed. |
+| `S3-PARTNER16` | Composite FK/stable-identity/minimum-DML guards prevent cross-tenant/cross-Partner retargeting or unauthorized membership/role mutation. |
+| `S3-PARTNER17` | Evidence storage is private, server-keyed, malware-scan-gated, append/supersede, and unauthorized access fails closed. |
+| `S3-PARTNER18` | Payout account is encrypted at rest, masked in DTOs, uses verification item as the single status source, and replacement preserves history. |
+| `S3-PARTNER19` | Required registration/verification/review/lifecycle/stale-authority races converge deterministically on PostgreSQL. |
+| `S3-PARTNER20` | Partner scope never unions Tenant permissions; explicit scope switch rotates session authority. |
+| `S3-PARTNER21` | Existing active User registration requires normal account authentication before Partner establishment; email verification/continuation is not a password bypass. |
 
 Primary command:
 
@@ -1387,10 +1487,10 @@ Frontend code does not maintain a second hand-written Partner API type system.
 Negative OpenAPI/E2E contracts include:
 
 - inaccessible Partner;
-- stale version;
+- stale Partner/verification version;
 - invalid lifecycle/application transition;
 - incomplete verification;
-- invalid/expired/consumed registration token;
+- invalid/expired/consumed registration email token or continuation;
 - inactive PartnerMembership;
 - suspended/cancelled Partner;
 - wrong host/scope;
@@ -1401,12 +1501,13 @@ Negative OpenAPI/E2E contracts include:
 Critical browser acceptance proves:
 
 - registration verification fragment is scrubbed before normal navigation/referrer/logging;
-- raw registration token never reaches server access logs or analytics;
-- `__Host-` cookie invariants remain intact;
+- raw registration email token never reaches server access logs or analytics;
+- registration continuation is host-only, HttpOnly, purpose-limited, short-lived, and not a normal auth session;
+- `__Host-` session-cookie invariants remain intact;
 - wrong-host and wrong-scope replay reject;
 - Partner scope does not inherit Tenant permissions;
 - scope switching rotates session material;
-- unsafe requests require Origin + CSRF;
+- unsafe normal Partner mutations require Origin + CSRF;
 - sensitive Partner pages/API are private/no-store;
 - generic diagnostics never render raw payout account, signed evidence URL, tokens, cookies, or CSRF material.
 
@@ -1430,16 +1531,15 @@ partner.payout_account.changed
 partner.suspended
 partner.reactivated
 partner.cancelled
-partner.membership.revoked
-partner.role_assignment.granted
-partner.role_assignment.revoked
 ```
+
+Initial owner membership/role establishment is represented by `partner.registration.completed` metadata rather than by exposing general Partner member-management audit contracts before those use cases exist.
 
 Audit metadata may contain bounded identifiers/reference IDs, transition type, reason code, request ID, and safe result metadata.
 
 Audit must never contain:
 
-- raw registration/activation/session token;
+- raw registration/continuation/session token;
 - cookie/Authorization/CSRF header;
 - evidence binary;
 - long-lived/signed object URL;
@@ -1492,19 +1592,21 @@ docs/runbooks/partner-onboarding-recovery.md
 It must cover:
 
 1. registration email not received;
-2. registration challenge expired/consumed;
-3. identity establishment failed before Partner commit;
+2. registration email token/continuation expired or consumed;
+3. new global identity created but Partner establishment failed;
 4. suspected duplicate registration;
 5. Partner application incorrectly approved;
 6. Partner incorrectly suspended/reactivated/cancelled;
 7. payout account reported incorrect/compromised;
 8. evidence upload corrupted or quarantined;
-9. stale Partner session after suspend/revoke;
+9. stale Partner session after suspend/cancel;
 10. Partner onboarding mutation outage;
 11. cross-tenant/RLS incident response;
 12. notification/outbox backlog.
 
 Recovery must not recommend deleting history to reset state. Corrections use supported reversal/new workflow where available or a controlled, explicitly owned, audited database operation when product tooling does not yet exist.
+
+For an incorrect approval, the immediate supported containment is Partner suspension; approval history remains append-only until a later re-verification/correction workflow is explicitly designed.
 
 ## 26. Knowledge closeout
 
@@ -1512,7 +1614,7 @@ Implementation closeout must create/update at least:
 
 ```text
 docs/features/FEATURE-0004-partner-onboarding.md
-docs/patterns/<partner-authority-pattern>.md
+docs/patterns/PATTERN-0005-partner-scope-authority.md
 docs/runbooks/partner-onboarding-recovery.md
 docs/plan/90-DAY-EXECUTION.md
 genesis/reviews/PILOT-GATES.md
@@ -1524,24 +1626,25 @@ Historical sprint-numbering ambiguity is reconciled as metadata/documentation; i
 
 Sprint 3 is complete only when all are true:
 
-1. Partner registration email-link flow works end-to-end.
+1. Partner registration email-link + continuation flow works end-to-end.
 2. Existing global identity/shared password/session kernel is reused; no Partner auth stack exists in parallel.
 3. Partner is a distinct authorization scope and does not require TenantMembership.
 4. Partner scope never unions Tenant permission authority.
 5. Partner aggregate supports individual/company onboarding and approved lifecycle transitions.
-6. Tenant reviewer request-changes/approve/reject flow works with immutable review history.
-7. Approval atomically makes the Partner application approved and operationally active.
-8. Partner scope authority includes User + Partner + PartnerMembership versions, required permission, same-Partner resource policy, and lifecycle eligibility.
-9. Same-tenant Partner A/B isolation is executable application/API evidence.
-10. Cross-tenant Partner persistence is executable FORCE-RLS/composite-FK evidence.
-11. Evidence is private, scan-gated, and append/supersede.
-12. Payout account is encrypted/masked and raw values are absent from generic logs/audit/API DTOs.
-13. Required concurrency and stale-authority cases pass against PostgreSQL.
-14. Audit/history/outbox transaction semantics are executable evidence.
-15. OpenAPI/generated-client and critical browser security gates pass.
-16. Sprint 1B and Sprint 2 acceptance remain GREEN.
-17. All protected repository gates are GREEN on exact final head.
-18. Partner recovery/feature/pattern/roadmap closeout artifacts are complete.
+6. Only tenant verification-review authority can make verification decisions; Partner cannot self-verify.
+7. Tenant reviewer request-changes/approve/reject flow works with immutable review history.
+8. Approval atomically makes the Partner application approved and operationally active.
+9. Partner scope authority includes User + Partner + PartnerMembership versions, required permission, same-Partner resource policy, and lifecycle eligibility.
+10. Same-tenant Partner A/B isolation is executable application/API evidence.
+11. Cross-tenant Partner persistence is executable FORCE-RLS/composite-FK evidence.
+12. Evidence is private, scan-gated, and append/supersede.
+13. Payout account is encrypted/masked, uses one canonical verification status source, and raw values are absent from generic logs/audit/API DTOs.
+14. Required concurrency and stale-authority cases pass against PostgreSQL.
+15. Audit/history/outbox transaction semantics are executable evidence.
+16. OpenAPI/generated-client and critical browser security gates pass.
+17. Sprint 1B and Sprint 2 acceptance remain GREEN.
+18. All protected repository gates are GREEN on exact final head.
+19. Partner recovery/feature/pattern/roadmap closeout artifacts are complete.
 
 Sprint 3 exit explicitly does **not** require listing, resource, availability, pricing, publication, booking, payment, finance, or payout execution.
 
@@ -1549,16 +1652,16 @@ Sprint 3 exit explicitly does **not** require listing, resource, availability, p
 
 The design is one coherent subsystem and can be executed through one detailed implementation plan, but the plan should preserve small TDD slices. Recommended task order:
 
-1. Partner scope enums, Permission Catalog V2 additions, system-role/grant policy contracts.
-2. Partner persistence schema, composite constraints, FORCE RLS, minimum DML, structural guards.
+1. Partner scope enums, Permission Catalog V2 additions, system-role/grant-policy contracts, and generic/Partner role-assignment separation.
+2. Partner persistence schema, PartnerRegistration token/continuation model, composite constraints, FORCE RLS, minimum DML, and structural guards.
 3. Partner domain model, ports, repositories, transaction session, and in-memory/unit contracts.
-4. Registration challenge and identity-establishment application bridge.
-5. Partner-scoped session/authorization-context extension and stale-authority reconciliation.
-6. Partner self-service profile/payout/evidence/application use cases.
-7. Tenant review/approve/reject use cases and optimistic/concurrency behavior.
+4. Registration email-token exchange, continuation cookie, and Identity application bridge for existing/new users.
+5. Partner-scoped session/authorization-context extension, explicit scope switching, and stale-authority reconciliation.
+6. Partner self-service profile/payout/evidence/application use cases plus evidence scanner/storage adapters.
+7. Tenant verification decisions, review/request-changes/approve/reject use cases, and optimistic/concurrency behavior.
 8. Suspend/reactivate/cancel and Partner-wide authorization invalidation.
 9. HTTP/OpenAPI/generated-client/browser security integration.
-10. `S3-PARTNER01`–`S3-PARTNER20`, DB/concurrency acceptance command, protected CI integration.
+10. `S3-PARTNER01`–`S3-PARTNER21`, DB/concurrency acceptance command, protected CI integration.
 11. Knowledge, runbook, reconciliation, and final verification closeout.
 
 Production implementation must follow TDD: each task establishes a failing contract/evidence first, then the smallest production change that makes it pass, followed by protected verification before completion claims.
@@ -1568,7 +1671,7 @@ Production implementation must follow TDD: each task establishes a failing contr
 The following decisions are not unresolved requirements for Sprint 3; they are intentionally deferred because their owning flows do not exist yet:
 
 - Partner custom-role CRUD and Partner Role Builder UI;
-- Partner member invitation/team-management product flow;
+- Partner member invitation/suspend/revoke/team-management product flow;
 - detailed post-approval business-information amendment/re-verification workflow;
 - how Partner suspension/cancellation interacts with future confirmed bookings;
 - listing/media publication permissions;
@@ -1584,7 +1687,7 @@ When those flows are scheduled, they must extend the current boundaries rather t
 The Sprint 3 authorization boundary is:
 
 ```text
-trusted tenant hostname
+trusted active tenant hostname
 + authenticated global User
 + current Partner scope
 + active same-tenant Partner
