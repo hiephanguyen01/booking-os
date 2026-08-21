@@ -7,5 +7,6 @@ export {
   PERMISSION_GUARD_EXEMPT_METADATA,
   PermissionGuardExempt,
   REQUIRES_PERMISSION_METADATA,
+  RequiresAnyPermission,
   RequiresPermission,
 } from "./infrastructure/http/requires-permission.decorator.js";
