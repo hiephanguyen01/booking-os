@@ -2,7 +2,7 @@ import { PERMISSION_KEYS, type PermissionKey } from "./permissions.js";
 
 export interface PermissionCatalogEntry {
   readonly key: PermissionKey;
-  readonly scopeLevel: "platform" | "tenant";
+  readonly scopeLevel: "platform" | "tenant" | "partner";
   readonly delegable: boolean;
   readonly description: string;
 }
@@ -139,6 +139,60 @@ const ENTRIES: readonly PermissionCatalogEntry[] = [
     scopeLevel: "tenant",
     delegable: false,
     description: "Revoke tenant custom-role assignments.",
+  },
+  {
+    key: PERMISSION_KEYS.tenantPartnerRead,
+    scopeLevel: "tenant",
+    delegable: true,
+    description: "Read Partners in the current tenant.",
+  },
+  {
+    key: PERMISSION_KEYS.tenantPartnerReview,
+    scopeLevel: "tenant",
+    delegable: true,
+    description: "Review Partner onboarding submissions.",
+  },
+  {
+    key: PERMISSION_KEYS.tenantPartnerApprove,
+    scopeLevel: "tenant",
+    delegable: true,
+    description: "Approve Partner onboarding submissions.",
+  },
+  {
+    key: PERMISSION_KEYS.tenantPartnerSuspend,
+    scopeLevel: "tenant",
+    delegable: true,
+    description: "Suspend Partners in the current tenant.",
+  },
+  {
+    key: PERMISSION_KEYS.partnerProfileRead,
+    scopeLevel: "partner",
+    delegable: false,
+    description: "Read the current Partner profile.",
+  },
+  {
+    key: PERMISSION_KEYS.partnerProfileUpdate,
+    scopeLevel: "partner",
+    delegable: false,
+    description: "Update the current Partner profile.",
+  },
+  {
+    key: PERMISSION_KEYS.partnerMembershipRead,
+    scopeLevel: "partner",
+    delegable: false,
+    description: "Read memberships in the current Partner.",
+  },
+  {
+    key: PERMISSION_KEYS.partnerMembershipInvite,
+    scopeLevel: "partner",
+    delegable: false,
+    description: "Invite members to the current Partner.",
+  },
+  {
+    key: PERMISSION_KEYS.partnerMembershipRevoke,
+    scopeLevel: "partner",
+    delegable: false,
+    description: "Revoke memberships in the current Partner.",
   },
 ] as const;
 

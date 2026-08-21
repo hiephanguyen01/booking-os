@@ -21,6 +21,15 @@ export const PERMISSION_KEYS = {
   tenantRbacAssignmentRead: "tenant.rbac.assignment.read",
   tenantRbacAssignmentGrant: "tenant.rbac.assignment.grant",
   tenantRbacAssignmentRevoke: "tenant.rbac.assignment.revoke",
+  tenantPartnerRead: "tenant.partner.read",
+  tenantPartnerReview: "tenant.partner.review",
+  tenantPartnerApprove: "tenant.partner.approve",
+  tenantPartnerSuspend: "tenant.partner.suspend",
+  partnerProfileRead: "partner.profile.read",
+  partnerProfileUpdate: "partner.profile.update",
+  partnerMembershipRead: "partner.membership.read",
+  partnerMembershipInvite: "partner.membership.invite",
+  partnerMembershipRevoke: "partner.membership.revoke",
 } as const;
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[keyof typeof PERMISSION_KEYS];

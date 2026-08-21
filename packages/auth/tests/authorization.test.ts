@@ -3,17 +3,18 @@ import test from "node:test";
 
 import { getPermissions, hasPermission, PERMISSION_KEYS, SYSTEM_ROLES } from "../src/index.js";
 
-test("system role catalog contains only the approved immutable roles", () => {
+test("system role catalog contains the approved immutable roles through Sprint 3A", () => {
   assert.deepEqual(SYSTEM_ROLES, {
     platformAdmin: "platform_admin",
     tenantOwner: "tenant_owner",
     tenantAdmin: "tenant_admin",
+    partnerOwner: "partner_owner",
+    partnerMember: "partner_member",
   });
-  assert.equal("partner" in SYSTEM_ROLES, false);
   assert.equal("affiliate" in SYSTEM_ROLES, false);
 });
 
-test("permission catalog preserves Sprint 1B keys and appends only Sprint 2 RBAC keys", () => {
+test("permission catalog preserves prior keys and appends only Sprint 3A Partner keys", () => {
   assert.deepEqual(PERMISSION_KEYS, {
     platformSecurityAuditRead: "platform.security.audit.read",
     platformSecuritySessionRevoke: "platform.security.session.revoke",
@@ -37,6 +38,15 @@ test("permission catalog preserves Sprint 1B keys and appends only Sprint 2 RBAC
     tenantRbacAssignmentRead: "tenant.rbac.assignment.read",
     tenantRbacAssignmentGrant: "tenant.rbac.assignment.grant",
     tenantRbacAssignmentRevoke: "tenant.rbac.assignment.revoke",
+    tenantPartnerRead: "tenant.partner.read",
+    tenantPartnerReview: "tenant.partner.review",
+    tenantPartnerApprove: "tenant.partner.approve",
+    tenantPartnerSuspend: "tenant.partner.suspend",
+    partnerProfileRead: "partner.profile.read",
+    partnerProfileUpdate: "partner.profile.update",
+    partnerMembershipRead: "partner.membership.read",
+    partnerMembershipInvite: "partner.membership.invite",
+    partnerMembershipRevoke: "partner.membership.revoke",
   });
 });
 
@@ -49,7 +59,7 @@ test("platform administrator receives only platform permissions", () => {
   ]);
 });
 
-test("tenant owner receives existing tenant permissions plus all Sprint 2 RBAC permissions", () => {
+test("tenant owner receives prior tenant authority plus Partner management permissions", () => {
   assert.deepEqual(getPermissions(SYSTEM_ROLES.tenantOwner), [
     PERMISSION_KEYS.tenantMembershipRead,
     PERMISSION_KEYS.tenantMembershipAdminInvite,
@@ -69,10 +79,14 @@ test("tenant owner receives existing tenant permissions plus all Sprint 2 RBAC p
     PERMISSION_KEYS.tenantRbacAssignmentRead,
     PERMISSION_KEYS.tenantRbacAssignmentGrant,
     PERMISSION_KEYS.tenantRbacAssignmentRevoke,
+    PERMISSION_KEYS.tenantPartnerRead,
+    PERMISSION_KEYS.tenantPartnerReview,
+    PERMISSION_KEYS.tenantPartnerApprove,
+    PERMISSION_KEYS.tenantPartnerSuspend,
   ]);
 });
 
-test("tenant administrator receives RBAC read permissions but no RBAC mutation permission", () => {
+test("tenant administrator receives approved Partner management permissions", () => {
   assert.equal(
     hasPermission(SYSTEM_ROLES.tenantAdmin, PERMISSION_KEYS.tenantMembershipOwnerPromote),
     false,
@@ -91,6 +105,10 @@ test("tenant administrator receives RBAC read permissions but no RBAC mutation p
     PERMISSION_KEYS.tenantRbacPermissionRead,
     PERMISSION_KEYS.tenantRbacRoleRead,
     PERMISSION_KEYS.tenantRbacAssignmentRead,
+    PERMISSION_KEYS.tenantPartnerRead,
+    PERMISSION_KEYS.tenantPartnerReview,
+    PERMISSION_KEYS.tenantPartnerApprove,
+    PERMISSION_KEYS.tenantPartnerSuspend,
   ]);
   assert.equal(
     hasPermission(SYSTEM_ROLES.tenantAdmin, PERMISSION_KEYS.tenantRbacRoleCreate),
@@ -100,6 +118,23 @@ test("tenant administrator receives RBAC read permissions but no RBAC mutation p
     hasPermission(SYSTEM_ROLES.tenantAdmin, PERMISSION_KEYS.tenantRbacAssignmentGrant),
     false,
   );
+});
+
+test("Partner owner receives the approved Sprint 3A governance permissions", () => {
+  assert.deepEqual(getPermissions(SYSTEM_ROLES.partnerOwner), [
+    PERMISSION_KEYS.partnerProfileRead,
+    PERMISSION_KEYS.partnerProfileUpdate,
+    PERMISSION_KEYS.partnerMembershipRead,
+    PERMISSION_KEYS.partnerMembershipInvite,
+    PERMISSION_KEYS.partnerMembershipRevoke,
+  ]);
+});
+
+test("Partner member receives only the minimum Sprint 3A workspace permissions", () => {
+  assert.deepEqual(getPermissions(SYSTEM_ROLES.partnerMember), [
+    PERMISSION_KEYS.partnerProfileRead,
+    PERMISSION_KEYS.partnerMembershipRead,
+  ]);
 });
 
 test("missing role has no permission", () => {

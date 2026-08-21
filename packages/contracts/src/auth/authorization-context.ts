@@ -1,4 +1,10 @@
-export const AUTHORIZATION_ROLE_KEYS = ["platform_admin", "tenant_owner", "tenant_admin"] as const;
+export const AUTHORIZATION_ROLE_KEYS = [
+  "platform_admin",
+  "tenant_owner",
+  "tenant_admin",
+  "partner_owner",
+  "partner_member",
+] as const;
 
 export type AuthorizationRoleKey = (typeof AUTHORIZATION_ROLE_KEYS)[number];
 
@@ -25,6 +31,15 @@ export const AUTHORIZATION_PERMISSION_KEYS = [
   "tenant.rbac.assignment.read",
   "tenant.rbac.assignment.grant",
   "tenant.rbac.assignment.revoke",
+  "tenant.partner.read",
+  "tenant.partner.review",
+  "tenant.partner.approve",
+  "tenant.partner.suspend",
+  "partner.profile.read",
+  "partner.profile.update",
+  "partner.membership.read",
+  "partner.membership.invite",
+  "partner.membership.revoke",
 ] as const;
 
 export type AuthorizationPermissionKey = (typeof AUTHORIZATION_PERMISSION_KEYS)[number];

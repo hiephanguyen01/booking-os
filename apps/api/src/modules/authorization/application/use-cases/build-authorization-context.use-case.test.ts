@@ -98,6 +98,7 @@ test("builds only current tenant scope with active membership authority", async 
           "tenant.membership.read",
           "tenant.membership.owner.promote",
           "tenant.membership.read",
+          "tenant.partner.read",
         ],
       },
       (input) => {
@@ -116,7 +117,11 @@ test("builds only current tenant scope with active membership authority", async 
     membershipId: "40000000-0000-4000-8000-000000000001",
     membershipStatus: "active",
     roleKeys: ["tenant_owner"],
-    permissionKeys: ["tenant.membership.owner.promote", "tenant.membership.read"],
+    permissionKeys: [
+      "tenant.membership.owner.promote",
+      "tenant.membership.read",
+      "tenant.partner.read",
+    ],
     userAuthorizationVersion: 6,
     membershipAuthorizationVersion: 9,
   });
@@ -171,6 +176,28 @@ test("rejects inactive users or tenant memberships and unknown system roles", as
         permissionKeys: [],
       }),
     ).execute(PLATFORM_SESSION),
+    AuthorizationAuthorityInvalidError,
+  );
+});
+
+test("rejects Partner system roles from tenant authority", async () => {
+  const tenantSession: AuthenticatedRequestContext = {
+    ...PLATFORM_SESSION,
+    authScope: { type: "tenant", tenantId: TENANT_ID },
+  };
+
+  await assert.rejects(
+    new BuildAuthorizationContextUseCase(
+      repository({
+        scope: { type: "tenant", tenantId: TENANT_ID, tenantSlug: "acme" },
+        userAuthorizationVersion: 4,
+        membershipId: "40000000-0000-4000-8000-000000000001",
+        membershipStatus: "active",
+        membershipAuthorizationVersion: 3,
+        roleKeys: ["partner_owner"],
+        permissionKeys: ["tenant.partner.read"],
+      }),
+    ).execute(tenantSession),
     AuthorizationAuthorityInvalidError,
   );
 });

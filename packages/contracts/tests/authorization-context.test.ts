@@ -8,7 +8,13 @@ import {
 } from "../src/auth/index.js";
 
 test("authorization catalogs expose the approved stable identifiers", () => {
-  assert.deepEqual(AUTHORIZATION_ROLE_KEYS, ["platform_admin", "tenant_owner", "tenant_admin"]);
+  assert.deepEqual(AUTHORIZATION_ROLE_KEYS, [
+    "platform_admin",
+    "tenant_owner",
+    "tenant_admin",
+    "partner_owner",
+    "partner_member",
+  ]);
   assert.deepEqual(AUTHORIZATION_PERMISSION_KEYS, [
     "platform.security.audit.read",
     "platform.security.session.revoke",
@@ -32,6 +38,15 @@ test("authorization catalogs expose the approved stable identifiers", () => {
     "tenant.rbac.assignment.read",
     "tenant.rbac.assignment.grant",
     "tenant.rbac.assignment.revoke",
+    "tenant.partner.read",
+    "tenant.partner.review",
+    "tenant.partner.approve",
+    "tenant.partner.suspend",
+    "partner.profile.read",
+    "partner.profile.update",
+    "partner.membership.read",
+    "partner.membership.invite",
+    "partner.membership.revoke",
   ]);
 });
 
@@ -62,7 +77,7 @@ test("tenant authorization context carries active membership authority", () => {
     membershipId: "00000000-0000-4000-8000-000000000014",
     membershipStatus: "active",
     roleKeys: ["tenant_owner"],
-    permissionKeys: ["tenant.membership.read", "tenant.rbac.role.read"],
+    permissionKeys: ["tenant.membership.read", "tenant.rbac.role.read", "tenant.partner.read"],
     userAuthorizationVersion: 2,
     membershipAuthorizationVersion: 3,
   };
