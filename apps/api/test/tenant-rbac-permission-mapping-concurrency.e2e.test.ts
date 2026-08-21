@@ -1,13 +1,16 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import test, { after, before, beforeEach } from "node:test";
 
-import { PERMISSION_KEYS, type PermissionKey } from "@booking-os/auth";
+import { PERMISSION_KEYS, SYSTEM_ROLES, type PermissionKey } from "@booking-os/auth";
 import { type Prisma, PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 const TENANT_ID = "b1100000-0000-4000-8000-000000000001";
+const OWNER_USER_ID = "b2100000-0000-4000-8000-000000000001";
+const OWNER_MEMBERSHIP_ID = "b3100000-0000-4000-8000-000000000001";
 const ROLE_ID = "b4100000-0000-4000-8000-000000000001";
 const NOW = new Date("2026-08-21T07:40:00.000Z");
 
@@ -44,13 +47,46 @@ async function resetRoleState(): Promise<void> {
 before(async () => {
   await prisma.$connect();
   await prisma.tenant.deleteMany({ where: { id: TENANT_ID } });
+  await prisma.user.deleteMany({ where: { id: OWNER_USER_ID } });
   permissionId = await seededPermissionId(PERMISSION_KEYS.tenantMembershipRead);
+  const ownerRole = await prisma.role.findUniqueOrThrow({
+    where: { key: SYSTEM_ROLES.tenantOwner },
+  });
   await prisma.tenant.create({
     data: {
       id: TENANT_ID,
       slug: "rbac-permission-mapping-concurrency",
       name: "RBAC Permission Mapping Concurrency",
       status: "provisioning",
+    },
+  });
+  await prisma.user.create({
+    data: {
+      id: OWNER_USER_ID,
+      normalizedEmail: "rbac-permission-mapping-concurrency-owner@example.test",
+      displayEmail: "rbac-permission-mapping-concurrency-owner@example.test",
+      status: "active",
+      authorizationVersion: 1,
+      activatedAt: NOW,
+    },
+  });
+  await prisma.tenantMembership.create({
+    data: {
+      id: OWNER_MEMBERSHIP_ID,
+      tenantId: TENANT_ID,
+      userId: OWNER_USER_ID,
+      status: "active",
+      authorizationVersion: 1,
+      acceptedAt: NOW,
+    },
+  });
+  await prisma.roleAssignment.create({
+    data: {
+      id: randomUUID(),
+      userId: OWNER_USER_ID,
+      roleId: ownerRole.id,
+      scopeLevel: "tenant",
+      tenantId: TENANT_ID,
     },
   });
   await prisma.tenant.update({ where: { id: TENANT_ID }, data: { status: "active" } });
@@ -60,6 +96,7 @@ beforeEach(resetRoleState);
 
 after(async () => {
   await prisma.tenant.deleteMany({ where: { id: TENANT_ID } });
+  await prisma.user.deleteMany({ where: { id: OWNER_USER_ID } });
   await prisma.$disconnect();
 });
 
