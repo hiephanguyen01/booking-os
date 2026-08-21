@@ -62,20 +62,20 @@ export const TENANT_POLICY_MANIFEST = Object.freeze([
     tenantColumn: "tenant_id",
     tenantColumnNullable: false,
     applicationRole: "booking_app",
-    requiredPrivileges: Object.freeze(["INSERT", "SELECT", "UPDATE"]),
+    requiredPrivileges: Object.freeze(["INSERT", "SELECT", "UPDATE"] as const),
   }),
   Object.freeze({
     table: "tenant_custom_role_permissions",
     tenantColumn: "tenant_id",
     tenantColumnNullable: false,
     applicationRole: "booking_app",
-    requiredPrivileges: Object.freeze(["DELETE", "INSERT", "SELECT"]),
+    requiredPrivileges: Object.freeze(["DELETE", "INSERT", "SELECT"] as const),
   }),
   Object.freeze({
     table: "tenant_custom_role_assignments",
     tenantColumn: "tenant_id",
     tenantColumnNullable: false,
     applicationRole: "booking_app",
-    requiredPrivileges: Object.freeze(["INSERT", "SELECT", "UPDATE"]),
+    requiredPrivileges: Object.freeze(["INSERT", "SELECT", "UPDATE"] as const),
   }),
 ]) satisfies readonly TenantOwnedTablePolicy[];
