@@ -126,7 +126,8 @@ test("S2-RBAC11 archive revokes assignments, invalidates active holders, and blo
 test("S2-RBAC12 FORCE RLS denies foreign and missing tenant context", async () => {
   await expectEvidence("apps/api/test/tenant-rbac-rls.integration.test.ts", [
     /all tenant custom RBAC tables use the canonical FORCE-RLS tenant contract/u,
-    /foreign and missing tenant context deny CRUD across all custom-RBAC tables/u,
+    /foreign and missing tenant context deny all granted DML across custom-RBAC tables/u,
+    /booking_app cannot bypass role and assignment lifecycle semantics with extra DML/u,
     /app\\\.tenant_id/u,
   ]);
 });
