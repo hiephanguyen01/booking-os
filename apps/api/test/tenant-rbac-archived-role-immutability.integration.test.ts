@@ -90,9 +90,7 @@ after(async () => {
 });
 
 test("archived tenant custom role rows reject booking_app UPDATE", async () => {
-  const { tenantId, roleId } = await createArchivedRoleWithPermission(
-    "Archived Role Update",
-  );
+  const { tenantId, roleId } = await createArchivedRoleWithPermission("Archived Role Update");
 
   const updateResult = await Promise.allSettled([
     runAsTenant(
@@ -109,20 +107,14 @@ test("archived tenant custom role rows reject booking_app UPDATE", async () => {
 
   const roleState = await runAsTenant(
     tenantId,
-    (transaction) => transaction.$queryRaw<
-      readonly { archived_at: Date | null; name: string }[]
-    >`
+    (transaction) => transaction.$queryRaw<readonly { archived_at: Date | null; name: string }[]>`
       SELECT "archived_at", "name"
       FROM "tenant_custom_roles"
       WHERE "id" = ${roleId}::uuid
     `,
   );
 
-  assert.equal(
-    updateResult[0]?.status,
-    "rejected",
-    "archived role UPDATE must be rejected",
-  );
+  assert.equal(updateResult[0]?.status, "rejected", "archived role UPDATE must be rejected");
   assert.equal(roleState.length, 1);
   assert.ok(roleState[0]?.archived_at instanceof Date);
   assert.equal(roleState[0]?.name, "Archived Role Update");
