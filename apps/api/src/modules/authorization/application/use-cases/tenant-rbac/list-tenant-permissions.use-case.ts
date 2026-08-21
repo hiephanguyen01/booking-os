@@ -38,6 +38,8 @@ export class ListTenantPermissionsUseCase {
       {
         tenantId: authorization.scope.tenantId,
         actorId: authorization.userId,
+        sessionId: authorization.sessionId,
+        authorization,
         requestId: authorization.sessionId,
         traceId: authorization.sessionId,
         source: "console",
