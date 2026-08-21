@@ -172,8 +172,20 @@ test("archive racing direct permission mapping cannot leave a mapping on the arc
     true,
     `permission write must reach the blocked mapping INSERT; diagnostic=${diagnostic}`,
   );
-  assert.equal(archiveResult.status, "fulfilled", `archive transaction must commit; diagnostic=${diagnostic}`);
-  assert.equal(insertResult.status, "rejected", `permission mapping must be rejected; diagnostic=${diagnostic}`);
+  assert.equal(
+    archiveResult.status,
+    "fulfilled",
+    `archive transaction must commit; diagnostic=${diagnostic}`,
+  );
+  assert.equal(
+    insertResult.status,
+    "rejected",
+    `permission mapping must be rejected; diagnostic=${diagnostic}`,
+  );
   assert.ok(roles[0]?.archivedAt, `role must remain archived; diagnostic=${diagnostic}`);
-  assert.equal(mappingCount, 0, `archived role must not retain the mapping; diagnostic=${diagnostic}`);
+  assert.equal(
+    mappingCount,
+    0,
+    `archived role must not retain the mapping; diagnostic=${diagnostic}`,
+  );
 });
