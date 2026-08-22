@@ -102,24 +102,25 @@ enum PartnerMembershipStatus {
 }
 
 model Tenant {
-  id                      String                     @id @db.Uuid
-  slug                    String                     @unique
-  name                    String
-  status                  TenantStatus               @default(provisioning)
-  createdAt               DateTime                   @default(now()) @db.Timestamptz(6) @map("created_at")
-  domains                 TenantDomain[]
-  memberships             TenantMembership[]
-  membershipInvitations   MembershipInvitation[]
-  probes                  TenantProbe[]
-  outboxEvents            OutboxEvent[]
-  accountActivationTokens AccountActivationToken[]
-  passwordResetTokens     PasswordResetToken[]
-  roleAssignments         RoleAssignment[]
-  authSessions            AuthSession[]
-  authSessionTokens       AuthSessionToken[]
-  securityAuditEvents     TenantSecurityAuditEvent[]
-  customRoles             TenantCustomRole[]
-  partners                Partner[]
+  id                            String                         @id @db.Uuid
+  slug                          String                         @unique
+  name                          String
+  status                        TenantStatus                   @default(provisioning)
+  createdAt                     DateTime                       @default(now()) @db.Timestamptz(6) @map("created_at")
+  domains                       TenantDomain[]
+  memberships                   TenantMembership[]
+  membershipInvitations         MembershipInvitation[]
+  probes                        TenantProbe[]
+  outboxEvents                  OutboxEvent[]
+  accountActivationTokens       AccountActivationToken[]
+  passwordResetTokens           PasswordResetToken[]
+  roleAssignments               RoleAssignment[]
+  authSessions                  AuthSession[]
+  authSessionTokens             AuthSessionToken[]
+  securityAuditEvents           TenantSecurityAuditEvent[]
+  customRoles                   TenantCustomRole[]
+  partners                      Partner[]
+  partnerRegistrationChallenges PartnerRegistrationChallenge[]
 
   @@index([status])
   @@map("tenants")
@@ -441,22 +442,23 @@ model TenantCustomRoleAssignment {
 }
 
 model Partner {
-  id                   String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId             String                   @db.Uuid @map("tenant_id")
-  type                 PartnerType
-  applicationStatus    PartnerApplicationStatus @default(draft) @map("application_status")
-  operationalStatus    PartnerOperationalStatus @default(inactive) @map("operational_status")
-  authorizationVersion Int                      @default(1) @map("authorization_version")
-  version              Int                      @default(1)
-  submittedAt          DateTime?                @db.Timestamptz(6) @map("submitted_at")
-  approvedAt           DateTime?                @db.Timestamptz(6) @map("approved_at")
-  suspendedAt          DateTime?                @db.Timestamptz(6) @map("suspended_at")
-  cancelledAt          DateTime?                @db.Timestamptz(6) @map("cancelled_at")
-  createdAt            DateTime                 @default(now()) @db.Timestamptz(6) @map("created_at")
-  updatedAt            DateTime                 @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
-  tenant               Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  memberships          PartnerMembership[]
-  authSessions         AuthSession[]
+  id                     String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId               String                         @db.Uuid @map("tenant_id")
+  type                   PartnerType
+  applicationStatus      PartnerApplicationStatus       @default(draft) @map("application_status")
+  operationalStatus      PartnerOperationalStatus       @default(inactive) @map("operational_status")
+  authorizationVersion   Int                            @default(1) @map("authorization_version")
+  version                Int                            @default(1)
+  submittedAt            DateTime?                      @db.Timestamptz(6) @map("submitted_at")
+  approvedAt             DateTime?                      @db.Timestamptz(6) @map("approved_at")
+  suspendedAt            DateTime?                      @db.Timestamptz(6) @map("suspended_at")
+  cancelledAt            DateTime?                      @db.Timestamptz(6) @map("cancelled_at")
+  createdAt              DateTime                       @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt              DateTime                       @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
+  tenant                 Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships            PartnerMembership[]
+  authSessions           AuthSession[]
+  registrationChallenges PartnerRegistrationChallenge[]
 
   @@unique([id, tenantId])
   @@index([tenantId, applicationStatus])
@@ -503,6 +505,28 @@ model PartnerSystemRoleAssignment {
   @@index([partnerMembershipId])
   @@index([roleId])
   @@map("partner_system_role_assignments")
+}
+
+model PartnerRegistrationChallenge {
+  id                 String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String      @db.Uuid @map("tenant_id")
+  normalizedEmail    String      @map("normalized_email")
+  displayEmail       String      @map("display_email")
+  partnerType        PartnerType @map("partner_type")
+  hostname           String
+  selector           String      @unique
+  tokenHash          String      @db.Char(64) @map("token_hash")
+  expiresAt          DateTime    @db.Timestamptz(6) @map("expires_at")
+  consumedAt         DateTime?   @db.Timestamptz(6) @map("consumed_at")
+  revokedAt          DateTime?   @db.Timestamptz(6) @map("revoked_at")
+  completedPartnerId String?     @db.Uuid @map("completed_partner_id")
+  createdAt          DateTime    @default(now()) @db.Timestamptz(6) @map("created_at")
+  tenant             Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  completedPartner   Partner?    @relation(fields: [completedPartnerId, tenantId], references: [id, tenantId], onDelete: Restrict, map: "partner_registration_challenges_completed_partner_tenant_fkey")
+
+  @@unique([tenantId, normalizedEmail])
+  @@index([expiresAt])
+  @@map("partner_registration_challenges")
 }
 
 model SecurityAuditEvent {
@@ -602,7 +626,7 @@ model TenantProvisioningRequest {
   actorUserId       String                           @db.Uuid @map("actor_user_id")
   status            TenantProvisioningRequestStatus @default(inProgress)
   tenantId          String?                          @db.Uuid @map("tenant_id")
-  tenantSlug        String?                          @map("tenant_slug")
+  tenantSlug        String?                         @map("tenant_slug")
   ownerMembershipId String?                          @db.Uuid @map("owner_membership_id")
   ownerInvitationId String?                          @db.Uuid @map("owner_invitation_id")
   completedAt       DateTime?                        @db.Timestamptz(6) @map("completed_at")
