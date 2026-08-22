@@ -72,6 +72,51 @@ test("Partner registration has one canonical row per tenant/email and a unique s
   );
 });
 
+test("Partner establishment is structurally unique per registration challenge", async () => {
+  const columns = await prisma.$queryRaw<readonly { column_name: string }[]>`
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'partners'
+    ORDER BY column_name
+  `;
+  assert.ok(columns.some((row) => row.column_name === "registration_challenge_id"));
+
+  const indexes = await prisma.$queryRaw<readonly { indexdef: string }[]>`
+    SELECT indexdef
+    FROM pg_indexes
+    WHERE schemaname = 'public'
+      AND tablename = 'partners'
+    ORDER BY indexname
+  `;
+  const normalized = indexes.map((row) => row.indexdef.replaceAll('"', "").replace(/\s+/g, " "));
+  assert.ok(
+    normalized.some(
+      (definition) =>
+        definition.includes("UNIQUE") && definition.includes("(registration_challenge_id)"),
+    ),
+  );
+
+  const foreignKeys = await prisma.$queryRaw<
+    readonly { definition: string }[]
+  >`
+    SELECT pg_get_constraintdef(c.oid) AS definition
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname = 'public'
+      AND t.relname = 'partners'
+      AND c.contype = 'f'
+  `;
+  assert.ok(
+    foreignKeys.some(
+      (row) =>
+        row.definition.includes("registration_challenge_id") &&
+        row.definition.includes("partner_registration_challenges"),
+    ),
+  );
+});
+
 test("booking_app has exact minimum DML on Partner registration persistence", async () => {
   const privileges = await prisma.$queryRaw<readonly { privilege_type: string }[]>`
     SELECT privilege_type
