@@ -38,9 +38,7 @@ function assertState(condition: boolean): asserts condition {
 }
 
 export function canEditApplication(partner: ApplicationState): boolean {
-  return (
-    partner.applicationStatus === "draft" || partner.applicationStatus === "changes_requested"
-  );
+  return partner.applicationStatus === "draft" || partner.applicationStatus === "changes_requested";
 }
 
 export function canCreateInventory(partner: OperationalState): boolean {
@@ -66,9 +64,7 @@ export function assertCanReject(partner: TransitionState): void {
 }
 
 export function assertCanSuspend(partner: TransitionState): void {
-  assertState(
-    partner.applicationStatus === "approved" && partner.operationalStatus === "active",
-  );
+  assertState(partner.applicationStatus === "approved" && partner.operationalStatus === "active");
 }
 
 export function assertCanReactivate(partner: TransitionState): void {
