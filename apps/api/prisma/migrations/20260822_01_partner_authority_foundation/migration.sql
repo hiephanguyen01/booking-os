@@ -190,7 +190,7 @@ CREATE INDEX "partner_system_role_assignments_tenant_id_idx"
   ON "partner_system_role_assignments" ("tenant_id");
 CREATE INDEX "partner_system_role_assignments_partner_id_idx"
   ON "partner_system_role_assignments" ("partner_id");
-CREATE INDEX "partner_system_role_assignments_membership_id_idx"
+CREATE INDEX "partner_system_role_assignments_partner_membership_id_idx"
   ON "partner_system_role_assignments" ("partner_membership_id");
 CREATE INDEX "partner_system_role_assignments_role_id_idx"
   ON "partner_system_role_assignments" ("role_id");
