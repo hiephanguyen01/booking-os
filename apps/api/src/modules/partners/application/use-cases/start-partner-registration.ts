@@ -34,6 +34,32 @@ export class StartPartnerRegistrationUseCase {
     const expiresAt = new Date(input.now.getTime() + PARTNER_REGISTRATION_TTL_MS);
 
     await this.transactions.run(input.context, async (session) => {
+      const eligibility = await session.partnerRegistrationStartEligibility.classifyStart({
+        normalizedEmail,
+      });
+      let suppressed = !eligibility.eligible;
+
+      if (eligibility.eligible && eligibility.tenantMembershipId !== null) {
+        suppressed = await session.partners.hasMembershipForTenantMembership(
+          eligibility.tenantMembershipId,
+        );
+      }
+
+      if (suppressed) {
+        await session.partnerSecurityAudit.append({
+          eventType: "partner.registration.started",
+          actorUserId: null,
+          subjectUserId: null,
+          requestId: input.context.requestId,
+          metadata: {
+            result: "accepted",
+            reason: "policy_suppressed",
+          },
+          occurredAt: input.now,
+        });
+        return;
+      }
+
       const challenge = await session.partnerRegistrationChallenges.upsertForEmail({
         normalizedEmail,
         displayEmail,

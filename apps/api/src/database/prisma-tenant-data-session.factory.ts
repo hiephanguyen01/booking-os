@@ -9,6 +9,7 @@ import { PrismaTenantCustomRoleRepositoryAdapter } from "../modules/authorizatio
 import { PrismaTenantRbacPermissionRepositoryAdapter } from "../modules/authorization/infrastructure/persistence/prisma/prisma-tenant-rbac-permission-repository.adapter.js";
 import type { SensitiveEnvelopePort } from "../modules/identity/application/ports/sensitive-envelope.port.js";
 import { AesSensitiveEnvelopeAdapter } from "../modules/identity/infrastructure/crypto/aes-sensitive-envelope.adapter.js";
+import { PrismaPartnerRegistrationStartEligibilityAdapter } from "../modules/identity/infrastructure/persistence/prisma/prisma-partner-registration-start-eligibility.adapter.js";
 import { PrismaInvitationRepositoryAdapter } from "../modules/memberships/infrastructure/persistence/prisma/prisma-invitation-repository.adapter.js";
 import {
   PrismaInvitationSessionElevationAdapter,
@@ -107,6 +108,10 @@ export class PrismaTenantDataSessionFactory {
         transaction,
         tenantId,
         this.resolvePartnerRegistrationEnvelope,
+      ),
+      partnerRegistrationStartEligibility: new PrismaPartnerRegistrationStartEligibilityAdapter(
+        transaction,
+        tenantId,
       ),
       partnerSecurityAudit: new PrismaPartnerSecurityAuditAdapter(transaction, tenantId),
     });

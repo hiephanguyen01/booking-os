@@ -1,3 +1,4 @@
+import type { PartnerRegistrationStartEligibilityPort } from "../../../identity/application/partner-registration-identity.contract.js";
 import type { PartnerAuthorizationQueryPort } from "./partner-authorization-query.port.js";
 import type { PartnerRegistrationChallengeRepositoryPort } from "./partner-registration-challenge-repository.port.js";
 import type { PartnerRegistrationNotifierPort } from "./partner-registration-notifier.port.js";
@@ -9,5 +10,6 @@ export interface PartnerDataSession {
   readonly partnerAuthorization: PartnerAuthorizationQueryPort;
   readonly partnerRegistrationChallenges: PartnerRegistrationChallengeRepositoryPort;
   readonly partnerRegistrationNotifier: PartnerRegistrationNotifierPort;
+  readonly partnerRegistrationStartEligibility: PartnerRegistrationStartEligibilityPort;
   readonly partnerSecurityAudit: PartnerSecurityAuditPort;
 }

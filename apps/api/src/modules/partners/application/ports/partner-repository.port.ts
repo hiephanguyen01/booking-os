@@ -39,6 +39,7 @@ export interface PartnerRepositoryPort {
     partnerId: string,
     tenantMembershipId: string,
   ): Promise<PartnerMembershipState | null>;
+  hasMembershipForTenantMembership(tenantMembershipId: string): Promise<boolean>;
   lockPartner(partnerId: string): Promise<PartnerState | null>;
   updatePartnerState(input: UpdatePartnerStateInput): Promise<PartnerState>;
 }

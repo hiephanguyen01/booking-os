@@ -31,6 +31,22 @@ export interface PartnerRegistrationIdentityPersistencePort {
   activatePendingUser(input: ActivatePendingPartnerIdentityInput): Promise<GlobalUser>;
 }
 
+export type PartnerRegistrationStartEligibility =
+  | {
+      readonly eligible: true;
+      readonly tenantMembershipId: string | null;
+    }
+  | {
+      readonly eligible: false;
+      readonly reason: "identity_unavailable" | "tenant_membership_unavailable";
+    };
+
+export interface PartnerRegistrationStartEligibilityPort {
+  classifyStart(input: {
+    readonly normalizedEmail: string;
+  }): Promise<PartnerRegistrationStartEligibility>;
+}
+
 export interface PartnerRegistrationIdentityContract {
   resolveOrCreateVerifiedIdentity(
     input: ResolveVerifiedPartnerIdentityInput,

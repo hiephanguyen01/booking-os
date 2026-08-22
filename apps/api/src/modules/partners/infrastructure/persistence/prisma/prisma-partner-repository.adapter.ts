@@ -134,6 +134,14 @@ export class PrismaPartnerRepositoryAdapter implements PartnerRepositoryPort {
     return row ? toPartnerMembershipState(row) : null;
   }
 
+  async hasMembershipForTenantMembership(tenantMembershipId: string): Promise<boolean> {
+    const row = await this.transaction.partnerMembership.findFirst({
+      where: { tenantMembershipId, tenantId: this.tenantId },
+      select: { id: true },
+    });
+    return row !== null;
+  }
+
   async lockPartner(partnerId: string): Promise<PartnerState | null> {
     const rows = await this.transaction.$queryRawUnsafe<readonly PartnerPersistenceRow[]>(
       `SELECT

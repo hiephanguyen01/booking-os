@@ -80,6 +80,28 @@ test("partner repository scopes root and membership reads to the established ten
   assert.equal(membership?.tenantId, TENANT_ID);
 });
 
+test("partner repository detects an existing Partner membership only inside the established tenant", async () => {
+  const calls: unknown[] = [];
+  let row: { readonly id: string } | null = { id: PARTNER_MEMBERSHIP_ID };
+  const transaction = {
+    partnerMembership: {
+      async findFirst(input: unknown) {
+        calls.push(input);
+        return row;
+      },
+    },
+  };
+  const repository = new PrismaPartnerRepositoryAdapter(transaction as never, TENANT_ID);
+
+  assert.equal(await repository.hasMembershipForTenantMembership(TENANT_MEMBERSHIP_ID), true);
+  row = null;
+  assert.equal(await repository.hasMembershipForTenantMembership(TENANT_MEMBERSHIP_ID), false);
+  assert.deepEqual(calls[0], {
+    where: { tenantMembershipId: TENANT_MEMBERSHIP_ID, tenantId: TENANT_ID },
+    select: { id: true },
+  });
+});
+
 test("partner authorization returns only a closed active Partner authority snapshot", async () => {
   let rows: readonly unknown[] = [
     {
