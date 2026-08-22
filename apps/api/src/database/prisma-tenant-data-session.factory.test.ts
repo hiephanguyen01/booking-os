@@ -4,6 +4,8 @@ import test from "node:test";
 import { createSessionToken, deriveSessionSecretDigest, parseSessionToken } from "@booking-os/auth";
 import type { Prisma } from "@prisma/client";
 
+import type { Environment } from "../config/environment.schema.js";
+import { EnvironmentService } from "../config/environment.service.js";
 import type { SessionElevationPort } from "../modules/memberships/application/ports/session-elevation.port.js";
 import type { TenantSessionRevocationPort } from "../modules/sessions/application/ports/session-repository.port.js";
 import type { TenantDataSession } from "../modules/tenancy/application/ports/tenant-transaction.port.js";
@@ -143,4 +145,25 @@ test("revokes only target-user sessions and tokens inside the transaction tenant
   assert.match(operations[1]?.sql ?? "", /token\."tenant_id" = \$1::uuid/);
   assert.match(operations[1]?.sql ?? "", /session\."user_id" = \$2::uuid/);
   assert.deepEqual(operations[1]?.values, [TENANT_ID, USER_ID, NOW]);
+});
+
+test("does not require Partner notification crypto until the notifier is used", () => {
+  const environment: Environment = {
+    nodeEnvironment: "test",
+    host: "127.0.0.1",
+    trustProxy: false,
+    tenantBaseDomain: "example.test",
+    port: 3101,
+    apiPrefix: "api",
+    appVersion: "0.1.0-test",
+    logLevel: "error",
+    databaseUrl: "postgresql://booking:booking@127.0.0.1:5432/booking_os_test",
+    redisUrl: "redis://127.0.0.1:6379/1",
+    readinessTimeoutMs: 750,
+    sessionSecret: "tenant-session-factory-test-secret-at-least-32-characters",
+    paymentProvider: "mock",
+  };
+  const factory = new PrismaTenantDataSessionFactory(new EnvironmentService(environment));
+
+  assert.doesNotThrow(() => factory.create({} as Prisma.TransactionClient, TENANT_ID));
 });
