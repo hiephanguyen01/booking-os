@@ -58,6 +58,20 @@ export class PrismaPartnerRegistrationNotifierAdapter implements PartnerRegistra
       new TextEncoder().encode(JSON.stringify({ token: input.serializedToken })),
       associatedData,
     );
+    const payload: Prisma.InputJsonObject = {
+      version: 1,
+      recipient: input.displayEmail,
+      normalizedEmail: input.normalizedEmail,
+      template: TEMPLATE,
+      hostname: input.hostname,
+      envelope: {
+        version: sealed.version,
+        keyId: sealed.keyId,
+        iv: sealed.iv,
+        ciphertext: sealed.ciphertext,
+        tag: sealed.tag,
+      },
+    };
 
     await this.transaction.outboxEvent.create({
       data: {
@@ -66,14 +80,7 @@ export class PrismaPartnerRegistrationNotifierAdapter implements PartnerRegistra
         type: EVENT_TYPE,
         aggregateType: "partner_registration_challenge",
         aggregateId: input.challengeId,
-        payload: {
-          version: 1,
-          recipient: input.displayEmail,
-          normalizedEmail: input.normalizedEmail,
-          template: TEMPLATE,
-          hostname: input.hostname,
-          envelope: sealed,
-        } as Prisma.InputJsonObject,
+        payload,
         occurredAt: input.occurredAt,
       },
     });
