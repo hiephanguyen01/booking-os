@@ -120,7 +120,10 @@ test("partner admin cannot replace payout-account authority", () => {
     hasPermission(SYSTEM_ROLES.partnerAdmin, PERMISSION_KEYS.partnerPayoutAccountUpdate),
     false,
   );
-  assert.equal(hasPermission(SYSTEM_ROLES.partnerAdmin, PERMISSION_KEYS.partnerProfileUpdate), true);
+  assert.equal(
+    hasPermission(SYSTEM_ROLES.partnerAdmin, PERMISSION_KEYS.partnerProfileUpdate),
+    true,
+  );
   assert.equal(
     hasPermission(SYSTEM_ROLES.partnerAdmin, PERMISSION_KEYS.partnerApplicationSubmit),
     true,
