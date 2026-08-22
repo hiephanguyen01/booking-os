@@ -1,0 +1,48 @@
+name: Sprint 3 Partner RED format
+
+on:
+  push:
+    branches:
+      - feat/sprint-3-partner-foundation-onboarding
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v6
+        with:
+          ref: feat/sprint-3-partner-foundation-onboarding
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply canonical formatting
+        run: pnpm exec biome format --write apps/api/test/partner-schema.integration.test.ts apps/api/test/partner-rls.integration.test.ts apps/api/test/partner-minimum-dml.integration.test.ts
+
+      - name: Remove one-shot formatter helper
+        run: git rm .github/workflows/sprint3-red-format.yml
+
+      - name: Commit canonical RED tests
+        run: |
+          git add apps/api/test/partner-schema.integration.test.ts apps/api/test/partner-rls.integration.test.ts apps/api/test/partner-minimum-dml.integration.test.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "style: format Partner persistence RED tests"
+          git push origin HEAD:feat/sprint-3-partner-foundation-onboarding
