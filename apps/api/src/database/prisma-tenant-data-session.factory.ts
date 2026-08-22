@@ -23,6 +23,7 @@ import { PrismaPartnerAuthorizationQueryAdapter } from "../modules/partners/infr
 import { PrismaPartnerRegistrationChallengeRepositoryAdapter } from "../modules/partners/infrastructure/persistence/prisma/prisma-partner-registration-challenge-repository.adapter.js";
 import { PrismaPartnerRegistrationNotifierAdapter } from "../modules/partners/infrastructure/persistence/prisma/prisma-partner-registration-notifier.adapter.js";
 import { PrismaPartnerRepositoryAdapter } from "../modules/partners/infrastructure/persistence/prisma/prisma-partner-repository.adapter.js";
+import { PrismaPartnerSecurityAuditAdapter } from "../modules/partners/infrastructure/persistence/prisma/prisma-partner-security-audit.adapter.js";
 import type { TenantDataSession } from "../modules/tenancy/application/ports/tenant-transaction.port.js";
 import { PrismaTenantProbeRepositoryAdapter } from "../modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-probe-repository.adapter.js";
 
@@ -107,6 +108,7 @@ export class PrismaTenantDataSessionFactory {
         tenantId,
         this.resolvePartnerRegistrationEnvelope,
       ),
+      partnerSecurityAudit: new PrismaPartnerSecurityAuditAdapter(transaction, tenantId),
     });
   }
 }

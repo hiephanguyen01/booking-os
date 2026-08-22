@@ -53,6 +53,18 @@ export class StartPartnerRegistrationUseCase {
         hostname,
         occurredAt: input.now,
       });
+
+      await session.partnerSecurityAudit.append({
+        eventType: "partner.registration.started",
+        actorUserId: null,
+        subjectUserId: null,
+        requestId: input.context.requestId,
+        metadata: {
+          result: "accepted",
+          reason: "verification_requested",
+        },
+        occurredAt: input.now,
+      });
     });
 
     return Object.freeze({ accepted: true as const });
