@@ -1,8 +1,4 @@
-import {
-  PERMISSION_KEYS,
-  type PermissionKey,
-  SYSTEM_ROLES,
-} from "@booking-os/auth";
+import { PERMISSION_KEYS, type PermissionKey, SYSTEM_ROLES } from "@booking-os/auth";
 import type { Prisma } from "@prisma/client";
 
 import type {
@@ -42,7 +38,10 @@ export class PrismaPartnerAuthorizationQueryAdapter implements PartnerAuthorizat
     private readonly tenantId: string,
   ) {}
 
-  async loadForUser(partnerId: string, userId: string): Promise<PartnerAuthorizationSnapshot | null> {
+  async loadForUser(
+    partnerId: string,
+    userId: string,
+  ): Promise<PartnerAuthorizationSnapshot | null> {
     const rows = await this.transaction.$queryRawUnsafe<readonly PartnerAuthorizationRow[]>(
       `SELECT
          partner."id" AS "partnerId",

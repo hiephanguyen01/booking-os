@@ -1,21 +1,17 @@
 import type { Prisma } from "@prisma/client";
-
-import type {
-  PartnerApplicationStatus,
-  PartnerOperationalStatus,
-  PartnerState,
-  PartnerType,
-} from "../../../domain/partner.js";
-import {
-  PartnerNotFoundError,
-  PartnerStaleVersionError,
-} from "../../../domain/partner.errors.js";
 import type {
   PartnerMembershipState,
   PartnerMembershipStatus,
   PartnerRepositoryPort,
   UpdatePartnerStateInput,
 } from "../../../application/ports/partner-repository.port.js";
+import { PartnerNotFoundError, PartnerStaleVersionError } from "../../../domain/partner.errors.js";
+import type {
+  PartnerApplicationStatus,
+  PartnerOperationalStatus,
+  PartnerState,
+  PartnerType,
+} from "../../../domain/partner.js";
 
 interface PartnerPersistenceRow {
   readonly id: string;
@@ -53,12 +49,7 @@ function toPartnerType(value: string): PartnerType {
 
 function toApplicationStatus(value: string): PartnerApplicationStatus {
   if (value === "changesRequested" || value === "changes_requested") return "changes_requested";
-  if (
-    value === "draft" ||
-    value === "submitted" ||
-    value === "approved" ||
-    value === "rejected"
-  ) {
+  if (value === "draft" || value === "submitted" || value === "approved" || value === "rejected") {
     return value;
   }
   throw new PartnerNotFoundError();
