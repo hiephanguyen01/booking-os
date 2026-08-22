@@ -123,14 +123,12 @@ test("Partner authority migration creates the root, membership, assignment, and 
   `;
   assert.deepEqual(
     sessionColumns.map((row) => row.column_name),
-    [
-      "partner_authorization_version",
-      "partner_id",
-      "partner_membership_authorization_version",
-    ],
+    ["partner_authorization_version", "partner_id", "partner_membership_authorization_version"],
   );
 
-  const partnerScopeEnums = await prisma.$queryRaw<readonly { typname: string; enumlabel: string }[]>`
+  const partnerScopeEnums = await prisma.$queryRaw<
+    readonly { typname: string; enumlabel: string }[]
+  >`
     SELECT t.typname, e.enumlabel
     FROM pg_type t
     JOIN pg_enum e ON e.enumtypid = t.oid
@@ -175,9 +173,7 @@ test("Partner persistence enforces the composite same-tenant identities required
     ),
   );
   assert.ok(
-    membershipConstraints.some(
-      (definition) => definition === "UNIQUE (id, partner_id, tenant_id)",
-    ),
+    membershipConstraints.some((definition) => definition === "UNIQUE (id, partner_id, tenant_id)"),
   );
   assert.ok(
     membershipConstraints.some(
