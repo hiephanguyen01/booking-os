@@ -49,6 +49,17 @@ jobs:
       - name: Reject stale generated artifacts
         run: pnpm api:check-generated
 
+      - name: Upload generated drift for execution debugging
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: sprint-3-generated-contract-drift
+          path: |
+            packages/contracts/openapi/openapi.json
+            packages/api-client/src/generated/schema.ts
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Typecheck generated API client
         run: pnpm --filter @booking-os/api-client typecheck
 
