@@ -5,7 +5,7 @@ import * as auth from "../src/index.js";
 
 interface PermissionCatalogEntry {
   readonly key: string;
-  readonly scopeLevel: "platform" | "tenant";
+  readonly scopeLevel: "platform" | "tenant" | "partner";
   readonly delegable: boolean;
   readonly description: string;
 }
@@ -55,4 +55,50 @@ test("RBAC mutations and owner lifecycle permissions are non-delegable", () => {
 
   assert.equal(catalog.isDelegableTenantPermission?.("tenant.rbac.role.read"), true);
   assert.equal(catalog.isDelegableTenantPermission?.("platform.tenants.provision"), false);
+});
+
+test("Sprint 3 Partner permissions expose exact scope and delegability metadata", () => {
+  const partnerScoped = [
+    "partner.profile.read",
+    "partner.profile.update",
+    "partner.application.read",
+    "partner.application.submit",
+    "partner.verification.read",
+    "partner.verification.update",
+    "partner.payout_account.read",
+    "partner.payout_account.update",
+    "partner.review_finding.read",
+  ] as const;
+
+  for (const key of partnerScoped) {
+    assert.equal(catalog.getPermissionCatalogEntry?.(key)?.scopeLevel, "partner", key);
+    assert.equal(catalog.getPermissionCatalogEntry?.(key)?.delegable, false, key);
+  }
+
+  const tenantDelegable = [
+    "tenant.partner.read",
+    "tenant.partner.verification.read",
+    "tenant.partner.payout_account.read",
+    "tenant.partner.application.review",
+    "tenant.partner.application.approve",
+    "tenant.partner.application.reject",
+  ] as const;
+
+  for (const key of tenantDelegable) {
+    assert.equal(catalog.getPermissionCatalogEntry?.(key)?.scopeLevel, "tenant", key);
+    assert.equal(catalog.getPermissionCatalogEntry?.(key)?.delegable, true, key);
+    assert.equal(catalog.isDelegableTenantPermission?.(key), true, key);
+  }
+
+  const tenantOwnerGoverned = [
+    "tenant.partner.lifecycle.suspend",
+    "tenant.partner.lifecycle.reactivate",
+    "tenant.partner.lifecycle.cancel",
+  ] as const;
+
+  for (const key of tenantOwnerGoverned) {
+    assert.equal(catalog.getPermissionCatalogEntry?.(key)?.scopeLevel, "tenant", key);
+    assert.equal(catalog.getPermissionCatalogEntry?.(key)?.delegable, false, key);
+    assert.equal(catalog.isDelegableTenantPermission?.(key), false, key);
+  }
 });
