@@ -18,6 +18,7 @@ import { PrismaTenantProvisioningRepositoryAdapter } from "../modules/membership
 import { PrismaTenantRoleAssignmentRepositoryAdapter } from "../modules/memberships/infrastructure/persistence/prisma/prisma-tenant-role-assignment-repository.adapter.js";
 import { PrismaTenantSecurityAuditAdapter } from "../modules/memberships/infrastructure/persistence/prisma/prisma-tenant-security-audit.adapter.js";
 import { PrismaPartnerAuthorizationQueryAdapter } from "../modules/partners/infrastructure/persistence/prisma/prisma-partner-authorization-query.adapter.js";
+import { PrismaPartnerRegistrationChallengeRepositoryAdapter } from "../modules/partners/infrastructure/persistence/prisma/prisma-partner-registration-challenge-repository.adapter.js";
 import { PrismaPartnerRepositoryAdapter } from "../modules/partners/infrastructure/persistence/prisma/prisma-partner-repository.adapter.js";
 import type { TenantDataSession } from "../modules/tenancy/application/ports/tenant-transaction.port.js";
 import { PrismaTenantProbeRepositoryAdapter } from "../modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-probe-repository.adapter.js";
@@ -72,6 +73,10 @@ export class PrismaTenantDataSessionFactory {
       rbacPermissions: new PrismaTenantRbacPermissionRepositoryAdapter(transaction),
       partners: new PrismaPartnerRepositoryAdapter(transaction, tenantId),
       partnerAuthorization: new PrismaPartnerAuthorizationQueryAdapter(transaction, tenantId),
+      partnerRegistrationChallenges: new PrismaPartnerRegistrationChallengeRepositoryAdapter(
+        transaction,
+        tenantId,
+      ),
     });
   }
 }
