@@ -42,7 +42,9 @@ function isFactoryOptions(
 @Injectable()
 export class PrismaTenantDataSessionFactory {
   private readonly sessionElevationOptions: PrismaInvitationSessionElevationOptions | undefined;
-  private readonly partnerRegistrationEnvelope: SensitiveEnvelopePort | undefined;
+  private readonly resolvePartnerRegistrationEnvelope:
+    | (() => SensitiveEnvelopePort | undefined)
+    | undefined;
 
   constructor(
     @Inject(EnvironmentService)
@@ -50,22 +52,28 @@ export class PrismaTenantDataSessionFactory {
   ) {
     if (!source) {
       this.sessionElevationOptions = undefined;
-      this.partnerRegistrationEnvelope = undefined;
+      this.resolvePartnerRegistrationEnvelope = undefined;
       return;
     }
 
     if (isFactoryOptions(source)) {
       this.sessionElevationOptions = source;
-      this.partnerRegistrationEnvelope = undefined;
+      this.resolvePartnerRegistrationEnvelope = undefined;
       return;
     }
 
     this.sessionElevationOptions = { digestKey: deriveSessionDigestKey(source.sessionSecret) };
-    const security = source.identitySecurity;
-    this.partnerRegistrationEnvelope = new AesSensitiveEnvelopeAdapter(
-      security.activeEnvelopeKeyId,
-      security.envelopeKeys,
-    );
+    let envelope: SensitiveEnvelopePort | undefined;
+    this.resolvePartnerRegistrationEnvelope = () => {
+      if (!envelope) {
+        const security = source.identitySecurity;
+        envelope = new AesSensitiveEnvelopeAdapter(
+          security.activeEnvelopeKeyId,
+          security.envelopeKeys,
+        );
+      }
+      return envelope;
+    };
   }
 
   create(transaction: Prisma.TransactionClient, tenantId: string): TenantDataSession {
@@ -97,7 +105,7 @@ export class PrismaTenantDataSessionFactory {
       partnerRegistrationNotifier: new PrismaPartnerRegistrationNotifierAdapter(
         transaction,
         tenantId,
-        this.partnerRegistrationEnvelope,
+        this.resolvePartnerRegistrationEnvelope,
       ),
     });
   }

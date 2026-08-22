@@ -11,6 +11,11 @@ import type {
 const EVENT_TYPE = "partner.registration.verification_requested" as const;
 const TEMPLATE = "partner_registration_verification" as const;
 
+type SensitiveEnvelopeSource =
+  | SensitiveEnvelopePort
+  | (() => SensitiveEnvelopePort | undefined)
+  | undefined;
+
 function notificationAssociatedData(input: {
   readonly eventId: string;
   readonly tenantId: string;
@@ -31,18 +36,23 @@ function notificationAssociatedData(input: {
   );
 }
 
+function resolveEnvelope(source: SensitiveEnvelopeSource): SensitiveEnvelopePort | undefined {
+  return typeof source === "function" ? source() : source;
+}
+
 export class PrismaPartnerRegistrationNotifierAdapter implements PartnerRegistrationNotifierPort {
   constructor(
     private readonly transaction: Prisma.TransactionClient,
     private readonly tenantId: string,
-    private readonly envelope: SensitiveEnvelopePort | undefined,
+    private readonly envelopeSource: SensitiveEnvelopeSource,
     private readonly createId: () => string = randomUUID,
   ) {}
 
   async appendVerificationRequested(
     input: AppendPartnerRegistrationVerificationRequestedInput,
   ): Promise<void> {
-    if (!this.envelope) {
+    const envelope = resolveEnvelope(this.envelopeSource);
+    if (!envelope) {
       throw new Error("Partner registration notification envelope is unavailable.");
     }
 
@@ -54,7 +64,7 @@ export class PrismaPartnerRegistrationNotifierAdapter implements PartnerRegistra
       hostname: input.hostname,
       recipient: input.displayEmail,
     });
-    const sealed = this.envelope.seal(
+    const sealed = envelope.seal(
       new TextEncoder().encode(JSON.stringify({ token: input.serializedToken })),
       associatedData,
     );
