@@ -2,7 +2,7 @@ import { PERMISSION_KEYS, type PermissionKey } from "./permissions.js";
 
 export interface PermissionCatalogEntry {
   readonly key: PermissionKey;
-  readonly scopeLevel: "platform" | "tenant";
+  readonly scopeLevel: "platform" | "tenant" | "partner";
   readonly delegable: boolean;
   readonly description: string;
 }
@@ -139,6 +139,114 @@ const ENTRIES: readonly PermissionCatalogEntry[] = [
     scopeLevel: "tenant",
     delegable: false,
     description: "Revoke tenant custom-role assignments.",
+  },
+  {
+    key: PERMISSION_KEYS.partnerProfileRead,
+    scopeLevel: "partner",
+    delegable: false,
+    description: "Read the current Partner profile.",
+  },
+  {
+    key: PERMISSION_KEYS.partnerProfileUpdate,
+    scopeLevel: "partner",
+    delegable: false,
+    description: "Update the current Partner profile.",
+  },
+  {
+    key: PERMISSION_KEYS.partnerApplicationRead,
+    scopeLevel: "partner",
+    delegable: false,
+    description: "Read the current Partner application.",
+  },
+  {
+    key: PERMISSION_KEYS.partnerApplicationSubmit,
+    scopeLevel: "partner",
+    delegable: false,
+    description: "Submit or resubmit the current Partner application.",
+  },
+  {
+    key: PERMISSION_KEYS.partnerVerificationRead,
+    scopeLevel: "partner",
+    delegable: false,
+    description: "Read current Partner verification state.",
+  },
+  {
+    key: PERMISSION_KEYS.partnerVerificationUpdate,
+    scopeLevel: "partner",
+    delegable: false,
+    description: "Update current Partner verification material.",
+  },
+  {
+    key: PERMISSION_KEYS.partnerPayoutAccountRead,
+    scopeLevel: "partner",
+    delegable: false,
+    description: "Read masked current Partner payout account data.",
+  },
+  {
+    key: PERMISSION_KEYS.partnerPayoutAccountUpdate,
+    scopeLevel: "partner",
+    delegable: false,
+    description: "Replace the current Partner payout account.",
+  },
+  {
+    key: PERMISSION_KEYS.partnerReviewFindingRead,
+    scopeLevel: "partner",
+    delegable: false,
+    description: "Read review findings for the current Partner.",
+  },
+  {
+    key: PERMISSION_KEYS.tenantPartnerRead,
+    scopeLevel: "tenant",
+    delegable: true,
+    description: "Read Partners in the current tenant.",
+  },
+  {
+    key: PERMISSION_KEYS.tenantPartnerVerificationRead,
+    scopeLevel: "tenant",
+    delegable: true,
+    description: "Read Partner verification material in the current tenant.",
+  },
+  {
+    key: PERMISSION_KEYS.tenantPartnerPayoutAccountRead,
+    scopeLevel: "tenant",
+    delegable: true,
+    description: "Read masked Partner payout account data in the current tenant.",
+  },
+  {
+    key: PERMISSION_KEYS.tenantPartnerApplicationReview,
+    scopeLevel: "tenant",
+    delegable: true,
+    description: "Request changes for tenant Partner applications.",
+  },
+  {
+    key: PERMISSION_KEYS.tenantPartnerApplicationApprove,
+    scopeLevel: "tenant",
+    delegable: true,
+    description: "Approve tenant Partner applications.",
+  },
+  {
+    key: PERMISSION_KEYS.tenantPartnerApplicationReject,
+    scopeLevel: "tenant",
+    delegable: true,
+    description: "Reject tenant Partner applications.",
+  },
+  {
+    key: PERMISSION_KEYS.tenantPartnerLifecycleSuspend,
+    scopeLevel: "tenant",
+    delegable: false,
+    description: "Suspend an active Partner.",
+  },
+  {
+    key: PERMISSION_KEYS.tenantPartnerLifecycleReactivate,
+    scopeLevel: "tenant",
+    delegable: false,
+    description: "Reactivate a suspended Partner.",
+  },
+  {
+    key: PERMISSION_KEYS.tenantPartnerLifecycleCancel,
+    scopeLevel: "tenant",
+    delegable: false,
+    description: "Cancel an active or suspended Partner.",
   },
 ] as const;
 

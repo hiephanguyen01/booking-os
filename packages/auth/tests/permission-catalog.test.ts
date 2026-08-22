@@ -5,7 +5,7 @@ import * as auth from "../src/index.js";
 
 interface PermissionCatalogEntry {
   readonly key: string;
-  readonly scopeLevel: "platform" | "tenant";
+  readonly scopeLevel: "platform" | "tenant" | "partner";
   readonly delegable: boolean;
   readonly description: string;
 }
@@ -55,4 +55,27 @@ test("RBAC mutations and owner lifecycle permissions are non-delegable", () => {
 
   assert.equal(catalog.isDelegableTenantPermission?.("tenant.rbac.role.read"), true);
   assert.equal(catalog.isDelegableTenantPermission?.("platform.tenants.provision"), false);
+});
+
+test("Sprint 3 partner permissions expose approved scope and delegability metadata", () => {
+  assert.deepEqual(catalog.getPermissionCatalogEntry?.("partner.profile.read"), {
+    key: "partner.profile.read",
+    scopeLevel: "partner",
+    delegable: false,
+    description: "Read the current Partner profile.",
+  });
+  assert.deepEqual(catalog.getPermissionCatalogEntry?.("tenant.partner.application.review"), {
+    key: "tenant.partner.application.review",
+    scopeLevel: "tenant",
+    delegable: true,
+    description: "Request changes for tenant Partner applications.",
+  });
+
+  assert.equal(catalog.isDelegableTenantPermission?.("tenant.partner.application.review"), true);
+  assert.equal(catalog.isDelegableTenantPermission?.("tenant.partner.application.approve"), true);
+  assert.equal(catalog.isDelegableTenantPermission?.("tenant.partner.application.reject"), true);
+  assert.equal(catalog.isDelegableTenantPermission?.("tenant.partner.lifecycle.suspend"), false);
+  assert.equal(catalog.isDelegableTenantPermission?.("tenant.partner.lifecycle.reactivate"), false);
+  assert.equal(catalog.isDelegableTenantPermission?.("tenant.partner.lifecycle.cancel"), false);
+  assert.equal(catalog.isDelegableTenantPermission?.("partner.profile.read"), false);
 });

@@ -8,7 +8,13 @@ import {
 } from "../src/auth/index.js";
 
 test("authorization catalogs expose the approved stable identifiers", () => {
-  assert.deepEqual(AUTHORIZATION_ROLE_KEYS, ["platform_admin", "tenant_owner", "tenant_admin"]);
+  assert.deepEqual(AUTHORIZATION_ROLE_KEYS, [
+    "platform_admin",
+    "tenant_owner",
+    "tenant_admin",
+    "partner_owner",
+    "partner_admin",
+  ]);
   assert.deepEqual(AUTHORIZATION_PERMISSION_KEYS, [
     "platform.security.audit.read",
     "platform.security.session.revoke",
@@ -32,6 +38,24 @@ test("authorization catalogs expose the approved stable identifiers", () => {
     "tenant.rbac.assignment.read",
     "tenant.rbac.assignment.grant",
     "tenant.rbac.assignment.revoke",
+    "partner.profile.read",
+    "partner.profile.update",
+    "partner.application.read",
+    "partner.application.submit",
+    "partner.verification.read",
+    "partner.verification.update",
+    "partner.payout_account.read",
+    "partner.payout_account.update",
+    "partner.review_finding.read",
+    "tenant.partner.read",
+    "tenant.partner.verification.read",
+    "tenant.partner.payout_account.read",
+    "tenant.partner.application.review",
+    "tenant.partner.application.approve",
+    "tenant.partner.application.reject",
+    "tenant.partner.lifecycle.suspend",
+    "tenant.partner.lifecycle.reactivate",
+    "tenant.partner.lifecycle.cancel",
   ]);
 });
 
