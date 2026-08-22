@@ -53,7 +53,10 @@ function createHarness() {
   } as unknown as PartnerDataSession;
 
   const transactions: PartnerTransactionPort = {
-    async run<T>(context: TenantExecutionContext, work: (session: PartnerDataSession) => Promise<T>) {
+    async run<T>(
+      context: TenantExecutionContext,
+      work: (session: PartnerDataSession) => Promise<T>,
+    ) {
       assert.deepEqual(context, CONTEXT);
       return work(session);
     },
@@ -127,7 +130,10 @@ test("registration start keeps the public response enumeration-safe", async () =
     "blocked@example.test",
   ]) {
     const harness = createHarness();
-    const useCase = new StartPartnerRegistrationUseCase(harness.transactions, harness.oneTimeTokens);
+    const useCase = new StartPartnerRegistrationUseCase(
+      harness.transactions,
+      harness.oneTimeTokens,
+    );
     const result = await useCase.execute({
       context: CONTEXT,
       hostname: "studiohub.example.test",
