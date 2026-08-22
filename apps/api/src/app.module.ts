@@ -17,6 +17,7 @@ import { PlatformTenantsController } from "./modules/memberships/infrastructure/
 import { TenantInvitationsController } from "./modules/memberships/infrastructure/http/tenant-invitations.controller.js";
 import { TenantMembershipsController } from "./modules/memberships/infrastructure/http/tenant-memberships.controller.js";
 import { MembershipsModule } from "./modules/memberships/memberships.module.js";
+import { PartnersModule } from "./modules/partners/partners.module.js";
 import { PlatformSecurityController } from "./modules/sessions/infrastructure/http/platform-security.controller.js";
 import { SessionAuthMiddleware } from "./modules/sessions/infrastructure/http/session-auth.middleware.js";
 import { SessionCsrfHttpController } from "./modules/sessions/infrastructure/http/session-csrf-http.controller.js";
@@ -40,6 +41,7 @@ import { ReliabilityModule } from "./reliability/reliability.module.js";
     AuthorizationModule,
     IdentityModule,
     MembershipsModule,
+    PartnersModule,
     TenancyModule,
     SessionsModule,
     PlatformSecurityModule,
