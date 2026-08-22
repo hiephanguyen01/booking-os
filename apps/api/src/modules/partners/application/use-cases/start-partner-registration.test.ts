@@ -9,6 +9,7 @@ import type { PartnerTransactionPort } from "../ports/partner-transaction.port.j
 import { StartPartnerRegistrationUseCase } from "./start-partner-registration.js";
 
 const TENANT_ID = "30000000-0000-4000-8000-000000000001";
+const TENANT_MEMBERSHIP_ID = "30000000-0000-4000-8000-000000000201";
 const NOW = new Date("2026-08-23T00:00:00.000Z");
 const CONTEXT: TenantExecutionContext = {
   tenantId: TENANT_ID,
@@ -17,13 +18,47 @@ const CONTEXT: TenantExecutionContext = {
   source: "storefront",
 };
 
-function createHarness() {
+type RegistrationStartEligibility =
+  | {
+      readonly eligible: true;
+      readonly tenantMembershipId: string | null;
+    }
+  | {
+      readonly eligible: false;
+      readonly reason: "identity_unavailable" | "tenant_membership_unavailable";
+    };
+
+interface HarnessOptions {
+  readonly eligibility?: RegistrationStartEligibility;
+  readonly existingPartner?: boolean;
+}
+
+function createHarness(options: HarnessOptions = {}) {
   const events: string[] = [];
   let auditInput: Record<string, unknown> | undefined;
   let challengeInput: Record<string, unknown> | undefined;
   let notificationInput: Record<string, unknown> | undefined;
 
+  const eligibility = options.eligibility ?? {
+    eligible: true as const,
+    tenantMembershipId: null,
+  };
+
   const session = {
+    partnerRegistrationStartEligibility: {
+      async classifyStart(input: { readonly normalizedEmail: string }) {
+        events.push("eligibility");
+        assert.equal(input.normalizedEmail.includes("@"), true);
+        return eligibility;
+      },
+    },
+    partners: {
+      async hasMembershipForTenantMembership(tenantMembershipId: string) {
+        events.push("partner-membership-probe");
+        assert.equal(tenantMembershipId, TENANT_MEMBERSHIP_ID);
+        return options.existingPartner ?? false;
+      },
+    },
     partnerRegistrationChallenges: {
       async upsertForEmail(input: Record<string, unknown>) {
         challengeInput = input;
@@ -108,7 +143,12 @@ test("registration start stores only selector/digest and emits the raw token onl
   });
 
   assert.deepEqual(result, { accepted: true });
-  assert.deepEqual(harness.events, ["token:partner_registration", "challenge", "notification"]);
+  assert.deepEqual(harness.events, [
+    "token:partner_registration",
+    "eligibility",
+    "challenge",
+    "notification",
+  ]);
 
   const challenge = harness.challengeInput();
   assert.ok(challenge);
@@ -130,13 +170,43 @@ test("registration start stores only selector/digest and emits the raw token onl
 });
 
 test("registration start keeps the public response enumeration-safe", async () => {
-  for (const email of [
-    "new@example.test",
-    "existing@example.test",
-    "existing-partner@example.test",
-    "blocked@example.test",
-  ]) {
-    const harness = createHarness();
+  const cases = [
+    {
+      email: "new@example.test",
+      options: {},
+    },
+    {
+      email: "existing@example.test",
+      options: {
+        eligibility: {
+          eligible: true as const,
+          tenantMembershipId: TENANT_MEMBERSHIP_ID,
+        },
+      },
+    },
+    {
+      email: "existing-partner@example.test",
+      options: {
+        eligibility: {
+          eligible: true as const,
+          tenantMembershipId: TENANT_MEMBERSHIP_ID,
+        },
+        existingPartner: true,
+      },
+    },
+    {
+      email: "blocked@example.test",
+      options: {
+        eligibility: {
+          eligible: false as const,
+          reason: "identity_unavailable" as const,
+        },
+      },
+    },
+  ];
+
+  for (const entry of cases) {
+    const harness = createHarness(entry.options);
     const useCase = new StartPartnerRegistrationUseCase(
       harness.transactions,
       harness.oneTimeTokens,
@@ -144,11 +214,88 @@ test("registration start keeps the public response enumeration-safe", async () =
     const result = await useCase.execute({
       context: CONTEXT,
       hostname: "studiohub.example.test",
-      email,
+      email: entry.email,
       partnerType: "individual",
       now: NOW,
     });
     assert.deepEqual(result, { accepted: true });
+  }
+});
+
+test("registration start creates a usable challenge for an existing eligible user without a Partner", async () => {
+  const harness = createHarness({
+    eligibility: {
+      eligible: true,
+      tenantMembershipId: TENANT_MEMBERSHIP_ID,
+    },
+    existingPartner: false,
+  });
+  const useCase = new StartPartnerRegistrationUseCase(harness.transactions, harness.oneTimeTokens);
+
+  await useCase.execute({
+    context: CONTEXT,
+    hostname: "studiohub.example.test",
+    email: "existing@example.test",
+    partnerType: "company",
+    now: NOW,
+  });
+
+  assert.ok(harness.challengeInput());
+  assert.ok(harness.notificationInput());
+  assert.deepEqual(harness.events, [
+    "token:partner_registration",
+    "eligibility",
+    "partner-membership-probe",
+    "challenge",
+    "notification",
+  ]);
+});
+
+test("registration start suppresses challenge delivery for blocked or existing-Partner identities", async () => {
+  const cases: readonly HarnessOptions[] = [
+    {
+      eligibility: {
+        eligible: false,
+        reason: "identity_unavailable",
+      },
+    },
+    {
+      eligibility: {
+        eligible: true,
+        tenantMembershipId: TENANT_MEMBERSHIP_ID,
+      },
+      existingPartner: true,
+    },
+  ];
+
+  for (const options of cases) {
+    const harness = createHarness(options);
+    const useCase = new StartPartnerRegistrationUseCase(
+      harness.transactions,
+      harness.oneTimeTokens,
+    );
+
+    const result = await useCase.execute({
+      context: CONTEXT,
+      hostname: "studiohub.example.test",
+      email: "suppressed@example.test",
+      partnerType: "company",
+      now: NOW,
+    });
+
+    assert.deepEqual(result, { accepted: true });
+    assert.equal(harness.challengeInput(), undefined);
+    assert.equal(harness.notificationInput(), undefined);
+    assert.equal(harness.events[0], "token:partner_registration");
+
+    const audit = harness.auditInput();
+    assert.ok(audit);
+    assert.deepEqual(audit.metadata, {
+      result: "accepted",
+      reason: "policy_suppressed",
+    });
+    assert.equal(JSON.stringify(audit).includes("suppressed@example.test"), false);
+    assert.equal(JSON.stringify(audit).includes("partner-registration.raw-secret"), false);
   }
 });
 
