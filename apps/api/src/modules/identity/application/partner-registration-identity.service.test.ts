@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { GlobalUser } from "../domain/user.js";
-import type { PasswordDenylistPort } from "./ports/password-denylist.port.js";
-import type { PasswordHasherPort } from "./ports/password-hasher.port.js";
 import {
   IdentityUnavailableForPartnerRegistrationError,
   type PartnerRegistrationIdentityPersistencePort,
 } from "./partner-registration-identity.contract.js";
 import { PartnerRegistrationIdentityService } from "./partner-registration-identity.service.js";
+import type { PasswordDenylistPort } from "./ports/password-denylist.port.js";
+import type { PasswordHasherPort } from "./ports/password-hasher.port.js";
 
 const NOW = new Date("2026-08-23T00:00:00.000Z");
 const USER_ID = "11111111-1111-4111-8111-111111111111";
