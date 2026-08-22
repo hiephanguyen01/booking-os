@@ -19,6 +19,7 @@ const CONTEXT: TenantExecutionContext = {
 
 function createHarness() {
   const events: string[] = [];
+  let auditInput: Record<string, unknown> | undefined;
   let challengeInput: Record<string, unknown> | undefined;
   let notificationInput: Record<string, unknown> | undefined;
 
@@ -48,6 +49,11 @@ function createHarness() {
       async appendVerificationRequested(input: Record<string, unknown>) {
         notificationInput = input;
         events.push("notification");
+      },
+    },
+    partnerSecurityAudit: {
+      async append(input: Record<string, unknown>) {
+        auditInput = input;
       },
     },
   } as unknown as PartnerDataSession;
@@ -80,6 +86,7 @@ function createHarness() {
   };
 
   return {
+    auditInput: () => auditInput,
     challengeInput: () => challengeInput,
     events,
     notificationInput: () => notificationInput,
@@ -143,4 +150,33 @@ test("registration start keeps the public response enumeration-safe", async () =
     });
     assert.deepEqual(result, { accepted: true });
   }
+});
+
+test("registration start audits only bounded result and reason metadata", async () => {
+  const harness = createHarness();
+  const useCase = new StartPartnerRegistrationUseCase(harness.transactions, harness.oneTimeTokens);
+
+  await useCase.execute({
+    context: CONTEXT,
+    hostname: "studiohub.example.test",
+    email: "Partner@Example.TEST",
+    partnerType: "company",
+    now: NOW,
+  });
+
+  const audit = harness.auditInput();
+  assert.ok(audit);
+  assert.deepEqual(audit, {
+    eventType: "partner.registration.started",
+    actorUserId: null,
+    subjectUserId: null,
+    requestId: CONTEXT.requestId,
+    metadata: {
+      result: "accepted",
+      reason: "verification_requested",
+    },
+    occurredAt: NOW,
+  });
+  assert.equal(JSON.stringify(audit).includes("partner@example.test"), false);
+  assert.equal(JSON.stringify(audit).includes("partner-registration.raw-secret"), false);
 });
