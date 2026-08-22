@@ -88,6 +88,41 @@ export interface ResendPlatformTenantOwnerInvitationParameters {
   readonly path: operations["resendPlatformTenantOwnerInvitation"]["parameters"]["path"];
 }
 
+export interface ListTenantMembershipRbacRolesParameters {
+  readonly path: operations["listTenantMembershipRbacRoles"]["parameters"]["path"];
+}
+
+export interface GrantTenantMembershipRbacRoleParameters {
+  readonly path: operations["grantTenantMembershipRbacRole"]["parameters"]["path"];
+}
+
+export interface RevokeTenantMembershipRbacRoleParameters {
+  readonly path: operations["revokeTenantMembershipRbacRole"]["parameters"]["path"];
+}
+
+export interface CreateTenantRbacRoleParameters {
+  readonly body: operations["createTenantRbacRole"]["requestBody"]["content"]["application/json"];
+}
+
+export interface GetTenantRbacRoleParameters {
+  readonly path: operations["getTenantRbacRole"]["parameters"]["path"];
+}
+
+export interface ArchiveTenantRbacRoleParameters {
+  readonly path: operations["archiveTenantRbacRole"]["parameters"]["path"];
+  readonly body: operations["archiveTenantRbacRole"]["requestBody"]["content"]["application/json"];
+}
+
+export interface UpdateTenantRbacRoleParameters {
+  readonly path: operations["updateTenantRbacRole"]["parameters"]["path"];
+  readonly body: operations["updateTenantRbacRole"]["requestBody"]["content"]["application/json"];
+}
+
+export interface ReplaceTenantRbacRolePermissionsParameters {
+  readonly path: operations["replaceTenantRbacRolePermissions"]["parameters"]["path"];
+  readonly body: operations["replaceTenantRbacRolePermissions"]["requestBody"]["content"]["application/json"];
+}
+
 export interface GeneratedClient {
   readonly completeAccountActivation: (parameters: CompleteAccountActivationParameters, options?: GeneratedRequestOptions) => Promise<operations["completeAccountActivation"]["responses"][200]["content"]["application/json"]>;
   readonly getPreAuthCsrf: (parameters: GetPreAuthCsrfParameters, options?: GeneratedRequestOptions) => Promise<operations["getPreAuthCsrf"]["responses"][200]["content"]["application/json"]>;
@@ -117,6 +152,16 @@ export interface GeneratedClient {
   readonly getPlatformTenantProvisioning: (parameters: GetPlatformTenantProvisioningParameters, options?: GeneratedRequestOptions) => Promise<operations["getPlatformTenantProvisioning"]["responses"][200]["content"]["application/json"]>;
   readonly resendPlatformTenantOwnerInvitation: (parameters: ResendPlatformTenantOwnerInvitationParameters, options?: GeneratedRequestOptions) => Promise<operations["resendPlatformTenantOwnerInvitation"]["responses"][202]["content"]["application/json"]>;
   readonly getReadiness: (options?: GeneratedRequestOptions) => Promise<operations["getReadiness"]["responses"][200]["content"]["application/json"]>;
+  readonly listTenantMembershipRbacRoles: (parameters: ListTenantMembershipRbacRolesParameters, options?: GeneratedRequestOptions) => Promise<operations["listTenantMembershipRbacRoles"]["responses"][200]["content"]["application/json"]>;
+  readonly grantTenantMembershipRbacRole: (parameters: GrantTenantMembershipRbacRoleParameters, options?: GeneratedRequestOptions) => Promise<operations["grantTenantMembershipRbacRole"]["responses"][200]["content"]["application/json"]>;
+  readonly revokeTenantMembershipRbacRole: (parameters: RevokeTenantMembershipRbacRoleParameters, options?: GeneratedRequestOptions) => Promise<operations["revokeTenantMembershipRbacRole"]["responses"][200]["content"]["application/json"]>;
+  readonly listTenantRbacPermissions: (options?: GeneratedRequestOptions) => Promise<operations["listTenantRbacPermissions"]["responses"][200]["content"]["application/json"]>;
+  readonly listTenantRbacRoles: (options?: GeneratedRequestOptions) => Promise<operations["listTenantRbacRoles"]["responses"][200]["content"]["application/json"]>;
+  readonly createTenantRbacRole: (parameters: CreateTenantRbacRoleParameters, options?: GeneratedRequestOptions) => Promise<operations["createTenantRbacRole"]["responses"][201]["content"]["application/json"]>;
+  readonly getTenantRbacRole: (parameters: GetTenantRbacRoleParameters, options?: GeneratedRequestOptions) => Promise<operations["getTenantRbacRole"]["responses"][200]["content"]["application/json"]>;
+  readonly archiveTenantRbacRole: (parameters: ArchiveTenantRbacRoleParameters, options?: GeneratedRequestOptions) => Promise<operations["archiveTenantRbacRole"]["responses"][200]["content"]["application/json"]>;
+  readonly updateTenantRbacRole: (parameters: UpdateTenantRbacRoleParameters, options?: GeneratedRequestOptions) => Promise<operations["updateTenantRbacRole"]["responses"][200]["content"]["application/json"]>;
+  readonly replaceTenantRbacRolePermissions: (parameters: ReplaceTenantRbacRolePermissionsParameters, options?: GeneratedRequestOptions) => Promise<operations["replaceTenantRbacRolePermissions"]["responses"][200]["content"]["application/json"]>;
 }
 
 export function createGeneratedClient(transport: GeneratedTransport): GeneratedClient {
@@ -297,6 +342,70 @@ export function createGeneratedClient(transport: GeneratedTransport): GeneratedC
       return transport<operations["getReadiness"]["responses"][200]["content"]["application/json"]>({
       method: "GET",
       path: "/api/ready",
+      }, options);
+    },
+    async listTenantMembershipRbacRoles(parameters, options) {
+      return transport<operations["listTenantMembershipRbacRoles"]["responses"][200]["content"]["application/json"]>({
+      method: "GET",
+      path: `/api/tenant/rbac/memberships/${encodeURIComponent(String(parameters.path.membershipId))}/roles`,
+      }, options);
+    },
+    async grantTenantMembershipRbacRole(parameters, options) {
+      return transport<operations["grantTenantMembershipRbacRole"]["responses"][200]["content"]["application/json"]>({
+      method: "POST",
+      path: `/api/tenant/rbac/memberships/${encodeURIComponent(String(parameters.path.membershipId))}/roles/${encodeURIComponent(String(parameters.path.roleId))}`,
+      }, options);
+    },
+    async revokeTenantMembershipRbacRole(parameters, options) {
+      return transport<operations["revokeTenantMembershipRbacRole"]["responses"][200]["content"]["application/json"]>({
+      method: "DELETE",
+      path: `/api/tenant/rbac/memberships/${encodeURIComponent(String(parameters.path.membershipId))}/roles/${encodeURIComponent(String(parameters.path.roleId))}`,
+      }, options);
+    },
+    async listTenantRbacPermissions(options) {
+      return transport<operations["listTenantRbacPermissions"]["responses"][200]["content"]["application/json"]>({
+      method: "GET",
+      path: "/api/tenant/rbac/permissions",
+      }, options);
+    },
+    async listTenantRbacRoles(options) {
+      return transport<operations["listTenantRbacRoles"]["responses"][200]["content"]["application/json"]>({
+      method: "GET",
+      path: "/api/tenant/rbac/roles",
+      }, options);
+    },
+    async createTenantRbacRole(parameters, options) {
+      return transport<operations["createTenantRbacRole"]["responses"][201]["content"]["application/json"]>({
+      method: "POST",
+      path: "/api/tenant/rbac/roles",
+      body: parameters.body,
+      }, options);
+    },
+    async getTenantRbacRole(parameters, options) {
+      return transport<operations["getTenantRbacRole"]["responses"][200]["content"]["application/json"]>({
+      method: "GET",
+      path: `/api/tenant/rbac/roles/${encodeURIComponent(String(parameters.path.roleId))}`,
+      }, options);
+    },
+    async archiveTenantRbacRole(parameters, options) {
+      return transport<operations["archiveTenantRbacRole"]["responses"][200]["content"]["application/json"]>({
+      method: "DELETE",
+      path: `/api/tenant/rbac/roles/${encodeURIComponent(String(parameters.path.roleId))}`,
+      body: parameters.body,
+      }, options);
+    },
+    async updateTenantRbacRole(parameters, options) {
+      return transport<operations["updateTenantRbacRole"]["responses"][200]["content"]["application/json"]>({
+      method: "PATCH",
+      path: `/api/tenant/rbac/roles/${encodeURIComponent(String(parameters.path.roleId))}`,
+      body: parameters.body,
+      }, options);
+    },
+    async replaceTenantRbacRolePermissions(parameters, options) {
+      return transport<operations["replaceTenantRbacRolePermissions"]["responses"][200]["content"]["application/json"]>({
+      method: "PUT",
+      path: `/api/tenant/rbac/roles/${encodeURIComponent(String(parameters.path.roleId))}/permissions`,
+      body: parameters.body,
       }, options);
     },
   };

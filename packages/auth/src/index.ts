@@ -53,6 +53,11 @@ export {
   type PasswordPolicyOptions,
 } from "./password-policy.js";
 export {
+  getPermissionCatalogEntry,
+  isDelegableTenantPermission,
+  type PermissionCatalogEntry,
+} from "./permission-catalog.js";
+export {
   PERMISSION_KEYS,
   PERMISSIONS,
   type Permission,

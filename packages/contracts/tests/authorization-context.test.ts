@@ -22,6 +22,16 @@ test("authorization catalogs expose the approved stable identifiers", () => {
     "tenant.membership.owner.demote",
     "tenant.security.session.read",
     "tenant.security.session.revoke",
+    "tenant.rbac.permission.read",
+    "tenant.rbac.role.read",
+    "tenant.rbac.role.create",
+    "tenant.rbac.role.update",
+    "tenant.rbac.role.archive",
+    "tenant.rbac.role.permission.grant",
+    "tenant.rbac.role.permission.revoke",
+    "tenant.rbac.assignment.read",
+    "tenant.rbac.assignment.grant",
+    "tenant.rbac.assignment.revoke",
   ]);
 });
 
@@ -52,7 +62,7 @@ test("tenant authorization context carries active membership authority", () => {
     membershipId: "00000000-0000-4000-8000-000000000014",
     membershipStatus: "active",
     roleKeys: ["tenant_owner"],
-    permissionKeys: ["tenant.membership.read", "tenant.membership.owner.promote"],
+    permissionKeys: ["tenant.membership.read", "tenant.rbac.role.read"],
     userAuthorizationVersion: 2,
     membershipAuthorizationVersion: 3,
   };

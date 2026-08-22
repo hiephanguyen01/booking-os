@@ -11,6 +11,16 @@ export const PERMISSION_KEYS = {
   tenantMembershipOwnerDemote: "tenant.membership.owner.demote",
   tenantSecuritySessionRead: "tenant.security.session.read",
   tenantSecuritySessionRevoke: "tenant.security.session.revoke",
+  tenantRbacPermissionRead: "tenant.rbac.permission.read",
+  tenantRbacRoleRead: "tenant.rbac.role.read",
+  tenantRbacRoleCreate: "tenant.rbac.role.create",
+  tenantRbacRoleUpdate: "tenant.rbac.role.update",
+  tenantRbacRoleArchive: "tenant.rbac.role.archive",
+  tenantRbacRolePermissionGrant: "tenant.rbac.role.permission.grant",
+  tenantRbacRolePermissionRevoke: "tenant.rbac.role.permission.revoke",
+  tenantRbacAssignmentRead: "tenant.rbac.assignment.read",
+  tenantRbacAssignmentGrant: "tenant.rbac.assignment.grant",
+  tenantRbacAssignmentRevoke: "tenant.rbac.assignment.revoke",
 } as const;
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[keyof typeof PERMISSION_KEYS];

@@ -13,6 +13,10 @@ const identityMigrationPath = resolve(
   repositoryRoot,
   "apps/api/prisma/migrations/20260805_identity_foundation/migration.sql",
 );
+const dynamicRbacMigrationPath = resolve(
+  repositoryRoot,
+  "apps/api/prisma/migrations/20260816_tenant_dynamic_rbac/migration.sql",
+);
 
 function run(args, environment = {}) {
   const result = spawnSync("pnpm", args, {
@@ -76,11 +80,48 @@ function verifyIdentityMigrationContract() {
   }
 }
 
+function verifyDynamicRbacMigrationContract() {
+  if (!existsSync(dynamicRbacMigrationPath)) {
+    throw new Error(`Missing tenant dynamic RBAC migration: ${dynamicRbacMigrationPath}`);
+  }
+
+  const migration = readFileSync(dynamicRbacMigrationPath, "utf8");
+  const requiredSnippets = [
+    'CREATE TABLE "tenant_custom_roles"',
+    'CREATE TABLE "tenant_custom_role_permissions"',
+    'CREATE TABLE "tenant_custom_role_assignments"',
+    '"tenant_memberships_id_tenant_id_key" UNIQUE ("id", "tenant_id")',
+    '"tenant_custom_roles_active_name_key"',
+    '"tenant_custom_role_assignments_active_key"',
+    '"tenant_custom_role_permissions_role_tenant_fkey"',
+    '"tenant_custom_role_assignments_role_tenant_fkey"',
+    '"tenant_custom_role_assignments_membership_tenant_fkey"',
+    "validate_tenant_custom_role_permission",
+    "validate_tenant_custom_role_assignment",
+    'ALTER TABLE "tenant_custom_roles" FORCE ROW LEVEL SECURITY',
+    'ALTER TABLE "tenant_custom_role_permissions" FORCE ROW LEVEL SECURITY',
+    'ALTER TABLE "tenant_custom_role_assignments" FORCE ROW LEVEL SECURITY',
+    '"tenant_custom_roles_tenant_isolation"',
+    '"tenant_custom_role_permissions_tenant_isolation"',
+    '"tenant_custom_role_assignments_tenant_isolation"',
+    "app.tenant_id",
+    "tenant.rbac.role.create",
+    "tenant.rbac.assignment.revoke",
+  ];
+
+  for (const snippet of requiredSnippets) {
+    if (!migration.includes(snippet)) {
+      throw new Error(`Tenant dynamic RBAC migration is missing required contract: ${snippet}`);
+    }
+  }
+}
+
 if (!migrationDatabaseUrl) {
   throw new Error("MIGRATION_DATABASE_URL or DATABASE_URL is required for migration verification.");
 }
 
 verifyIdentityMigrationContract();
+verifyDynamicRbacMigrationContract();
 
 const migrationEnvironment = { DATABASE_URL: migrationDatabaseUrl };
 

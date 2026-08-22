@@ -29,6 +29,8 @@
 
 **Sprint 1B status:** implementation and acceptance are verified; closeout artifacts are maintained in `docs/features/FEATURE-0002-identity-access-core.md`, `docs/patterns/PATTERN-0003-host-bound-opaque-session.md`, and the identity-access/bootstrap runbooks. Sprint 1B remains the shared kernel that later scopes extend.
 
+**Sprint 2 dynamic RBAC status:** backend implementation and `S2-RBAC01`–`S2-RBAC16` acceptance are protected by `pnpm verify:dynamic-rbac`; closeout knowledge is maintained in `docs/features/FEATURE-0003-tenant-dynamic-rbac.md`, `docs/patterns/PATTERN-0004-tenant-dynamic-rbac-authority.md`, and `docs/runbooks/tenant-dynamic-rbac-recovery.md`. Sprint 2 extends, rather than replaces, the Sprint 1B security/session/authorization kernel.
+
 - Sprint 1B: global user, opaque host-bound session, membership, fixed immutable system roles, code-seeded Permission Catalog V2, authoritative permission/resource guards, authorization-version reconciliation, transactional security audit, bounded metrics, browser hardening, and `S1B-AC01`–`S1B-AC15` acceptance matrix.
 - Sprint 2: tenant-scoped dynamic RBAC trên Permission Catalog V2 — custom role CRUD, role-permission mapping, assignment/revocation, grant boundaries, audit và authorization-version invalidation; system roles vẫn immutable.
 - Tenant CRUD, domains, plans, subscription và entitlement.

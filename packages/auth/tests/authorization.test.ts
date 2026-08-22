@@ -13,7 +13,7 @@ test("system role catalog contains only the approved immutable roles", () => {
   assert.equal("affiliate" in SYSTEM_ROLES, false);
 });
 
-test("permission catalog contains only approved identity-access keys", () => {
+test("permission catalog preserves Sprint 1B keys and appends only Sprint 2 RBAC keys", () => {
   assert.deepEqual(PERMISSION_KEYS, {
     platformSecurityAuditRead: "platform.security.audit.read",
     platformSecuritySessionRevoke: "platform.security.session.revoke",
@@ -27,6 +27,16 @@ test("permission catalog contains only approved identity-access keys", () => {
     tenantMembershipOwnerDemote: "tenant.membership.owner.demote",
     tenantSecuritySessionRead: "tenant.security.session.read",
     tenantSecuritySessionRevoke: "tenant.security.session.revoke",
+    tenantRbacPermissionRead: "tenant.rbac.permission.read",
+    tenantRbacRoleRead: "tenant.rbac.role.read",
+    tenantRbacRoleCreate: "tenant.rbac.role.create",
+    tenantRbacRoleUpdate: "tenant.rbac.role.update",
+    tenantRbacRoleArchive: "tenant.rbac.role.archive",
+    tenantRbacRolePermissionGrant: "tenant.rbac.role.permission.grant",
+    tenantRbacRolePermissionRevoke: "tenant.rbac.role.permission.revoke",
+    tenantRbacAssignmentRead: "tenant.rbac.assignment.read",
+    tenantRbacAssignmentGrant: "tenant.rbac.assignment.grant",
+    tenantRbacAssignmentRevoke: "tenant.rbac.assignment.revoke",
   });
 });
 
@@ -39,7 +49,7 @@ test("platform administrator receives only platform permissions", () => {
   ]);
 });
 
-test("tenant owner receives the complete tenant permission catalog", () => {
+test("tenant owner receives existing tenant permissions plus all Sprint 2 RBAC permissions", () => {
   assert.deepEqual(getPermissions(SYSTEM_ROLES.tenantOwner), [
     PERMISSION_KEYS.tenantMembershipRead,
     PERMISSION_KEYS.tenantMembershipAdminInvite,
@@ -49,10 +59,20 @@ test("tenant owner receives the complete tenant permission catalog", () => {
     PERMISSION_KEYS.tenantMembershipOwnerDemote,
     PERMISSION_KEYS.tenantSecuritySessionRead,
     PERMISSION_KEYS.tenantSecuritySessionRevoke,
+    PERMISSION_KEYS.tenantRbacPermissionRead,
+    PERMISSION_KEYS.tenantRbacRoleRead,
+    PERMISSION_KEYS.tenantRbacRoleCreate,
+    PERMISSION_KEYS.tenantRbacRoleUpdate,
+    PERMISSION_KEYS.tenantRbacRoleArchive,
+    PERMISSION_KEYS.tenantRbacRolePermissionGrant,
+    PERMISSION_KEYS.tenantRbacRolePermissionRevoke,
+    PERMISSION_KEYS.tenantRbacAssignmentRead,
+    PERMISSION_KEYS.tenantRbacAssignmentGrant,
+    PERMISSION_KEYS.tenantRbacAssignmentRevoke,
   ]);
 });
 
-test("tenant administrator cannot promote or demote owners", () => {
+test("tenant administrator receives RBAC read permissions but no RBAC mutation permission", () => {
   assert.equal(
     hasPermission(SYSTEM_ROLES.tenantAdmin, PERMISSION_KEYS.tenantMembershipOwnerPromote),
     false,
@@ -68,7 +88,18 @@ test("tenant administrator cannot promote or demote owners", () => {
     PERMISSION_KEYS.tenantMembershipAdminRevoke,
     PERMISSION_KEYS.tenantSecuritySessionRead,
     PERMISSION_KEYS.tenantSecuritySessionRevoke,
+    PERMISSION_KEYS.tenantRbacPermissionRead,
+    PERMISSION_KEYS.tenantRbacRoleRead,
+    PERMISSION_KEYS.tenantRbacAssignmentRead,
   ]);
+  assert.equal(
+    hasPermission(SYSTEM_ROLES.tenantAdmin, PERMISSION_KEYS.tenantRbacRoleCreate),
+    false,
+  );
+  assert.equal(
+    hasPermission(SYSTEM_ROLES.tenantAdmin, PERMISSION_KEYS.tenantRbacAssignmentGrant),
+    false,
+  );
 });
 
 test("missing role has no permission", () => {

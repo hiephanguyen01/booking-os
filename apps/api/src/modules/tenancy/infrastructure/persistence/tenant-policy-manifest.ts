@@ -1,8 +1,11 @@
+export type TenantTablePrivilege = "DELETE" | "INSERT" | "SELECT" | "UPDATE";
+
 export interface TenantOwnedTablePolicy {
   readonly table: string;
   readonly tenantColumn: string;
   readonly tenantColumnNullable: boolean;
   readonly applicationRole: string;
+  readonly requiredPrivileges?: readonly TenantTablePrivilege[];
 }
 
 export const TENANT_POLICY_MANIFEST = Object.freeze([
@@ -53,5 +56,26 @@ export const TENANT_POLICY_MANIFEST = Object.freeze([
     tenantColumn: "tenant_id",
     tenantColumnNullable: false,
     applicationRole: "booking_app",
+  }),
+  Object.freeze({
+    table: "tenant_custom_roles",
+    tenantColumn: "tenant_id",
+    tenantColumnNullable: false,
+    applicationRole: "booking_app",
+    requiredPrivileges: Object.freeze(["INSERT", "SELECT", "UPDATE"] as const),
+  }),
+  Object.freeze({
+    table: "tenant_custom_role_permissions",
+    tenantColumn: "tenant_id",
+    tenantColumnNullable: false,
+    applicationRole: "booking_app",
+    requiredPrivileges: Object.freeze(["DELETE", "INSERT", "SELECT"] as const),
+  }),
+  Object.freeze({
+    table: "tenant_custom_role_assignments",
+    tenantColumn: "tenant_id",
+    tenantColumnNullable: false,
+    applicationRole: "booking_app",
+    requiredPrivileges: Object.freeze(["INSERT", "SELECT", "UPDATE"] as const),
   }),
 ]) satisfies readonly TenantOwnedTablePolicy[];

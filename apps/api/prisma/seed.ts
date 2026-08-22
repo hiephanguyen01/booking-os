@@ -111,6 +111,66 @@ const permissionDefinitions = [
     scopeLevel: RoleScopeLevel.tenant,
     description: "Revoke tenant security sessions.",
   },
+  {
+    id: "00000000-0000-4000-8000-000000000219",
+    key: "tenant.rbac.permission.read",
+    scopeLevel: RoleScopeLevel.tenant,
+    description: "Read tenant RBAC permissions.",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000220",
+    key: "tenant.rbac.role.read",
+    scopeLevel: RoleScopeLevel.tenant,
+    description: "Read tenant custom roles.",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000221",
+    key: "tenant.rbac.role.create",
+    scopeLevel: RoleScopeLevel.tenant,
+    description: "Create tenant custom roles.",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000222",
+    key: "tenant.rbac.role.update",
+    scopeLevel: RoleScopeLevel.tenant,
+    description: "Update tenant custom roles.",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000223",
+    key: "tenant.rbac.role.archive",
+    scopeLevel: RoleScopeLevel.tenant,
+    description: "Archive tenant custom roles.",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000224",
+    key: "tenant.rbac.role.permission.grant",
+    scopeLevel: RoleScopeLevel.tenant,
+    description: "Grant permissions to tenant custom roles.",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000225",
+    key: "tenant.rbac.role.permission.revoke",
+    scopeLevel: RoleScopeLevel.tenant,
+    description: "Revoke permissions from tenant custom roles.",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000226",
+    key: "tenant.rbac.assignment.read",
+    scopeLevel: RoleScopeLevel.tenant,
+    description: "Read tenant custom-role assignments.",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000227",
+    key: "tenant.rbac.assignment.grant",
+    scopeLevel: RoleScopeLevel.tenant,
+    description: "Grant tenant custom-role assignments.",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000228",
+    key: "tenant.rbac.assignment.revoke",
+    scopeLevel: RoleScopeLevel.tenant,
+    description: "Revoke tenant custom-role assignments.",
+  },
 ] as const;
 
 const permissionKeysByRole = {
@@ -129,6 +189,16 @@ const permissionKeysByRole = {
     "tenant.membership.owner.demote",
     "tenant.security.session.read",
     "tenant.security.session.revoke",
+    "tenant.rbac.permission.read",
+    "tenant.rbac.role.read",
+    "tenant.rbac.role.create",
+    "tenant.rbac.role.update",
+    "tenant.rbac.role.archive",
+    "tenant.rbac.role.permission.grant",
+    "tenant.rbac.role.permission.revoke",
+    "tenant.rbac.assignment.read",
+    "tenant.rbac.assignment.grant",
+    "tenant.rbac.assignment.revoke",
   ],
   tenant_admin: [
     "tenant.membership.read",
@@ -137,6 +207,9 @@ const permissionKeysByRole = {
     "tenant.membership.admin.revoke",
     "tenant.security.session.read",
     "tenant.security.session.revoke",
+    "tenant.rbac.permission.read",
+    "tenant.rbac.role.read",
+    "tenant.rbac.assignment.read",
   ],
 } as const;
 

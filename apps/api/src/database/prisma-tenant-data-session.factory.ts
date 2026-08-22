@@ -4,6 +4,9 @@ import { Inject, Injectable } from "@nestjs/common";
 import type { Prisma } from "@prisma/client";
 
 import { EnvironmentService } from "../config/environment.service.js";
+import { PrismaTenantCustomRoleAssignmentRepositoryAdapter } from "../modules/authorization/infrastructure/persistence/prisma/prisma-tenant-custom-role-assignment-repository.adapter.js";
+import { PrismaTenantCustomRoleRepositoryAdapter } from "../modules/authorization/infrastructure/persistence/prisma/prisma-tenant-custom-role-repository.adapter.js";
+import { PrismaTenantRbacPermissionRepositoryAdapter } from "../modules/authorization/infrastructure/persistence/prisma/prisma-tenant-rbac-permission-repository.adapter.js";
 import { PrismaInvitationRepositoryAdapter } from "../modules/memberships/infrastructure/persistence/prisma/prisma-invitation-repository.adapter.js";
 import {
   PrismaInvitationSessionElevationAdapter,
@@ -59,6 +62,12 @@ export class PrismaTenantDataSessionFactory {
         this.sessionElevationOptions,
       ),
       audit: new PrismaTenantSecurityAuditAdapter(transaction, tenantId),
+      customRoles: new PrismaTenantCustomRoleRepositoryAdapter(transaction, tenantId),
+      customRoleAssignments: new PrismaTenantCustomRoleAssignmentRepositoryAdapter(
+        transaction,
+        tenantId,
+      ),
+      rbacPermissions: new PrismaTenantRbacPermissionRepositoryAdapter(transaction),
     });
   }
 }

@@ -11,6 +11,7 @@ import {
   PROTECTED_REQUEST_AUTHORIZATION_PORT,
   SESSION_AUTHORIZATION_REFRESH_PORT,
 } from "./authorization.tokens.js";
+import { TenantRbacController } from "./infrastructure/http/tenant-rbac.controller.js";
 
 test("authorization integration tokens are distinct symbols", () => {
   const tokens = [
@@ -36,4 +37,10 @@ test("AuthorizationModule exports the security audit port required by exported g
   const exports = Reflect.getMetadata("exports", AuthorizationModule) as readonly unknown[];
 
   assert.ok(exports.includes(AUTHORIZATION_SECURITY_AUDIT_PORT));
+});
+
+test("AuthorizationModule composes the tenant RBAC HTTP controller", () => {
+  const controllers = Reflect.getMetadata("controllers", AuthorizationModule) as readonly unknown[];
+
+  assert.ok(controllers.includes(TenantRbacController));
 });

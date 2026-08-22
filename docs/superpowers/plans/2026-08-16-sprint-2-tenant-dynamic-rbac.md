@@ -8,6 +8,23 @@
 
 **Tech Stack:** Node.js 22+, pnpm 10, TypeScript 5.9, NestJS 11.1, Prisma 6.19, PostgreSQL 17 FORCE RLS, Node test runner, Supertest, OpenAPI generation/compatibility tooling, existing Booking OS architecture/migration/Genesis verification scripts.
 
+## Execution Status — completed 2026-08-20
+
+Status: COMPLETED  
+Verified implementation/knowledge baseline: `df43e794da4e15cf5e0e5445e68b6c3ddc755fc1`  
+Fresh protected verification: CI #2006, Sprint 0 gates #1561, API architecture boundaries #1495, and Identity email integration #1274 — all successful.
+
+Completion summary:
+
+- Tasks 1–7 — verified implementation remains recorded in PR #32 history.
+- Task 8 — verified at `cbc8e89fe418694fb51144dd6ef75fb83fbd7d41`; CI #1993, Sprint 0 gates #1548, API architecture boundaries #1482, and Identity email integration #1261 were successful.
+- Task 9 — verified at `ba50f33a5f265077362d3dbb08a768d41c0cca87`; CI #2003, Sprint 0 gates #1558, API architecture boundaries #1492, and Identity email integration #1271 were successful, including the dedicated Sprint 2 dynamic RBAC acceptance job.
+- Task 10 — RED closeout expectations landed at `59d6792f382aba1d4fa8d9b6ae668244c55b59bb`, validator implementation at `be2171a1b965c3c47ba1ae017d874855b18e7722`, and closeout knowledge at `df43e794da4e15cf5e0e5445e68b6c3ddc755fc1` with same-head protected workflows successful.
+
+The detailed Task 1–10 step checkboxes below remain the historical TDD/execution recipe; they are not the canonical current-status tracker after closeout. The `Sprint 2 Completion Gate` is the canonical closeout marker.
+
+Review handoff remains pending. PR #32 remains Draft.
+
 ## Global Constraints
 
 - Start implementation from the approved Sprint 2 design baseline `c6959fba59baa39d4f37cf5ddfec64df9e7fd853` in an isolated implementation branch/worktree; do not add Sprint 2 code to PR #31.
@@ -920,18 +937,18 @@ Open/update a Sprint 2 draft PR only after the implementation branch exists and 
 
 ## Sprint 2 Completion Gate
 
-- [ ] Ten scoped task histories exist with RED -> GREEN evidence and independently reviewable commits.
-- [ ] `tenant_custom_roles`, `tenant_custom_role_permissions`, and `tenant_custom_role_assignments` are additive, tenant-owned, same-tenant constrained, FORCE-RLS protected, and migration-verified.
-- [ ] System roles remain immutable and custom roles never enter `AuthorizationContext.roleKeys`.
-- [ ] Permission Catalog V2 remains code-owned/append-only; unknown, platform, non-delegable, and actor-not-held permission additions fail atomically.
-- [ ] Tenant owner can mutate RBAC; tenant admin can read but cannot mutate by default.
-- [ ] Metadata versioning, permission-set replacement, archive, assignment grant/revoke, and all required races meet the design's exact version/invalidation semantics.
-- [ ] Effective tenant permission loading unions active custom-role permissions, de-duplicates/sorts output, and fails closed on malformed catalog data.
-- [ ] Stale membership authority cannot execute protected application logic after assignment/permission revocation.
-- [ ] All authority-changing RBAC mutations and audit events commit/rollback together; audit/metrics are bounded and secret-safe.
-- [ ] Normative HTTP routes exist with exact tenant/session/CSRF/permission boundaries and no client-supplied tenant authority.
-- [ ] `S2-RBAC01`–`S2-RBAC16` all resolve to executable passing evidence through `pnpm verify:dynamic-rbac`.
-- [ ] `pnpm verify:identity-access`, migrations, architecture, OpenAPI compatibility, full API tests, build, browser/Foundation, production config, dependency audit, and committed-secret scan are fresh-green on the closeout head.
-- [ ] Sprint 2 feature/pattern/runbook/ownership/90-day/Pilot checkpoint knowledge is current and Genesis validation passes.
-- [ ] Full Role Builder UI, platform custom roles, partner roles, and custom-role invitation redesign remain out of scope.
-- [ ] Review handoff state is recorded truthfully; no merge/mark-ready action occurs without explicit user instruction.
+- [x] Ten scoped task histories exist with RED -> GREEN evidence and independently reviewable commits.
+- [x] `tenant_custom_roles`, `tenant_custom_role_permissions`, and `tenant_custom_role_assignments` are additive, tenant-owned, same-tenant constrained, FORCE-RLS protected, and migration-verified.
+- [x] System roles remain immutable and custom roles never enter `AuthorizationContext.roleKeys`.
+- [x] Permission Catalog V2 remains code-owned/append-only; unknown, platform, non-delegable, and actor-not-held permission additions fail atomically.
+- [x] Tenant owner can mutate RBAC; tenant admin can read but cannot mutate by default.
+- [x] Metadata versioning, permission-set replacement, archive, assignment grant/revoke, and all required races meet the design's exact version/invalidation semantics.
+- [x] Effective tenant permission loading unions active custom-role permissions, de-duplicates/sorts output, and fails closed on malformed catalog data.
+- [x] Stale membership authority cannot execute protected application logic after assignment/permission revocation.
+- [x] All authority-changing RBAC mutations and audit events commit/rollback together; audit/metrics are bounded and secret-safe.
+- [x] Normative HTTP routes exist with exact tenant/session/CSRF/permission boundaries and no client-supplied tenant authority.
+- [x] `S2-RBAC01`–`S2-RBAC16` all resolve to executable passing evidence through `pnpm verify:dynamic-rbac`.
+- [x] `pnpm verify:identity-access`, migrations, architecture, OpenAPI compatibility, full API tests, build, browser/Foundation, production config, dependency audit, and committed-secret scan are fresh-green on the closeout head.
+- [x] Sprint 2 feature/pattern/runbook/ownership/90-day/Pilot checkpoint knowledge is current and Genesis validation passes.
+- [x] Full Role Builder UI, platform custom roles, partner roles, and custom-role invitation redesign remain out of scope.
+- [x] Review handoff state is recorded truthfully; no merge/mark-ready action occurs without explicit user instruction.

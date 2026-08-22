@@ -17,6 +17,23 @@ test("normalizes a client error into the public API envelope", () => {
   });
 });
 
+test("preserves stable machine codes from safe HTTP exception payloads", () => {
+  const exception = new BadRequestException({
+    code: "INVALID_UUID",
+    message: "roleId must be a UUID.",
+  });
+
+  assert.deepEqual(normalizeApiError(exception, "request-stable-code"), {
+    statusCode: 400,
+    body: {
+      statusCode: 400,
+      error: "INVALID_UUID",
+      message: "roleId must be a UUID.",
+      requestId: "request-stable-code",
+    },
+  });
+});
+
 test("preserves safe validation arrays and ignores extra payload fields", () => {
   const exception = new BadRequestException({
     message: ["email is required", "name must be a string"],

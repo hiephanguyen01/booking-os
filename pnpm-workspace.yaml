@@ -8,8 +8,14 @@ auditConfig:
   # @redocly/openapi-core 1.x -> js-yaml 4.3.0, while the advisory's
   # patched 4.x release is not published. Remove when a compatible
   # upstream release resolves GHSA-5p4m-2wfm-xmqj.
+  #
+  # Temporary dev-tool waiver: Prisma 6.19.3 resolves @prisma/config
+  # -> deepmerge-ts 7.1.5. The advisory requires deepmerge-ts >=8.0.0,
+  # but Prisma v7 still pins 7.1.5 and deepmerge-ts 8.x is not published.
+  # Remove when Prisma ships a compatible dependency update.
   ignoreGhsas:
     - GHSA-5p4m-2wfm-xmqj
+    - GHSA-ggr8-5vv4-36mx
 
 catalog:
   "@hookform/resolvers": 5.5.7

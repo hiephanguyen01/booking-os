@@ -6,6 +6,7 @@ import test from "node:test";
 import {
   BOOKING_SESSION_COOKIE,
   createSessionToken,
+  PERMISSION_KEYS,
   serializeSessionCookie,
 } from "@booking-os/auth";
 import type { AuthorizationContext } from "@booking-os/contracts";
@@ -222,6 +223,21 @@ test("propagates unexpected resolver failures for centralized error handling wit
   const fixture = guard({ authenticated: AUTHENTICATED, error: unexpected });
   await assert.rejects(fixture.instance.canActivate(execution().context), unexpected);
   assert.equal(fixture.audits.length, 0);
+});
+
+test("allows a route when authority satisfies any declared permission", async () => {
+  const fixture = guard({ authenticated: AUTHENTICATED, authorization: AUTHORIZATION });
+  const target = execution();
+  Reflect.defineMetadata(
+    REQUIRES_PERMISSION_METADATA,
+    [PERMISSION_KEYS.tenantRbacRolePermissionGrant, PERMISSION_KEYS.tenantMembershipRead],
+    target.context.getHandler(),
+  );
+
+  assert.equal(await fixture.instance.canActivate(target.context), true);
+  assert.equal(fixture.resolves(), 1);
+  assert.equal(fixture.audits.length, 0);
+  assert.equal(authorizationContextFromRequest(target.request), AUTHORIZATION);
 });
 
 test("allows matching permission and exposes immutable authority to the controller request", async () => {
