@@ -756,7 +756,7 @@ export interface components {
             readonly id: string;
             readonly name: string;
             readonly normalizedName: string;
-            readonly permissionKeys: readonly ("tenant.membership.read" | "tenant.membership.admin.invite" | "tenant.membership.admin.suspend" | "tenant.membership.admin.revoke" | "tenant.membership.owner.promote" | "tenant.membership.owner.demote" | "tenant.security.session.read" | "tenant.security.session.revoke" | "tenant.rbac.permission.read" | "tenant.rbac.role.read" | "tenant.rbac.role.create" | "tenant.rbac.role.update" | "tenant.rbac.role.archive" | "tenant.rbac.role.permission.grant" | "tenant.rbac.role.permission.revoke" | "tenant.rbac.assignment.read" | "tenant.rbac.assignment.grant" | "tenant.rbac.assignment.revoke" | "tenant.partner.read" | "tenant.partner.verification.read" | "tenant.partner.payout_account.read" | "tenant.partner.application.review" | "tenant.partner.application.approve" | "tenant.partner.application.reject" | "tenant.partner.lifecycle.suspend" | "tenant.partner.lifecycle.reactivate" | "tenant.partner.lifecycle.cancel")[];
+            readonly permissionKeys: readonly string[];
             /** Format: uuid */
             readonly tenantId: string;
             readonly version: number;
@@ -807,8 +807,7 @@ export interface components {
         readonly TenantRbacPermissionResponseDto: {
             readonly delegable: boolean;
             readonly description: string;
-            /** @enum {string} */
-            readonly key: "tenant.membership.read" | "tenant.membership.admin.invite" | "tenant.membership.admin.suspend" | "tenant.membership.admin.revoke" | "tenant.membership.owner.promote" | "tenant.membership.owner.demote" | "tenant.security.session.read" | "tenant.security.session.revoke" | "tenant.rbac.permission.read" | "tenant.rbac.role.read" | "tenant.rbac.role.create" | "tenant.rbac.role.update" | "tenant.rbac.role.archive" | "tenant.rbac.role.permission.grant" | "tenant.rbac.role.permission.revoke" | "tenant.rbac.assignment.read" | "tenant.rbac.assignment.grant" | "tenant.rbac.assignment.revoke" | "tenant.partner.read" | "tenant.partner.verification.read" | "tenant.partner.payout_account.read" | "tenant.partner.application.review" | "tenant.partner.application.approve" | "tenant.partner.application.reject" | "tenant.partner.lifecycle.suspend" | "tenant.partner.lifecycle.reactivate" | "tenant.partner.lifecycle.cancel";
+            readonly key: string;
             /** @enum {string} */
             readonly scopeLevel: "tenant";
         };

@@ -738,7 +738,8 @@
           },
           "permissionKeys": {
             "items": {
-              "enum": [
+              "type": "string",
+              "x-extensible-enum": [
                 "tenant.membership.read",
                 "tenant.membership.admin.invite",
                 "tenant.membership.admin.suspend",
@@ -766,8 +767,7 @@
                 "tenant.partner.lifecycle.suspend",
                 "tenant.partner.lifecycle.reactivate",
                 "tenant.partner.lifecycle.cancel"
-              ],
-              "type": "string"
+              ]
             },
             "type": "array"
           },
@@ -957,7 +957,8 @@
             "type": "string"
           },
           "key": {
-            "enum": [
+            "type": "string",
+            "x-extensible-enum": [
               "tenant.membership.read",
               "tenant.membership.admin.invite",
               "tenant.membership.admin.suspend",
@@ -985,8 +986,7 @@
               "tenant.partner.lifecycle.suspend",
               "tenant.partner.lifecycle.reactivate",
               "tenant.partner.lifecycle.cancel"
-            ],
-            "type": "string"
+            ]
           },
           "scopeLevel": {
             "enum": [
