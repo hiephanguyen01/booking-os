@@ -17,7 +17,10 @@ test("Partner registration persistence is tenant-scoped, FORCE RLS, and stores n
     WHERE table_schema = 'public'
       AND table_name = ${TABLE_NAME}
   `;
-  assert.deepEqual(tables.map((row) => row.table_name), [TABLE_NAME]);
+  assert.deepEqual(
+    tables.map((row) => row.table_name),
+    [TABLE_NAME],
+  );
 
   const columns = await prisma.$queryRaw<readonly { column_name: string }[]>`
     SELECT column_name
@@ -59,8 +62,7 @@ test("Partner registration has one canonical row per tenant/email and a unique s
   assert.ok(
     normalized.some(
       (definition) =>
-        definition.includes("UNIQUE") &&
-        definition.includes("(tenant_id, normalized_email)"),
+        definition.includes("UNIQUE") && definition.includes("(tenant_id, normalized_email)"),
     ),
   );
   assert.ok(
