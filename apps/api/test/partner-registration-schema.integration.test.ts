@@ -93,7 +93,8 @@ test("Partner establishment is structurally unique per registration challenge", 
   assert.ok(
     normalized.some(
       (definition) =>
-        definition.includes("UNIQUE") && definition.includes("(registration_challenge_id)"),
+        definition.includes("UNIQUE") &&
+        definition.includes("(registration_challenge_id, tenant_id)"),
     ),
   );
 
