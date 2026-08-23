@@ -64,11 +64,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate Prisma client
-        run: pnpm --filter @booking-os/api prisma:generate
-
       - name: Apply database migrations
         run: pnpm --filter @booking-os/api prisma:migrate:deploy
+
+      - name: Prepare API test dependencies
+        run: pnpm turbo run test --filter=@booking-os/api
 
       - name: Run Task 3 scenario
         run: >-
