@@ -121,6 +121,7 @@ model Tenant {
   customRoles                   TenantCustomRole[]
   partners                      Partner[]
   partnerRegistrationChallenges PartnerRegistrationChallenge[]
+  partnerStatusHistory          PartnerStatusHistory[]
 
   @@index([status])
   @@map("tenants")
@@ -442,23 +443,26 @@ model TenantCustomRoleAssignment {
 }
 
 model Partner {
-  id                     String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId               String                         @db.Uuid @map("tenant_id")
-  type                   PartnerType
-  applicationStatus      PartnerApplicationStatus       @default(draft) @map("application_status")
-  operationalStatus      PartnerOperationalStatus       @default(inactive) @map("operational_status")
-  authorizationVersion   Int                            @default(1) @map("authorization_version")
-  version                Int                            @default(1)
-  submittedAt            DateTime?                      @db.Timestamptz(6) @map("submitted_at")
-  approvedAt             DateTime?                      @db.Timestamptz(6) @map("approved_at")
-  suspendedAt            DateTime?                      @db.Timestamptz(6) @map("suspended_at")
-  cancelledAt            DateTime?                      @db.Timestamptz(6) @map("cancelled_at")
-  createdAt              DateTime                       @default(now()) @db.Timestamptz(6) @map("created_at")
-  updatedAt              DateTime                       @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
-  tenant                 Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  memberships            PartnerMembership[]
-  authSessions           AuthSession[]
-  registrationChallenges PartnerRegistrationChallenge[]
+  id                              String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                        String                         @db.Uuid @map("tenant_id")
+  registrationChallengeId         String?                        @unique @db.Uuid @map("registration_challenge_id")
+  type                            PartnerType
+  applicationStatus               PartnerApplicationStatus       @default(draft) @map("application_status")
+  operationalStatus               PartnerOperationalStatus       @default(inactive) @map("operational_status")
+  authorizationVersion            Int                            @default(1) @map("authorization_version")
+  version                         Int                            @default(1)
+  submittedAt                     DateTime?                      @db.Timestamptz(6) @map("submitted_at")
+  approvedAt                      DateTime?                      @db.Timestamptz(6) @map("approved_at")
+  suspendedAt                     DateTime?                      @db.Timestamptz(6) @map("suspended_at")
+  cancelledAt                     DateTime?                      @db.Timestamptz(6) @map("cancelled_at")
+  createdAt                       DateTime                       @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt                       DateTime                       @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
+  tenant                          Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships                     PartnerMembership[]
+  authSessions                    AuthSession[]
+  completedRegistrationChallenges PartnerRegistrationChallenge[] @relation("PartnerRegistrationCompletedPartner")
+  registrationChallenge           PartnerRegistrationChallenge?  @relation("PartnerRegistrationOrigin", fields: [registrationChallengeId, tenantId], references: [id, tenantId], onDelete: Restrict, map: "partners_registration_challenge_tenant_fkey")
+  statusHistory                   PartnerStatusHistory[]
 
   @@unique([id, tenantId])
   @@index([tenantId, applicationStatus])
@@ -522,11 +526,28 @@ model PartnerRegistrationChallenge {
   completedPartnerId String?     @db.Uuid @map("completed_partner_id")
   createdAt          DateTime    @default(now()) @db.Timestamptz(6) @map("created_at")
   tenant             Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  completedPartner   Partner?    @relation(fields: [completedPartnerId, tenantId], references: [id, tenantId], onDelete: Restrict, map: "partner_registration_challenges_completed_partner_tenant_fkey")
+  completedPartner   Partner?    @relation("PartnerRegistrationCompletedPartner", fields: [completedPartnerId, tenantId], references: [id, tenantId], onDelete: Restrict, map: "partner_registration_challenges_completed_partner_tenant_fkey")
+  originPartner      Partner?    @relation("PartnerRegistrationOrigin")
 
   @@unique([tenantId, normalizedEmail])
+  @@unique([id, tenantId])
   @@index([expiresAt])
   @@map("partner_registration_challenges")
+}
+
+model PartnerStatusHistory {
+  id                String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String                   @db.Uuid @map("tenant_id")
+  partnerId         String                   @db.Uuid @map("partner_id")
+  applicationStatus PartnerApplicationStatus @map("application_status")
+  operationalStatus PartnerOperationalStatus @map("operational_status")
+  occurredAt        DateTime                 @default(now()) @db.Timestamptz(6) @map("occurred_at")
+  tenant            Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner           Partner                  @relation(fields: [partnerId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "partner_status_history_partner_tenant_fkey")
+
+  @@index([tenantId])
+  @@index([partnerId, occurredAt])
+  @@map("partner_status_history")
 }
 
 model SecurityAuditEvent {
