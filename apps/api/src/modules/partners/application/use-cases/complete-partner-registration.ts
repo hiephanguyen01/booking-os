@@ -73,7 +73,7 @@ export class CompletePartnerRegistrationUseCase {
       const identity = await session.partnerRegistrationIdentity.resolveOrCreateVerifiedIdentity({
         normalizedEmail: challenge.normalizedEmail,
         displayEmail: challenge.displayEmail,
-        password: input.password,
+        ...(input.password === undefined ? {} : { password: input.password }),
       });
       const tenantMembership =
         await session.partnerRegistrationIdentity.ensureActiveTenantMembership({
