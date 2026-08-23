@@ -12,6 +12,12 @@ import type { PasswordDenylistPort } from "../../../application/ports/password-d
 import { validateNewPassword } from "../../../application/use-cases/identity-use-case-utils.js";
 import { Argon2PasswordHasherAdapter } from "../../crypto/argon2-password-hasher.adapter.js";
 
+interface IdentityLookupRow {
+  readonly userId: string;
+  readonly status: string;
+  readonly userAuthorizationVersion: number;
+}
+
 interface ActivatedIdentityRow {
   readonly userId: string;
   readonly userAuthorizationVersion: number;
@@ -40,15 +46,20 @@ export class PrismaPartnerRegistrationIdentityParticipantAdapter
   async resolveOrCreateVerifiedIdentity(
     input: ResolveVerifiedPartnerIdentityInput,
   ): Promise<VerifiedPartnerIdentity> {
-    const existing = await this.transaction.user.findUnique({
-      where: { normalizedEmail: input.normalizedEmail },
-      select: { id: true, status: true, authorizationVersion: true },
-    });
+    const existingRows = await this.transaction.$queryRawUnsafe<readonly IdentityLookupRow[]>(
+      `SELECT
+         "user_id" AS "userId",
+         "status",
+         "authorization_version" AS "userAuthorizationVersion"
+       FROM "partner_registration_lookup_identity"($1)`,
+      input.normalizedEmail,
+    );
+    const existing = existingRows[0];
 
     if (existing?.status === "active") {
       return Object.freeze({
-        userId: existing.id,
-        userAuthorizationVersion: existing.authorizationVersion,
+        userId: existing.userId,
+        userAuthorizationVersion: existing.userAuthorizationVersion,
         wasUserCreatedOrActivated: false,
       });
     }
