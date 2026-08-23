@@ -445,7 +445,7 @@ model TenantCustomRoleAssignment {
 model Partner {
   id                              String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId                        String                         @db.Uuid @map("tenant_id")
-  registrationChallengeId         String?                        @unique @db.Uuid @map("registration_challenge_id")
+  registrationChallengeId         String?                        @db.Uuid @map("registration_challenge_id")
   type                            PartnerType
   applicationStatus               PartnerApplicationStatus       @default(draft) @map("application_status")
   operationalStatus               PartnerOperationalStatus       @default(inactive) @map("operational_status")
@@ -465,6 +465,7 @@ model Partner {
   statusHistory                   PartnerStatusHistory[]
 
   @@unique([id, tenantId])
+  @@unique([registrationChallengeId, tenantId])
   @@index([tenantId, applicationStatus])
   @@index([tenantId, operationalStatus])
   @@map("partners")
