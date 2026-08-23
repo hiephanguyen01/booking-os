@@ -141,7 +141,7 @@ export class PrismaPartnerRegistrationIdentityParticipantAdapter
       where: { tenantId_userId: { tenantId: this.tenantId, userId: input.userId } },
       select: { id: true, status: true, authorizationVersion: true },
     });
-    if (!raced || raced.status !== "active") {
+    if (raced?.status !== "active") {
       throw new IdentityUnavailableForPartnerRegistrationError();
     }
 
