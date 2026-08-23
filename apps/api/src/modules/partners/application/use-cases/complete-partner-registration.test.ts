@@ -63,8 +63,7 @@ function createHarness(
     hostname: challengeOverrides.hostname ?? "studiohub.example.test",
     selector: "challenge-selector",
     tokenHash: "a".repeat(64),
-    expiresAt:
-      challengeOverrides.expiresAt ?? new Date(NOW.getTime() + 60 * 60 * 1000),
+    expiresAt: challengeOverrides.expiresAt ?? new Date(NOW.getTime() + 60 * 60 * 1000),
     consumedAt: challengeOverrides.consumedAt ?? null,
     revokedAt: challengeOverrides.revokedAt ?? null,
     completedPartnerId: challengeOverrides.completedPartnerId ?? null,

@@ -97,9 +97,7 @@ test("Partner establishment is structurally unique per registration challenge", 
     ),
   );
 
-  const foreignKeys = await prisma.$queryRaw<
-    readonly { definition: string }[]
-  >`
+  const foreignKeys = await prisma.$queryRaw<readonly { definition: string }[]>`
     SELECT pg_get_constraintdef(c.oid) AS definition
     FROM pg_constraint c
     JOIN pg_class t ON t.oid = c.conrelid
