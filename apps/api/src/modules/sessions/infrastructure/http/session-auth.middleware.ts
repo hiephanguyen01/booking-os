@@ -74,6 +74,9 @@ export class SessionAuthMiddleware implements NestMiddleware {
         scope,
         requestId: current.requestId,
       });
+      if (authenticated.authScope.type === "partner") {
+        throw new SessionUnavailableError();
+      }
       const authenticatedContext: AuthenticatedRequestContext = {
         ...current,
         actorId: authenticated.actorId,

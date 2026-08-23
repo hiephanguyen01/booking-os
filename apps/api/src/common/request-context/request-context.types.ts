@@ -4,8 +4,7 @@ export type { RequestContext } from "@booking-os/contracts";
 
 export type AuthenticatedScope =
   | { readonly type: "platform" }
-  | { readonly type: "tenant"; readonly tenantId: string }
-  | { readonly type: "partner"; readonly tenantId: string; readonly partnerId: string };
+  | { readonly type: "tenant"; readonly tenantId: string };
 
 export interface AuthenticatedRequestContext extends RequestContext {
   readonly actorId: string;
@@ -43,12 +42,7 @@ export function isAuthenticatedRequestContext(
     (candidate.authScope?.type === "platform" ||
       (candidate.authScope?.type === "tenant" &&
         typeof candidate.authScope.tenantId === "string" &&
-        candidate.authScope.tenantId.length > 0) ||
-      (candidate.authScope?.type === "partner" &&
-        typeof candidate.authScope.tenantId === "string" &&
-        candidate.authScope.tenantId.length > 0 &&
-        typeof candidate.authScope.partnerId === "string" &&
-        candidate.authScope.partnerId.length > 0))
+        candidate.authScope.tenantId.length > 0))
   );
 }
 
@@ -58,8 +52,7 @@ export function isAuthorizationReadyRequestContext(
   return (
     context.sessionState === "active" &&
     (context.authScope.type === "platform" ||
-      (context.authScope.type === "tenant" &&
-        Number.isInteger(context.membershipAuthorizationVersion) &&
+      (Number.isInteger(context.membershipAuthorizationVersion) &&
         (context.membershipAuthorizationVersion ?? 0) > 0))
   );
 }
