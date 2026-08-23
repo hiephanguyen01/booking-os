@@ -82,8 +82,7 @@ function snapshotsMatch(
   if (authorization.userAuthorizationVersion !== authenticated.authorizationVersion) return false;
   if (authorization.scope.type === "platform") return authenticated.authScope.type === "platform";
   if (
-    authorization.membershipAuthorizationVersion !==
-    authenticated.membershipAuthorizationVersion
+    authorization.membershipAuthorizationVersion !== authenticated.membershipAuthorizationVersion
   ) {
     return false;
   }

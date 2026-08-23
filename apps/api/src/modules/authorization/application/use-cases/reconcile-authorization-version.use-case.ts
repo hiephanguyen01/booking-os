@@ -78,8 +78,7 @@ export class ReconcileAuthorizationVersionUseCase {
       ...(context.partnerMembershipAuthorizationVersion === undefined
         ? {}
         : {
-            partnerMembershipAuthorizationVersion:
-              context.partnerMembershipAuthorizationVersion,
+            partnerMembershipAuthorizationVersion: context.partnerMembershipAuthorizationVersion,
           }),
       presentedToken: input.presentedToken,
       requestId: input.authenticated.requestId,
