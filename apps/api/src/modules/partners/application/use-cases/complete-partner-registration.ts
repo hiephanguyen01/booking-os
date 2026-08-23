@@ -42,7 +42,9 @@ export class CompletePartnerRegistrationUseCase {
     const hostname = canonicalHostname(input.hostname);
 
     return this.transactions.run(input.context, async (session) => {
-      const challenge = await session.partnerRegistrationChallenges.lockBySelector(derived.selector);
+      const challenge = await session.partnerRegistrationChallenges.lockBySelector(
+        derived.selector,
+      );
       if (
         !challenge ||
         challenge.hostname !== hostname ||
