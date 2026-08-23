@@ -6,8 +6,8 @@ import type { TenantExecutionContext } from "@booking-os/contracts";
 import { type Prisma, PrismaClient } from "@prisma/client";
 
 import { PrismaTenantDataSessionFactory } from "../src/database/prisma-tenant-data-session.factory.js";
-import type { OneTimeTokenPort } from "../src/modules/identity/application/ports/one-time-token.port.js";
 import type { PartnerRegistrationIdentityParticipantPort } from "../src/modules/identity/application/partner-registration-identity.contract.js";
+import type { OneTimeTokenPort } from "../src/modules/identity/application/ports/one-time-token.port.js";
 import type { PartnerDataSession } from "../src/modules/partners/application/ports/partner-data-session.js";
 import type { PartnerRegistrationChallengeRepositoryPort } from "../src/modules/partners/application/ports/partner-registration-challenge-repository.port.js";
 import type { PartnerRegistrationEstablishmentPort } from "../src/modules/partners/application/ports/partner-registration-establishment.port.js";
@@ -204,10 +204,7 @@ function createDatabaseSession(
   const base = sessionFactory.create(transaction, fixture.tenantId) as PartnerDataSession;
   return Object.freeze({
     ...base,
-    partnerRegistrationChallenges: wrapChallenges(
-      base.partnerRegistrationChallenges,
-      faultStage,
-    ),
+    partnerRegistrationChallenges: wrapChallenges(base.partnerRegistrationChallenges, faultStage),
     partnerRegistrationIdentity: wrapIdentity(
       base.partnerRegistrationIdentity,
       fixture,
