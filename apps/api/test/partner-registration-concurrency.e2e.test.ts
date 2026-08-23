@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import test from "node:test";
 
 import type { TenantExecutionContext } from "@booking-os/contracts";
-import { PrismaClient, type Prisma } from "@prisma/client";
+import { type Prisma, PrismaClient } from "@prisma/client";
 
 import type { OneTimeTokenPort } from "../src/modules/identity/application/ports/one-time-token.port.js";
 import type { PartnerDataSession } from "../src/modules/partners/application/ports/partner-data-session.js";
@@ -75,7 +75,8 @@ async function loadUseCase(): Promise<
     }): Promise<{ readonly partnerId: string }>;
   }
 > {
-  const modulePath = "../src/modules/partners/application/use-cases/complete-partner-registration.js";
+  const modulePath =
+    "../src/modules/partners/application/use-cases/complete-partner-registration.js";
   const loaded = (await import(modulePath)) as Record<string, unknown>;
   return loaded.CompletePartnerRegistrationUseCase as never;
 }
@@ -444,7 +445,10 @@ async function assertFullyRolledBack(fixture: RegistrationFixture): Promise<void
     await prisma.partnerSystemRoleAssignment.count({ where: { tenantId: fixture.tenantId } }),
     0,
   );
-  assert.equal(await prisma.tenantSecurityAuditEvent.count({ where: { tenantId: fixture.tenantId } }), 0);
+  assert.equal(
+    await prisma.tenantSecurityAuditEvent.count({ where: { tenantId: fixture.tenantId } }),
+    0,
+  );
   assert.equal(await prisma.outboxEvent.count({ where: { tenantId: fixture.tenantId } }), 0);
 }
 
@@ -502,10 +506,16 @@ test("successful establishment commits all rows before post-commit Partner sessi
     });
     assert.equal(challenge.completedPartnerId, result.partnerId);
     assert.equal(challenge.consumedAt?.getTime(), NOW.getTime());
-    assert.equal(await prisma.user.count({ where: { normalizedEmail: fixture.normalizedEmail } }), 1);
+    assert.equal(
+      await prisma.user.count({ where: { normalizedEmail: fixture.normalizedEmail } }),
+      1,
+    );
     assert.equal(await prisma.tenantMembership.count({ where: { tenantId: fixture.tenantId } }), 1);
     assert.equal(await prisma.partner.count({ where: { tenantId: fixture.tenantId } }), 1);
-    assert.equal(await prisma.partnerMembership.count({ where: { tenantId: fixture.tenantId } }), 1);
+    assert.equal(
+      await prisma.partnerMembership.count({ where: { tenantId: fixture.tenantId } }),
+      1,
+    );
     assert.equal(
       await prisma.partnerSystemRoleAssignment.count({ where: { tenantId: fixture.tenantId } }),
       1,
@@ -540,7 +550,10 @@ test("concurrent verified completions converge to one Partner and one active own
     if (first.status !== "fulfilled" || second.status !== "fulfilled") return;
     assert.equal(first.value.partnerId, second.value.partnerId);
     assert.equal(await prisma.partner.count({ where: { tenantId: fixture.tenantId } }), 1);
-    assert.equal(await prisma.partnerMembership.count({ where: { tenantId: fixture.tenantId } }), 1);
+    assert.equal(
+      await prisma.partnerMembership.count({ where: { tenantId: fixture.tenantId } }),
+      1,
+    );
     assert.equal(
       await prisma.partnerSystemRoleAssignment.count({
         where: { tenantId: fixture.tenantId, revokedAt: null },
