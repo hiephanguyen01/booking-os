@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import test from "node:test";
+import test, { after } from "node:test";
 
 import type { TenantExecutionContext } from "@booking-os/contracts";
 import { type Prisma, PrismaClient } from "@prisma/client";
@@ -105,9 +105,20 @@ async function createFixture(): Promise<RegistrationFixture> {
 }
 
 async function cleanupFixture(fixture: RegistrationFixture): Promise<void> {
-  await prisma.tenant.deleteMany({ where: { id: fixture.tenantId } });
+  await prisma.$transaction(async (transaction) => {
+    await transaction.partnerRegistrationChallenge.updateMany({
+      where: { tenantId: fixture.tenantId },
+      data: { completedPartnerId: null },
+    });
+    await transaction.partner.deleteMany({ where: { tenantId: fixture.tenantId } });
+    await transaction.tenant.deleteMany({ where: { id: fixture.tenantId } });
+  });
   await prisma.user.deleteMany({ where: { normalizedEmail: fixture.normalizedEmail } });
 }
+
+after(async () => {
+  await prisma.$disconnect();
+});
 
 function createTokenPort(fixture: RegistrationFixture): OneTimeTokenPort {
   return {
