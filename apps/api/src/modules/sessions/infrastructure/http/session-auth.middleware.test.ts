@@ -11,6 +11,7 @@ import { SessionAuthMiddleware } from "./session-auth.middleware.js";
 const TENANT_ID = "11111111-1111-4111-8111-111111111111";
 const USER_ID = "22222222-2222-4222-8222-222222222222";
 const SESSION_ID = "33333333-3333-4333-8333-333333333333";
+const PARTNER_ID = "55555555-5555-4555-8555-555555555555";
 
 function baseContext() {
   return {
@@ -139,4 +140,70 @@ test("requests without a session cookie remain anonymous for the guard to decide
   });
 
   assert.deepEqual(captured, baseContext());
+});
+
+test("hydrates a server-resolved Partner scope without trusting a request Partner id", async () => {
+  const token = createSessionToken();
+  const calls: unknown[] = [];
+  const storage = new RequestContextStorage();
+  const middleware = new SessionAuthMiddleware(
+    {
+      async execute(input: unknown) {
+        calls.push(input);
+        return {
+          actorId: USER_ID,
+          sessionId: SESSION_ID,
+          authScope: { type: "partner" as const, tenantId: TENANT_ID, partnerId: PARTNER_ID },
+          sessionState: "active" as const,
+          authorizationVersion: 7,
+          membershipAuthorizationVersion: 5,
+          partnerAuthorizationVersion: 3,
+          partnerMembershipAuthorizationVersion: 2,
+          tokenDisposition: "active" as const,
+          rotationRequired: false,
+        };
+      },
+    },
+    storage,
+    { trustProxy: false },
+  );
+  let authenticated: unknown;
+
+  await storage.run(baseContext(), async () => {
+    await middleware.use(
+      {
+        headers: {
+          host: "alpha.example.com:443",
+          cookie: `${BOOKING_SESSION_COOKIE}=${encodeURIComponent(token)}`,
+          "x-partner-id": "99999999-9999-4999-8999-999999999999",
+          "x-auth-scope": "partner",
+        },
+      },
+      {},
+      (error?: unknown) => {
+        assert.equal(error, undefined);
+        authenticated = storage.requireAuthenticated();
+      },
+    );
+  });
+
+  assert.deepEqual(calls, [
+    {
+      token,
+      hostname: "alpha.example.com",
+      scope: { type: "tenant", tenantId: TENANT_ID },
+      requestId: "request-1",
+    },
+  ]);
+  assert.deepEqual(authenticated, {
+    ...baseContext(),
+    actorId: USER_ID,
+    sessionId: SESSION_ID,
+    authScope: { type: "partner", tenantId: TENANT_ID, partnerId: PARTNER_ID },
+    sessionState: "active",
+    authorizationVersion: 7,
+    membershipAuthorizationVersion: 5,
+    partnerAuthorizationVersion: 3,
+    partnerMembershipAuthorizationVersion: 2,
+  });
 });
