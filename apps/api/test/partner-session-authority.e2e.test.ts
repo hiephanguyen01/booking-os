@@ -4,9 +4,8 @@ import test, { after, before } from "node:test";
 
 import { parseSessionToken } from "@booking-os/auth";
 import { PrismaClient } from "@prisma/client";
-
-import { PrismaTenantDataSessionFactory } from "../src/database/prisma-tenant-data-session.factory.js";
 import type { PrismaService } from "../src/database/prisma.service.js";
+import { PrismaTenantDataSessionFactory } from "../src/database/prisma-tenant-data-session.factory.js";
 import type { AuthorizationRepositoryScope } from "../src/modules/authorization/application/ports/authorization-repository.port.js";
 import { PrismaAuthorizationRepositoryAdapter } from "../src/modules/authorization/infrastructure/persistence/prisma/prisma-authorization-repository.adapter.js";
 import type {
