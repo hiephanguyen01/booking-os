@@ -187,6 +187,21 @@ test("partner-scoped opaque sessions round-trip tenant, Partner, and all four au
   assert.equal(session.partnerAuthorizationVersion, 3);
   assert.equal(session.partnerMembershipAuthorizationVersion, 2);
 
+  const trustedParentLookup = await repository.findBySelector({
+    selector: parsed.selector,
+    hostname: HOSTNAME,
+    scope: { type: "tenant", tenantId: TENANT_ID },
+  });
+  assert.ok(
+    trustedParentLookup,
+    "trusted tenant binding must discover its stored Partner child scope",
+  );
+  assert.deepEqual(
+    trustedParentLookup.session.scope,
+    partnerScope,
+    "the stored Partner scope, not request data, must select Partner authority",
+  );
+
   assert.equal(
     await repository.findBySelector({
       selector: parsed.selector,
