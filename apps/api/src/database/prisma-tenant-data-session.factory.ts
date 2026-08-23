@@ -9,6 +9,7 @@ import { PrismaTenantCustomRoleRepositoryAdapter } from "../modules/authorizatio
 import { PrismaTenantRbacPermissionRepositoryAdapter } from "../modules/authorization/infrastructure/persistence/prisma/prisma-tenant-rbac-permission-repository.adapter.js";
 import type { SensitiveEnvelopePort } from "../modules/identity/application/ports/sensitive-envelope.port.js";
 import { AesSensitiveEnvelopeAdapter } from "../modules/identity/infrastructure/crypto/aes-sensitive-envelope.adapter.js";
+import { PrismaPartnerRegistrationIdentityParticipantAdapter } from "../modules/identity/infrastructure/persistence/prisma/prisma-partner-registration-identity-participant.adapter.js";
 import { PrismaPartnerRegistrationStartEligibilityAdapter } from "../modules/identity/infrastructure/persistence/prisma/prisma-partner-registration-start-eligibility.adapter.js";
 import { PrismaInvitationRepositoryAdapter } from "../modules/memberships/infrastructure/persistence/prisma/prisma-invitation-repository.adapter.js";
 import {
@@ -22,6 +23,7 @@ import { PrismaTenantRoleAssignmentRepositoryAdapter } from "../modules/membersh
 import { PrismaTenantSecurityAuditAdapter } from "../modules/memberships/infrastructure/persistence/prisma/prisma-tenant-security-audit.adapter.js";
 import { PrismaPartnerAuthorizationQueryAdapter } from "../modules/partners/infrastructure/persistence/prisma/prisma-partner-authorization-query.adapter.js";
 import { PrismaPartnerRegistrationChallengeRepositoryAdapter } from "../modules/partners/infrastructure/persistence/prisma/prisma-partner-registration-challenge-repository.adapter.js";
+import { PrismaPartnerRegistrationEstablishmentAdapter } from "../modules/partners/infrastructure/persistence/prisma/prisma-partner-registration-establishment.adapter.js";
 import { PrismaPartnerRegistrationNotifierAdapter } from "../modules/partners/infrastructure/persistence/prisma/prisma-partner-registration-notifier.adapter.js";
 import { PrismaPartnerRepositoryAdapter } from "../modules/partners/infrastructure/persistence/prisma/prisma-partner-repository.adapter.js";
 import { PrismaPartnerSecurityAuditAdapter } from "../modules/partners/infrastructure/persistence/prisma/prisma-partner-security-audit.adapter.js";
@@ -110,6 +112,14 @@ export class PrismaTenantDataSessionFactory {
         this.resolvePartnerRegistrationEnvelope,
       ),
       partnerRegistrationStartEligibility: new PrismaPartnerRegistrationStartEligibilityAdapter(
+        transaction,
+        tenantId,
+      ),
+      partnerRegistrationIdentity: new PrismaPartnerRegistrationIdentityParticipantAdapter(
+        transaction,
+        tenantId,
+      ),
+      partnerRegistrationEstablishment: new PrismaPartnerRegistrationEstablishmentAdapter(
         transaction,
         tenantId,
       ),
