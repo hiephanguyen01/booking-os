@@ -94,7 +94,7 @@ async function createFixture(): Promise<RegistrationFixture> {
       id: tenantId,
       slug: `partner-${suffix}`,
       name: "Partner registration atomicity test",
-      status: "active",
+      status: "provisioning",
     },
   });
   await prisma.partnerRegistrationChallenge.create({
