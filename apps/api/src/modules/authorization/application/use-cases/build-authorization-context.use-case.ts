@@ -15,6 +15,7 @@ import {
 import type {
   AuthorizationRepositoryPort,
   CurrentScopeAuthority,
+  PartnerCurrentScopeAuthority,
 } from "../ports/authorization-repository.port.js";
 
 const KNOWN_ROLES = new Set<string>(AUTHORIZATION_ROLE_KEYS);
@@ -22,6 +23,12 @@ const KNOWN_PERMISSIONS = new Set<string>(AUTHORIZATION_PERMISSION_KEYS);
 
 function positiveInteger(value: number): boolean {
   return Number.isInteger(value) && value > 0;
+}
+
+function isPartnerAuthority(
+  authority: CurrentScopeAuthority,
+): authority is PartnerCurrentScopeAuthority {
+  return authority.scope.type === "partner";
 }
 
 function knownValues<Value extends string>(
@@ -138,6 +145,9 @@ export class BuildAuthorizationContextUseCase {
       });
     }
 
+    if (!isPartnerAuthority(authority)) {
+      throw new AuthorizationAuthorityInvalidError();
+    }
     if (
       authenticated.authScope.type !== "partner" ||
       authority.scope.partnerId !== authenticated.authScope.partnerId
