@@ -5,11 +5,16 @@ import test from "node:test";
 import type { TenantExecutionContext } from "@booking-os/contracts";
 import { type Prisma, PrismaClient } from "@prisma/client";
 
+import { PrismaTenantDataSessionFactory } from "../src/database/prisma-tenant-data-session.factory.js";
 import type { OneTimeTokenPort } from "../src/modules/identity/application/ports/one-time-token.port.js";
+import type { PartnerRegistrationIdentityParticipantPort } from "../src/modules/identity/application/partner-registration-identity.contract.js";
 import type { PartnerDataSession } from "../src/modules/partners/application/ports/partner-data-session.js";
+import type { PartnerRegistrationChallengeRepositoryPort } from "../src/modules/partners/application/ports/partner-registration-challenge-repository.port.js";
+import type { PartnerRegistrationEstablishmentPort } from "../src/modules/partners/application/ports/partner-registration-establishment.port.js";
 import type { PartnerTransactionPort } from "../src/modules/partners/application/ports/partner-transaction.port.js";
 
 const prisma = new PrismaClient();
+const sessionFactory = new PrismaTenantDataSessionFactory();
 const HOSTNAME = "studiohub.example.test";
 const NOW = new Date("2026-08-23T00:00:00.000Z");
 const TOKEN_HASH = "a".repeat(64);
@@ -31,34 +36,6 @@ interface RegistrationFixture {
   readonly normalizedEmail: string;
   readonly displayEmail: string;
   readonly context: TenantExecutionContext;
-}
-
-interface ChallengeRow {
-  readonly id: string;
-  readonly tenantId: string;
-  readonly normalizedEmail: string;
-  readonly displayEmail: string;
-  readonly partnerType: "individual" | "company";
-  readonly hostname: string;
-  readonly selector: string;
-  readonly tokenHash: string;
-  readonly expiresAt: Date;
-  readonly consumedAt: Date | null;
-  readonly revokedAt: Date | null;
-  readonly completedPartnerId: string | null;
-  readonly createdAt: Date;
-}
-
-interface IdRow {
-  readonly id: string;
-}
-
-interface UserRow extends IdRow {
-  readonly authorizationVersion: number;
-}
-
-interface MembershipRow extends IdRow {
-  readonly authorizationVersion: number;
 }
 
 async function loadUseCase(): Promise<
@@ -155,256 +132,92 @@ function maybeFail(stage: FaultStage, faultStage: FaultStage | undefined): void 
   if (stage === faultStage) throw new Error(`forced-partner-registration-failure:${stage}`);
 }
 
+function wrapChallenges(
+  base: PartnerRegistrationChallengeRepositoryPort,
+  faultStage: FaultStage | undefined,
+): PartnerRegistrationChallengeRepositoryPort {
+  return {
+    upsertForEmail: (input) => base.upsertForEmail(input),
+    lockBySelector: (selector) => base.lockBySelector(selector),
+    async markCompleted(input) {
+      await base.markCompleted(input);
+      maybeFail("challenge", faultStage);
+    },
+  };
+}
+
+function wrapIdentity(
+  base: PartnerRegistrationIdentityParticipantPort,
+  fixture: RegistrationFixture,
+  faultStage: FaultStage | undefined,
+): PartnerRegistrationIdentityParticipantPort {
+  let resolvedUserId: string | undefined;
+  return {
+    async resolveOrCreateVerifiedIdentity(input) {
+      assert.equal(input.normalizedEmail, fixture.normalizedEmail);
+      assert.equal(input.displayEmail, fixture.displayEmail);
+      assert.equal(input.password, "Valid-Password-123!");
+      const result = await base.resolveOrCreateVerifiedIdentity(input);
+      resolvedUserId = result.userId;
+      maybeFail("identity", faultStage);
+      return result;
+    },
+    async ensureActiveTenantMembership(input) {
+      assert.equal(input.tenantId, fixture.tenantId);
+      assert.equal(input.userId, resolvedUserId);
+      const result = await base.ensureActiveTenantMembership(input);
+      maybeFail("membership", faultStage);
+      return result;
+    },
+  };
+}
+
+function wrapEstablishment(
+  base: PartnerRegistrationEstablishmentPort,
+  faultStage: FaultStage | undefined,
+): PartnerRegistrationEstablishmentPort {
+  return {
+    async createPartner(input) {
+      const result = await base.createPartner(input);
+      maybeFail("partner", faultStage);
+      return result;
+    },
+    async createPartnerMembership(input) {
+      const result = await base.createPartnerMembership(input);
+      maybeFail("partnerMembership", faultStage);
+      return result;
+    },
+    async assignPartnerOwner(input) {
+      await base.assignPartnerOwner(input);
+      maybeFail("owner", faultStage);
+    },
+    appendRegistrationHistory: (input) => base.appendRegistrationHistory(input),
+    appendRegistrationOutbox: (input) => base.appendRegistrationOutbox(input),
+  };
+}
+
 function createDatabaseSession(
   transaction: Prisma.TransactionClient,
   fixture: RegistrationFixture,
   faultStage: FaultStage | undefined,
 ): PartnerDataSession {
-  let userId: string | undefined;
-
-  const session = {
-    partnerRegistrationChallenges: {
-      async lockBySelector(selector: string) {
-        const rows = await transaction.$queryRawUnsafe<readonly ChallengeRow[]>(
-          `SELECT
-             "id",
-             "tenant_id" AS "tenantId",
-             "normalized_email" AS "normalizedEmail",
-             "display_email" AS "displayEmail",
-             "partner_type"::text AS "partnerType",
-             "hostname",
-             "selector",
-             "token_hash" AS "tokenHash",
-             "expires_at" AS "expiresAt",
-             "consumed_at" AS "consumedAt",
-             "revoked_at" AS "revokedAt",
-             "completed_partner_id" AS "completedPartnerId",
-             "created_at" AS "createdAt"
-           FROM "partner_registration_challenges"
-           WHERE "tenant_id" = $1::uuid
-             AND "selector" = $2
-           FOR UPDATE`,
-          fixture.tenantId,
-          selector,
-        );
-        return rows[0] ?? null;
-      },
-      async markCompleted(input: {
-        readonly challengeId: string;
-        readonly partnerId: string;
-        readonly consumedAt: Date;
-      }) {
-        await transaction.$executeRawUnsafe(
-          `UPDATE "partner_registration_challenges"
-           SET "completed_partner_id" = $3::uuid,
-               "consumed_at" = $4
-           WHERE "tenant_id" = $1::uuid
-             AND "id" = $2::uuid
-             AND "completed_partner_id" IS NULL`,
-          fixture.tenantId,
-          input.challengeId,
-          input.partnerId,
-          input.consumedAt,
-        );
-        maybeFail("challenge", faultStage);
-      },
-    },
-    partnerRegistrationIdentity: {
-      async resolveOrCreateVerifiedIdentity(input: {
-        readonly normalizedEmail: string;
-        readonly displayEmail: string;
-        readonly password?: string;
-      }) {
-        assert.equal(input.normalizedEmail, fixture.normalizedEmail);
-        assert.equal(input.displayEmail, fixture.displayEmail);
-        assert.equal(input.password, "Valid-Password-123!");
-        const users = await transaction.$queryRawUnsafe<readonly UserRow[]>(
-          `INSERT INTO "users" (
-             "normalized_email", "display_email", "status", "authorization_version"
-           )
-           VALUES ($1, $2, 'active'::user_status, 1)
-           RETURNING "id", "authorization_version" AS "authorizationVersion"`,
-          input.normalizedEmail,
-          input.displayEmail,
-        );
-        const user = users[0];
-        if (!user) throw new Error("test identity creation failed");
-        userId = user.id;
-        await transaction.$executeRawUnsafe(
-          `INSERT INTO "password_credentials" (
-             "user_id", "password_hash", "algorithm", "parameters", "password_changed_at"
-           )
-           VALUES ($1::uuid, $2, 'argon2id', '{}'::jsonb, $3)`,
-          user.id,
-          "test-only-password-hash",
-          NOW,
-        );
-        maybeFail("identity", faultStage);
-        return {
-          userId: user.id,
-          userAuthorizationVersion: user.authorizationVersion,
-          wasUserCreatedOrActivated: true,
-        };
-      },
-      async ensureActiveTenantMembership(input: {
-        readonly tenantId: string;
-        readonly userId: string;
-      }) {
-        assert.equal(input.tenantId, fixture.tenantId);
-        assert.equal(input.userId, userId);
-        const rows = await transaction.$queryRawUnsafe<readonly MembershipRow[]>(
-          `INSERT INTO "tenant_memberships" (
-             "tenant_id", "user_id", "status", "authorization_version"
-           )
-           VALUES ($1::uuid, $2::uuid, 'active'::tenant_membership_status, 1)
-           RETURNING "id", "authorization_version" AS "authorizationVersion"`,
-          input.tenantId,
-          input.userId,
-        );
-        const membership = rows[0];
-        if (!membership) throw new Error("test membership creation failed");
-        maybeFail("membership", faultStage);
-        return {
-          tenantMembershipId: membership.id,
-          tenantMembershipAuthorizationVersion: membership.authorizationVersion,
-          wasCreated: true,
-        };
-      },
-    },
-    partnerRegistrationEstablishment: {
-      async createPartner(input: {
-        readonly challengeId: string;
-        readonly partnerType: "individual" | "company";
-        readonly now: Date;
-      }) {
-        const rows = await transaction.$queryRawUnsafe<readonly IdRow[]>(
-          `INSERT INTO "partners" (
-             "tenant_id", "registration_challenge_id", "type",
-             "application_status", "operational_status", "authorization_version", "version",
-             "created_at", "updated_at"
-           )
-           VALUES (
-             $1::uuid, $2::uuid, $3::partner_type,
-             'draft'::partner_application_status, 'inactive'::partner_operational_status, 1, 1,
-             $4, $4
-           )
-           RETURNING "id"`,
-          fixture.tenantId,
-          input.challengeId,
-          input.partnerType,
-          input.now,
-        );
-        const partner = rows[0];
-        if (!partner) throw new Error("test Partner creation failed");
-        maybeFail("partner", faultStage);
-        return { partnerId: partner.id };
-      },
-      async createPartnerMembership(input: {
-        readonly partnerId: string;
-        readonly tenantMembershipId: string;
-        readonly now: Date;
-      }) {
-        const rows = await transaction.$queryRawUnsafe<readonly IdRow[]>(
-          `INSERT INTO "partner_memberships" (
-             "tenant_id", "partner_id", "tenant_membership_id", "status",
-             "authorization_version", "created_at", "updated_at"
-           )
-           VALUES ($1::uuid, $2::uuid, $3::uuid, 'active'::partner_membership_status, 1, $4, $4)
-           RETURNING "id"`,
-          fixture.tenantId,
-          input.partnerId,
-          input.tenantMembershipId,
-          input.now,
-        );
-        const membership = rows[0];
-        if (!membership) throw new Error("test Partner membership creation failed");
-        maybeFail("partnerMembership", faultStage);
-        return { partnerMembershipId: membership.id };
-      },
-      async assignPartnerOwner(input: {
-        readonly partnerId: string;
-        readonly partnerMembershipId: string;
-        readonly now: Date;
-      }) {
-        await transaction.$executeRawUnsafe(
-          `INSERT INTO "partner_system_role_assignments" (
-             "tenant_id", "partner_id", "partner_membership_id", "role_id", "created_at"
-           )
-           SELECT $1::uuid, $2::uuid, $3::uuid, "id", $4
-           FROM "roles"
-           WHERE "key" = 'partner_owner'`,
-          fixture.tenantId,
-          input.partnerId,
-          input.partnerMembershipId,
-          input.now,
-        );
-        maybeFail("owner", faultStage);
-      },
-      async appendRegistrationHistory(input: {
-        readonly partnerId: string;
-        readonly applicationStatus: string;
-        readonly operationalStatus: string;
-        readonly occurredAt: Date;
-      }) {
-        await transaction.$executeRawUnsafe(
-          `INSERT INTO "partner_status_history" (
-             "tenant_id", "partner_id", "application_status", "operational_status", "occurred_at"
-           )
-           VALUES ($1::uuid, $2::uuid, $3::partner_application_status,
-             $4::partner_operational_status, $5)`,
-          fixture.tenantId,
-          input.partnerId,
-          input.applicationStatus,
-          input.operationalStatus,
-          input.occurredAt,
-        );
-      },
-      async appendRegistrationOutbox(input: {
-        readonly partnerId: string;
-        readonly occurredAt: Date;
-      }) {
-        await transaction.$executeRawUnsafe(
-          `INSERT INTO "outbox_events" (
-             "id", "tenant_id", "type", "aggregate_type", "aggregate_id", "payload", "occurred_at"
-           )
-           VALUES (
-             gen_random_uuid(), $1::uuid, 'partner.registration.completed', 'partner', $2::uuid,
-             jsonb_build_object('partnerId', $2::text), $3
-           )`,
-          fixture.tenantId,
-          input.partnerId,
-          input.occurredAt,
-        );
-      },
-    },
-    partnerSecurityAudit: {
-      async append(input: {
-        readonly eventType: string;
-        readonly actorUserId: string | null;
-        readonly subjectUserId: string | null;
-        readonly requestId: string | null;
-        readonly metadata: Readonly<Record<string, string>>;
-        readonly occurredAt: Date;
-      }) {
-        await transaction.$executeRawUnsafe(
-          `INSERT INTO "tenant_security_audit_events" (
-             "tenant_id", "event_type", "actor_user_id", "subject_user_id",
-             "request_id", "metadata", "occurred_at"
-           )
-           VALUES ($1::uuid, $2, $3::uuid, $4::uuid, $5, $6::jsonb, $7)`,
-          fixture.tenantId,
-          input.eventType,
-          input.actorUserId,
-          input.subjectUserId,
-          input.requestId,
-          JSON.stringify(input.metadata),
-          input.occurredAt,
-        );
-      },
-    },
-  };
-
-  return session as unknown as PartnerDataSession;
+  const base = sessionFactory.create(transaction, fixture.tenantId) as PartnerDataSession;
+  return Object.freeze({
+    ...base,
+    partnerRegistrationChallenges: wrapChallenges(
+      base.partnerRegistrationChallenges,
+      faultStage,
+    ),
+    partnerRegistrationIdentity: wrapIdentity(
+      base.partnerRegistrationIdentity,
+      fixture,
+      faultStage,
+    ),
+    partnerRegistrationEstablishment: wrapEstablishment(
+      base.partnerRegistrationEstablishment,
+      faultStage,
+    ),
+  });
 }
 
 function createTransactionPort(
@@ -422,8 +235,7 @@ function createTransactionPort(
       const result = await prisma.$transaction(async (transaction) => {
         await transaction.$executeRawUnsafe("SET LOCAL ROLE booking_app");
         await transaction.$executeRaw`SELECT set_config('app.tenant_id', ${fixture.tenantId}, true)`;
-        const session = createDatabaseSession(transaction, fixture, faultStage);
-        return work(session);
+        return work(createDatabaseSession(transaction, fixture, faultStage));
       });
       timeline.push("transaction.commit");
       return result;
