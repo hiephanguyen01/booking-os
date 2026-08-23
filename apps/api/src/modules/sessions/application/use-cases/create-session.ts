@@ -68,8 +68,7 @@ export class CreateSessionUseCase {
         ...(input.partnerMembershipAuthorizationVersion === undefined
           ? {}
           : {
-              partnerMembershipAuthorizationVersion:
-                input.partnerMembershipAuthorizationVersion,
+              partnerMembershipAuthorizationVersion: input.partnerMembershipAuthorizationVersion,
             }),
         version: 1,
         idleExpiresAt: new Date(now.getTime() + 7 * DAY_MS),
