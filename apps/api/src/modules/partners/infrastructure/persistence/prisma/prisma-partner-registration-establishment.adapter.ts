@@ -91,7 +91,12 @@ export class PrismaPartnerRegistrationEstablishmentAdapter
 
   async appendRegistrationHistory(input: {
     readonly partnerId: string;
-    readonly applicationStatus: "draft" | "submitted" | "changes_requested" | "approved" | "rejected";
+    readonly applicationStatus:
+      | "draft"
+      | "submitted"
+      | "changes_requested"
+      | "approved"
+      | "rejected";
     readonly operationalStatus: "inactive" | "active" | "suspended" | "cancelled";
     readonly occurredAt: Date;
   }): Promise<void> {
