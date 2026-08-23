@@ -60,7 +60,10 @@ export class PrismaAuthorizationRepositoryAdapter implements AuthorizationReposi
           });
         }
 
-        const partner = await session.partnerAuthorization.loadForUser(scope.partnerId, input.userId);
+        const partner = await session.partnerAuthorization.loadForUser(
+          scope.partnerId,
+          input.userId,
+        );
         if (!partner) return null;
 
         return Object.freeze({
