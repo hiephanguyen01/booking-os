@@ -43,7 +43,12 @@ function validateCatalog(authority: CurrentScopeAuthority): {
     authority.permissionKeys,
     KNOWN_PERMISSIONS,
   );
-  const expectedPrefix = authority.scope.type === "platform" ? "platform." : "tenant.";
+  const expectedPrefix =
+    authority.scope.type === "platform"
+      ? "platform."
+      : authority.scope.type === "partner"
+        ? "partner."
+        : "tenant.";
   if (
     roleKeys.length === 0 ||
     roleKeys.some((role) =>
@@ -98,7 +103,7 @@ export class BuildAuthorizationContextUseCase {
 
     if (
       !("membershipStatus" in authority) ||
-      authenticated.authScope.type !== "tenant" ||
+      authenticated.authScope.type === "platform" ||
       authority.scope.tenantId !== authenticated.authScope.tenantId ||
       authority.membershipStatus !== "active"
     ) {
@@ -112,20 +117,59 @@ export class BuildAuthorizationContextUseCase {
       throw new AuthorizationAuthorityInvalidError();
     }
 
+    if (authority.scope.type === "tenant") {
+      if (authenticated.authScope.type !== "tenant") {
+        throw new AuthorizationSubjectInactiveError();
+      }
+      return Object.freeze({
+        userId: authenticated.actorId,
+        sessionId: authenticated.sessionId,
+        scope: Object.freeze({
+          type: "tenant" as const,
+          tenantId: authority.scope.tenantId,
+          tenantSlug: authority.scope.tenantSlug,
+        }),
+        membershipId: authority.membershipId,
+        membershipStatus: "active" as const,
+        roleKeys: catalog.roleKeys,
+        permissionKeys: catalog.permissionKeys,
+        userAuthorizationVersion: authority.userAuthorizationVersion,
+        membershipAuthorizationVersion: authority.membershipAuthorizationVersion,
+      });
+    }
+
+    if (
+      authenticated.authScope.type !== "partner" ||
+      authority.scope.partnerId !== authenticated.authScope.partnerId
+    ) {
+      throw new AuthorizationSubjectInactiveError();
+    }
+    if (
+      !authority.partnerMembershipId ||
+      !positiveInteger(authority.partnerAuthorizationVersion) ||
+      !positiveInteger(authority.partnerMembershipAuthorizationVersion)
+    ) {
+      throw new AuthorizationAuthorityInvalidError();
+    }
+
     return Object.freeze({
       userId: authenticated.actorId,
       sessionId: authenticated.sessionId,
       scope: Object.freeze({
-        type: "tenant" as const,
+        type: "partner" as const,
         tenantId: authority.scope.tenantId,
         tenantSlug: authority.scope.tenantSlug,
+        partnerId: authority.scope.partnerId,
       }),
       membershipId: authority.membershipId,
       membershipStatus: "active" as const,
+      partnerMembershipId: authority.partnerMembershipId,
       roleKeys: catalog.roleKeys,
       permissionKeys: catalog.permissionKeys,
       userAuthorizationVersion: authority.userAuthorizationVersion,
       membershipAuthorizationVersion: authority.membershipAuthorizationVersion,
+      partnerAuthorizationVersion: authority.partnerAuthorizationVersion,
+      partnerMembershipAuthorizationVersion: authority.partnerMembershipAuthorizationVersion,
     });
   }
 }

@@ -23,12 +23,15 @@ const OVERLAP_MS = 30 * 1000;
 interface LockedAuthorizationSessionRow {
   readonly tokenId: string;
   readonly tokenHash: string;
-  readonly scopeType: "platform" | "tenant";
+  readonly scopeType: "platform" | "tenant" | "partner";
   readonly tenantId: string | null;
+  readonly partnerId: string | null;
   readonly absoluteExpiresAt: Date;
   readonly replacedAt: Date | null;
   readonly authorizationVersion: number;
   readonly membershipAuthorizationVersion: number | null;
+  readonly partnerAuthorizationVersion: number | null;
+  readonly partnerMembershipAuthorizationVersion: number | null;
 }
 
 function deriveDigestKey(secret: string): Uint8Array {
@@ -49,6 +52,42 @@ async function assumeScopedDatabaseRole(
 
   await transaction.$executeRawUnsafe("SET LOCAL ROLE booking_app");
   await transaction.$executeRaw`SELECT set_config('app.tenant_id', ${scope.tenantId}, true)`;
+}
+
+function validRotationShape(
+  current: LockedAuthorizationSessionRow,
+  input: RefreshSessionAuthorizationInput,
+): boolean {
+  if (current.scopeType === "platform") {
+    return (
+      input.scope.type === "platform" &&
+      current.tenantId === null &&
+      current.partnerId === null &&
+      input.membershipAuthorizationVersion === undefined &&
+      input.partnerAuthorizationVersion === undefined &&
+      input.partnerMembershipAuthorizationVersion === undefined
+    );
+  }
+  if (current.scopeType === "tenant") {
+    return (
+      input.scope.type === "tenant" &&
+      current.tenantId === input.scope.tenantId &&
+      current.partnerId === null &&
+      input.membershipAuthorizationVersion !== undefined &&
+      input.partnerAuthorizationVersion === undefined &&
+      input.partnerMembershipAuthorizationVersion === undefined
+    );
+  }
+  return (
+    input.scope.type === "partner" &&
+    current.tenantId === input.scope.tenantId &&
+    current.partnerId === input.scope.partnerId &&
+    typeof current.partnerAuthorizationVersion === "number" &&
+    typeof current.partnerMembershipAuthorizationVersion === "number" &&
+    input.membershipAuthorizationVersion !== undefined &&
+    input.partnerAuthorizationVersion !== undefined &&
+    input.partnerMembershipAuthorizationVersion !== undefined
+  );
 }
 
 @Injectable()
@@ -80,10 +119,13 @@ export class PrismaSessionAuthorizationRefreshAdapter implements SessionAuthoriz
            token."token_hash" AS "tokenHash",
            session."scope_type"::text AS "scopeType",
            session."tenant_id" AS "tenantId",
+           session."partner_id" AS "partnerId",
            session."absolute_expires_at" AS "absoluteExpiresAt",
            token."replaced_at" AS "replacedAt",
            session."authorization_version" AS "authorizationVersion",
-           session."membership_authorization_version" AS "membershipAuthorizationVersion"
+           session."membership_authorization_version" AS "membershipAuthorizationVersion",
+           session."partner_authorization_version" AS "partnerAuthorizationVersion",
+           session."partner_membership_authorization_version" AS "partnerMembershipAuthorizationVersion"
          FROM "auth_session_tokens" AS token
          INNER JOIN "auth_sessions" AS session ON session."id" = token."session_id"
          WHERE token."selector" = $1
@@ -111,10 +153,7 @@ export class PrismaSessionAuthorizationRefreshAdapter implements SessionAuthoriz
           secret: presented.secret,
           expectedDigest: current.tokenHash,
         }) ||
-        (current.scopeType === "platform" && input.membershipAuthorizationVersion !== undefined) ||
-        (current.scopeType === "tenant" && input.membershipAuthorizationVersion === undefined) ||
-        current.scopeType !== input.scope.type ||
-        (input.scope.type === "tenant" && current.tenantId !== input.scope.tenantId)
+        !validRotationShape(current, input)
       ) {
         throw new Error("Authorization session is unavailable for rotation.");
       }
@@ -156,6 +195,9 @@ export class PrismaSessionAuthorizationRefreshAdapter implements SessionAuthoriz
         data: {
           authorizationVersion: input.userAuthorizationVersion,
           membershipAuthorizationVersion: input.membershipAuthorizationVersion ?? null,
+          partnerAuthorizationVersion: input.partnerAuthorizationVersion ?? null,
+          partnerMembershipAuthorizationVersion:
+            input.partnerMembershipAuthorizationVersion ?? null,
           version: { increment: 1 },
           updatedAt: now,
         },

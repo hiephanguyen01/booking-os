@@ -71,10 +71,13 @@ export interface AuthorizationContext {
       };
   readonly membershipId?: string;
   readonly membershipStatus?: "active";
+  readonly partnerMembershipId?: string;
   readonly roleKeys: readonly AuthorizationRoleKey[];
   readonly permissionKeys: readonly AuthorizationPermissionKey[];
   readonly userAuthorizationVersion: number;
   readonly membershipAuthorizationVersion?: number;
+  readonly partnerAuthorizationVersion?: number;
+  readonly partnerMembershipAuthorizationVersion?: number;
 }
 
 export type ActiveTenantAuthorizationContext = AuthorizationContext & {

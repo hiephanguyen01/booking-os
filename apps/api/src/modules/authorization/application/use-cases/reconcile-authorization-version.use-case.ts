@@ -52,9 +52,15 @@ export class ReconcileAuthorizationVersionUseCase {
     const userChanged =
       context.userAuthorizationVersion !== input.authenticated.authorizationVersion;
     const membershipChanged =
-      context.scope.type === "tenant" &&
+      context.scope.type !== "platform" &&
       context.membershipAuthorizationVersion !== input.authenticated.membershipAuthorizationVersion;
-    if (!userChanged && !membershipChanged) {
+    const partnerChanged =
+      context.scope.type === "partner" &&
+      input.authenticated.authScope.type === "partner" &&
+      (context.partnerAuthorizationVersion !== input.authenticated.partnerAuthorizationVersion ||
+        context.partnerMembershipAuthorizationVersion !==
+          input.authenticated.partnerMembershipAuthorizationVersion);
+    if (!userChanged && !membershipChanged && !partnerChanged) {
       return Object.freeze({ status: "current", context });
     }
 
@@ -66,6 +72,15 @@ export class ReconcileAuthorizationVersionUseCase {
       ...(context.membershipAuthorizationVersion === undefined
         ? {}
         : { membershipAuthorizationVersion: context.membershipAuthorizationVersion }),
+      ...(context.partnerAuthorizationVersion === undefined
+        ? {}
+        : { partnerAuthorizationVersion: context.partnerAuthorizationVersion }),
+      ...(context.partnerMembershipAuthorizationVersion === undefined
+        ? {}
+        : {
+            partnerMembershipAuthorizationVersion:
+              context.partnerMembershipAuthorizationVersion,
+          }),
       presentedToken: input.presentedToken,
       requestId: input.authenticated.requestId,
       reason: "authorization_version_changed",

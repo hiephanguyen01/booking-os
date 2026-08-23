@@ -84,6 +84,10 @@ export class PrismaPartnerAuthorizationQueryAdapter implements PartnerAuthorizat
          AND tenant_membership."status" = 'active'::tenant_membership_status
          AND membership."status" = 'active'::partner_membership_status
          AND membership."revoked_at" IS NULL
+         AND partner."operational_status" NOT IN (
+           'suspended'::partner_operational_status,
+           'cancelled'::partner_operational_status
+         )
        GROUP BY
          partner."id",
          partner."authorization_version",

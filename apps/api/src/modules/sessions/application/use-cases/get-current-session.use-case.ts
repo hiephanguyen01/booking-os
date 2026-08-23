@@ -23,6 +23,8 @@ export interface CurrentSession {
   readonly sessionState: Extract<StoredSession["state"], "active" | "invitation_pending">;
   readonly authorizationVersion: number;
   readonly membershipAuthorizationVersion?: number;
+  readonly partnerAuthorizationVersion?: number;
+  readonly partnerMembershipAuthorizationVersion?: number;
   readonly tokenDisposition: "active" | "overlap";
   readonly rotationRequired: boolean;
 }
@@ -64,8 +66,15 @@ export class GetCurrentSessionUseCase {
       throw new SessionUnavailableError();
     }
     if (
-      stored.session.scope.type === "tenant" &&
+      stored.session.scope.type !== "platform" &&
       stored.session.membershipAuthorizationVersion === undefined
+    ) {
+      throw new SessionUnavailableError();
+    }
+    if (
+      stored.session.scope.type === "partner" &&
+      (stored.session.partnerAuthorizationVersion === undefined ||
+        stored.session.partnerMembershipAuthorizationVersion === undefined)
     ) {
       throw new SessionUnavailableError();
     }
@@ -86,10 +95,19 @@ export class GetCurrentSessionUseCase {
       sessionId: validated.session.id,
       authScope: validated.session.scope,
       sessionState: validated.session.state,
-      authorizationVersion: stored.session.authorizationVersion,
+      authorizationVersion: validated.session.authorizationVersion,
       ...(validated.session.membershipAuthorizationVersion === undefined
         ? {}
         : { membershipAuthorizationVersion: validated.session.membershipAuthorizationVersion }),
+      ...(validated.session.partnerAuthorizationVersion === undefined
+        ? {}
+        : { partnerAuthorizationVersion: validated.session.partnerAuthorizationVersion }),
+      ...(validated.session.partnerMembershipAuthorizationVersion === undefined
+        ? {}
+        : {
+            partnerMembershipAuthorizationVersion:
+              validated.session.partnerMembershipAuthorizationVersion,
+          }),
       tokenDisposition: validated.tokenDisposition,
       rotationRequired: validated.rotationRequired,
     };
