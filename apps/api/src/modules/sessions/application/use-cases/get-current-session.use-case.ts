@@ -82,7 +82,7 @@ export class GetCurrentSessionUseCase {
     const validated = await this.validator.execute({
       token: input.token,
       hostname: input.hostname,
-      scope: input.scope,
+      scope: stored.session.scope,
       authorizationVersion: stored.session.authorizationVersion,
       requestId: input.requestId,
     });
