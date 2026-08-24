@@ -5,11 +5,15 @@ import type { AuthorizationContext } from "@booking-os/contracts";
 
 import { AuthorizationSubjectInactiveError } from "../../domain/authorization.errors.js";
 import type { SessionAuthorizationRefreshPort } from "../ports/session-authorization-refresh.port.js";
-import { ReconcileAuthorizationVersionUseCase } from "./reconcile-authorization-version.use-case.js";
+import {
+  type ReconcileAuthorizationVersionInput,
+  ReconcileAuthorizationVersionUseCase,
+} from "./reconcile-authorization-version.use-case.js";
 
 const USER_ID = "10000000-0000-4000-8000-000000000001";
 const SESSION_ID = "20000000-0000-4000-8000-000000000001";
 const TENANT_ID = "30000000-0000-4000-8000-000000000001";
+const PARTNER_ID = "50000000-0000-4000-8000-000000000001";
 const AUTHENTICATED = Object.freeze({
   requestId: "request-reconcile",
   traceId: "trace-reconcile",
@@ -187,4 +191,70 @@ test("reconciles platform scope from the trusted global snapshot only", async ()
 
   assert.deepEqual(result, { status: "current", context: platformContext });
   assert.deepEqual(refresh.refreshed, []);
+});
+
+test("rotates a Partner session when either Partner authority snapshot is stale", async () => {
+  for (const changed of [
+    { partnerAuthorizationVersion: 4, partnerMembershipAuthorizationVersion: 2 },
+    { partnerAuthorizationVersion: 3, partnerMembershipAuthorizationVersion: 3 },
+  ]) {
+    const refresh = new RefreshSpy();
+    const authenticated = Object.freeze({
+      requestId: "request-partner-reconcile",
+      traceId: "trace-partner-reconcile",
+      source: "internal",
+      actorId: USER_ID,
+      sessionId: SESSION_ID,
+      authScope: Object.freeze({ type: "partner", tenantId: TENANT_ID, partnerId: PARTNER_ID }),
+      sessionState: "active",
+      authorizationVersion: 4,
+      membershipAuthorizationVersion: 7,
+      partnerAuthorizationVersion: 3,
+      partnerMembershipAuthorizationVersion: 2,
+    }) as unknown as ReconcileAuthorizationVersionInput["authenticated"];
+    const context = Object.freeze({
+      userId: USER_ID,
+      sessionId: SESSION_ID,
+      scope: Object.freeze({
+        type: "partner",
+        tenantId: TENANT_ID,
+        tenantSlug: "acme",
+        partnerId: PARTNER_ID,
+      }),
+      membershipId: "40000000-0000-4000-8000-000000000001",
+      membershipStatus: "active",
+      partnerMembershipId: "60000000-0000-4000-8000-000000000001",
+      roleKeys: Object.freeze(["partner_owner"] as const),
+      permissionKeys: Object.freeze(["partner.profile.read"] as const),
+      userAuthorizationVersion: 4,
+      membershipAuthorizationVersion: 7,
+      ...changed,
+    }) as unknown as AuthorizationContext;
+    const useCase = new ReconcileAuthorizationVersionUseCase(
+      { execute: async () => context },
+      refresh,
+    );
+
+    const result = await useCase.execute({ authenticated, presentedToken: "presented-token" });
+
+    assert.equal(result.status, "refreshed");
+    assert.deepEqual(refresh.refreshed, [
+      {
+        sessionId: SESSION_ID,
+        userId: USER_ID,
+        scope: {
+          type: "partner",
+          tenantId: TENANT_ID,
+          partnerId: PARTNER_ID,
+        },
+        userAuthorizationVersion: 4,
+        membershipAuthorizationVersion: 7,
+        partnerAuthorizationVersion: changed.partnerAuthorizationVersion,
+        partnerMembershipAuthorizationVersion: changed.partnerMembershipAuthorizationVersion,
+        presentedToken: "presented-token",
+        requestId: "request-partner-reconcile",
+        reason: "authorization_version_changed",
+      },
+    ]);
+  }
 });

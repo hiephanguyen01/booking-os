@@ -2,7 +2,8 @@ import type { RequestContext } from "@booking-os/contracts";
 
 export type AuthorizationRepositoryScope =
   | { readonly type: "platform" }
-  | { readonly type: "tenant"; readonly tenantId: string };
+  | { readonly type: "tenant"; readonly tenantId: string }
+  | { readonly type: "partner"; readonly tenantId: string; readonly partnerId: string };
 
 export type AuthorizationExecutionContext = Pick<
   RequestContext,
@@ -32,7 +33,25 @@ export interface TenantCurrentScopeAuthority extends BaseCurrentScopeAuthority {
   readonly membershipAuthorizationVersion: number;
 }
 
-export type CurrentScopeAuthority = PlatformCurrentScopeAuthority | TenantCurrentScopeAuthority;
+export interface PartnerCurrentScopeAuthority extends BaseCurrentScopeAuthority {
+  readonly scope: {
+    readonly type: "partner";
+    readonly tenantId: string;
+    readonly tenantSlug: string;
+    readonly partnerId: string;
+  };
+  readonly membershipId: string;
+  readonly membershipStatus: "invited" | "active" | "suspended" | "revoked";
+  readonly membershipAuthorizationVersion: number;
+  readonly partnerMembershipId: string;
+  readonly partnerAuthorizationVersion: number;
+  readonly partnerMembershipAuthorizationVersion: number;
+}
+
+export type CurrentScopeAuthority =
+  | PlatformCurrentScopeAuthority
+  | TenantCurrentScopeAuthority
+  | PartnerCurrentScopeAuthority;
 
 export interface LoadCurrentScopeAuthorityInput {
   readonly userId: string;

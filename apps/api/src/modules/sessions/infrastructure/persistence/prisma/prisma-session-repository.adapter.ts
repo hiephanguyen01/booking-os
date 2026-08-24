@@ -46,10 +46,13 @@ interface SessionRow {
   readonly userId: string;
   readonly scopeType: string;
   readonly tenantId: string | null;
+  readonly partnerId: string | null;
   readonly hostname: string;
   readonly state: string;
   readonly authorizationVersion: number;
   readonly membershipAuthorizationVersion: number | null;
+  readonly partnerAuthorizationVersion: number | null;
+  readonly partnerMembershipAuthorizationVersion: number | null;
   readonly version: number;
   readonly idleExpiresAt: Date;
   readonly absoluteExpiresAt: Date;
@@ -82,7 +85,7 @@ interface TokenWithSessionRow extends TokenRow {
 interface LockedTokenRow {
   readonly id: string;
   readonly sessionId: string;
-  readonly scopeType: string;
+  readonly scopeType: "platform" | "tenant" | "partner";
   readonly tenantId: string | null;
   readonly replacedAt: Date | null;
   readonly overlapUntil: Date | null;
@@ -91,29 +94,55 @@ interface LockedTokenRow {
   readonly revokedAt: Date | null;
 }
 
-function mapScope(scopeType: string, tenantId: string | null): SessionScope {
-  if (scopeType === "platform" && tenantId === null) {
+function mapScope(
+  scopeType: string,
+  tenantId: string | null,
+  partnerId: string | null,
+): SessionScope {
+  if (scopeType === "platform" && tenantId === null && partnerId === null) {
     return { type: "platform" };
   }
-  if (scopeType === "tenant" && tenantId !== null) {
+  if (scopeType === "tenant" && tenantId !== null && partnerId === null) {
     return { type: "tenant", tenantId };
+  }
+  if (scopeType === "partner" && tenantId !== null && partnerId !== null) {
+    return { type: "partner", tenantId, partnerId };
   }
   throw new Error("Stored session scope is invalid.");
 }
 
 function scopeColumns(scope: SessionScope): {
-  readonly scopeType: "platform" | "tenant";
+  readonly scopeType: "platform" | "tenant" | "partner";
   readonly tenantId: string | null;
+  readonly partnerId: string | null;
 } {
-  return scope.type === "platform"
-    ? { scopeType: "platform", tenantId: null }
-    : { scopeType: "tenant", tenantId: scope.tenantId };
+  if (scope.type === "platform") {
+    return { scopeType: "platform", tenantId: null, partnerId: null };
+  }
+  if (scope.type === "tenant") {
+    return { scopeType: "tenant", tenantId: scope.tenantId, partnerId: null };
+  }
+  return {
+    scopeType: "partner",
+    tenantId: scope.tenantId,
+    partnerId: scope.partnerId,
+  };
 }
 
 function sameScope(left: SessionScope, right: SessionScope): boolean {
+  if (left.type !== right.type) {
+    return false;
+  }
+  if (left.type === "platform") {
+    return right.type === "platform";
+  }
+  if (left.type === "tenant") {
+    return right.type === "tenant" && left.tenantId === right.tenantId;
+  }
   return (
-    left.type === right.type &&
-    (left.type === "platform" || (right.type === "tenant" && left.tenantId === right.tenantId))
+    right.type === "partner" &&
+    left.tenantId === right.tenantId &&
+    left.partnerId === right.partnerId
   );
 }
 
@@ -141,13 +170,21 @@ function mapSession(row: SessionRow): StoredSession {
   return Object.freeze({
     id: row.id,
     userId: row.userId,
-    scope: mapScope(row.scopeType, row.tenantId),
+    scope: mapScope(row.scopeType, row.tenantId, row.partnerId),
     hostname: row.hostname,
     state: mapState(row.state),
     authorizationVersion: row.authorizationVersion,
     ...(typeof row.membershipAuthorizationVersion !== "number"
       ? {}
       : { membershipAuthorizationVersion: row.membershipAuthorizationVersion }),
+    ...(typeof row.partnerAuthorizationVersion !== "number"
+      ? {}
+      : { partnerAuthorizationVersion: row.partnerAuthorizationVersion }),
+    ...(typeof row.partnerMembershipAuthorizationVersion !== "number"
+      ? {}
+      : {
+          partnerMembershipAuthorizationVersion: row.partnerMembershipAuthorizationVersion,
+        }),
     version: row.version,
     idleExpiresAt: row.idleExpiresAt,
     absoluteExpiresAt: row.absoluteExpiresAt,
@@ -212,10 +249,14 @@ export class PrismaSessionRepositoryAdapter implements SessionRepositoryPort {
           userId: input.session.userId,
           scopeType: binding.scopeType,
           tenantId: binding.tenantId,
+          partnerId: binding.partnerId,
           hostname: input.session.hostname,
           state: prismaState(input.session.state),
           authorizationVersion: input.session.authorizationVersion,
           membershipAuthorizationVersion: input.session.membershipAuthorizationVersion ?? null,
+          partnerAuthorizationVersion: input.session.partnerAuthorizationVersion ?? null,
+          partnerMembershipAuthorizationVersion:
+            input.session.partnerMembershipAuthorizationVersion ?? null,
           version: input.session.version,
           idleExpiresAt: input.session.idleExpiresAt,
           absoluteExpiresAt: input.session.absoluteExpiresAt,
@@ -301,7 +342,7 @@ export class PrismaSessionRepositoryAdapter implements SessionRepositoryPort {
         data: {
           id: input.successor.id,
           sessionId: input.successor.sessionId,
-          scopeType: current.scopeType === "platform" ? "platform" : "tenant",
+          scopeType: current.scopeType,
           tenantId: current.tenantId,
           selector: input.successor.selector,
           tokenHash: input.successor.tokenHash,

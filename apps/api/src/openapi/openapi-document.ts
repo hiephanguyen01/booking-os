@@ -29,6 +29,34 @@ function normalizeValue(value: unknown): unknown {
   return Object.fromEntries(entries);
 }
 
+function makeEnumExtensible(schema: unknown): void {
+  if (!isRecord(schema) || !Array.isArray(schema.enum)) {
+    return;
+  }
+  schema["x-extensible-enum"] = [...schema.enum];
+  delete schema.enum;
+}
+
+function makeTenantRbacResponsePermissionsExtensible(document: OpenAPIObject): void {
+  const schemas = document.components?.schemas;
+  if (schemas === undefined) {
+    return;
+  }
+
+  const permissionResponse = schemas.TenantRbacPermissionResponseDto;
+  if (isRecord(permissionResponse) && isRecord(permissionResponse.properties)) {
+    makeEnumExtensible(permissionResponse.properties.key);
+  }
+
+  const customRoleResponse = schemas.TenantCustomRoleResponseDto;
+  if (isRecord(customRoleResponse) && isRecord(customRoleResponse.properties)) {
+    const permissionKeys = customRoleResponse.properties.permissionKeys;
+    if (isRecord(permissionKeys)) {
+      makeEnumExtensible(permissionKeys.items);
+    }
+  }
+}
+
 export function normalizeOpenApiDocument(document: OpenAPIObject): OpenAPIObject {
   const normalized = normalizeValue(document) as OpenAPIObject;
   if (Array.isArray(normalized.tags)) {
@@ -152,6 +180,7 @@ export function createSupportedOpenApiDocument(
     .build();
   const fullDocument = SwaggerModule.createDocument(app, configuration);
   const filtered = filterSupportedOpenApiDocument(fullDocument, supportedKeys, classifiedKeys);
+  makeTenantRbacResponsePermissionsExtensible(filtered);
   return normalizeOpenApiDocument(filtered);
 }
 

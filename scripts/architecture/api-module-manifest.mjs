@@ -12,6 +12,10 @@ export const modules = [
     root: "apps/api/src/modules/memberships",
   },
   {
+    name: "partners",
+    root: "apps/api/src/modules/partners",
+  },
+  {
     name: "sessions",
     root: "apps/api/src/modules/sessions",
   },

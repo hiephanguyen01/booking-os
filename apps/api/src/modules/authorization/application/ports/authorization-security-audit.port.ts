@@ -15,7 +15,7 @@ export interface AuthorizationDeniedAuditRecord {
   readonly sessionId: string;
   readonly requestId: string;
   readonly permission: PermissionKey;
-  readonly scopeType: "platform" | "tenant";
+  readonly scopeType: "platform" | "tenant" | "partner";
   readonly tenantId: string | null;
   readonly reason: AuthorizationDenialReason;
   readonly occurredAt: Date;

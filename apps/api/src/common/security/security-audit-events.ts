@@ -24,6 +24,8 @@ export const SECURITY_AUDIT_EVENT_TYPES = [
   "tenant.rbac.role.archived",
   "tenant.rbac.assignment.granted",
   "tenant.rbac.assignment.revoked",
+  "partner.registration.started",
+  "partner.registration.completed",
   "platform.bootstrap_admin_created",
   "authorization.denied",
 ] as const;

@@ -8,7 +8,13 @@ import {
 } from "../src/auth/index.js";
 
 test("authorization catalogs expose the approved stable identifiers", () => {
-  assert.deepEqual(AUTHORIZATION_ROLE_KEYS, ["platform_admin", "tenant_owner", "tenant_admin"]);
+  assert.deepEqual(AUTHORIZATION_ROLE_KEYS, [
+    "platform_admin",
+    "tenant_owner",
+    "tenant_admin",
+    "partner_owner",
+    "partner_admin",
+  ]);
   assert.deepEqual(AUTHORIZATION_PERMISSION_KEYS, [
     "platform.security.audit.read",
     "platform.security.session.revoke",
@@ -32,6 +38,24 @@ test("authorization catalogs expose the approved stable identifiers", () => {
     "tenant.rbac.assignment.read",
     "tenant.rbac.assignment.grant",
     "tenant.rbac.assignment.revoke",
+    "partner.profile.read",
+    "partner.profile.update",
+    "partner.application.read",
+    "partner.application.submit",
+    "partner.verification.read",
+    "partner.verification.update",
+    "partner.payout_account.read",
+    "partner.payout_account.update",
+    "partner.review_finding.read",
+    "tenant.partner.read",
+    "tenant.partner.verification.read",
+    "tenant.partner.payout_account.read",
+    "tenant.partner.application.review",
+    "tenant.partner.application.approve",
+    "tenant.partner.application.reject",
+    "tenant.partner.lifecycle.suspend",
+    "tenant.partner.lifecycle.reactivate",
+    "tenant.partner.lifecycle.cancel",
   ]);
 });
 
@@ -74,4 +98,29 @@ test("tenant authorization context carries active membership authority", () => {
   });
   assert.equal(context.membershipStatus, "active");
   assert.equal(context.membershipAuthorizationVersion, 3);
+});
+
+test("partner authorization context carries authoritative tenant and Partner scope", () => {
+  const context: AuthorizationContext = {
+    userId: "00000000-0000-4000-8000-000000000021",
+    sessionId: "00000000-0000-4000-8000-000000000022",
+    scope: {
+      type: "partner",
+      tenantId: "00000000-0000-4000-8000-000000000023",
+      tenantSlug: "studio-hub",
+      partnerId: "00000000-0000-4000-8000-000000000024",
+    },
+    membershipId: "00000000-0000-4000-8000-000000000025",
+    membershipStatus: "active",
+    roleKeys: ["partner_owner"],
+    permissionKeys: ["partner.profile.read", "partner.application.submit"],
+    userAuthorizationVersion: 4,
+    membershipAuthorizationVersion: 5,
+  };
+
+  assert.equal(context.scope.type, "partner");
+  if (context.scope.type === "partner") {
+    assert.equal(context.scope.partnerId, "00000000-0000-4000-8000-000000000024");
+    assert.equal(context.scope.tenantId, "00000000-0000-4000-8000-000000000023");
+  }
 });

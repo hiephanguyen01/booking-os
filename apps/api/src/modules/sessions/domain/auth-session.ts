@@ -1,6 +1,11 @@
 export type SessionScope =
   | { readonly type: "platform" }
-  | { readonly type: "tenant"; readonly tenantId: string };
+  | { readonly type: "tenant"; readonly tenantId: string }
+  | {
+      readonly type: "partner";
+      readonly tenantId: string;
+      readonly partnerId: string;
+    };
 
 export type SessionState = "active" | "invitation_pending" | "compromised" | "revoked";
 
@@ -12,6 +17,8 @@ export interface StoredSession {
   readonly state: SessionState;
   readonly authorizationVersion: number;
   readonly membershipAuthorizationVersion?: number;
+  readonly partnerAuthorizationVersion?: number;
+  readonly partnerMembershipAuthorizationVersion?: number;
   readonly version: number;
   readonly idleExpiresAt: Date;
   readonly absoluteExpiresAt: Date;

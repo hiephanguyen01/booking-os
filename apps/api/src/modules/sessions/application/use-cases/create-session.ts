@@ -16,6 +16,8 @@ export interface CreateSessionInput {
   readonly state: Extract<SessionState, "active" | "invitation_pending">;
   readonly authorizationVersion: number;
   readonly membershipAuthorizationVersion?: number;
+  readonly partnerAuthorizationVersion?: number;
+  readonly partnerMembershipAuthorizationVersion?: number;
   readonly requestId: string;
 }
 
@@ -60,6 +62,14 @@ export class CreateSessionUseCase {
         ...(input.membershipAuthorizationVersion === undefined
           ? {}
           : { membershipAuthorizationVersion: input.membershipAuthorizationVersion }),
+        ...(input.partnerAuthorizationVersion === undefined
+          ? {}
+          : { partnerAuthorizationVersion: input.partnerAuthorizationVersion }),
+        ...(input.partnerMembershipAuthorizationVersion === undefined
+          ? {}
+          : {
+              partnerMembershipAuthorizationVersion: input.partnerMembershipAuthorizationVersion,
+            }),
         version: 1,
         idleExpiresAt: new Date(now.getTime() + 7 * DAY_MS),
         absoluteExpiresAt: new Date(now.getTime() + 30 * DAY_MS),
@@ -95,7 +105,8 @@ export class CreateSessionUseCase {
         metadata: {
           hostname: input.hostname,
           scopeType: input.scope.type,
-          ...(input.scope.type === "tenant" ? { tenantId: input.scope.tenantId } : {}),
+          ...(input.scope.type === "platform" ? {} : { tenantId: input.scope.tenantId }),
+          ...(input.scope.type === "partner" ? { partnerId: input.scope.partnerId } : {}),
           state: input.state,
         },
         occurredAt: now,

@@ -15,6 +15,7 @@ const NOW = new Date("2026-08-06T04:00:00.000Z");
 const USER_ID = "11111111-1111-4111-8111-111111111111";
 const SESSION_ID = "22222222-2222-4222-8222-222222222222";
 const TENANT_ID = "33333333-3333-4333-8333-333333333333";
+const PARTNER_ID = "55555555-5555-4555-8555-555555555555";
 
 function storedSession(token: string): StoredSessionWithToken {
   const parsed = parseSessionToken(token);
@@ -50,6 +51,19 @@ function storedSession(token: string): StoredSessionWithToken {
       successorTokenId: null,
       reuseDetectedAt: null,
       revokedAt: null,
+    },
+  };
+}
+
+function storedPartnerSession(token: string): StoredSessionWithToken {
+  const stored = storedSession(token);
+  return {
+    ...stored,
+    session: {
+      ...stored.session,
+      scope: { type: "partner", tenantId: TENANT_ID, partnerId: PARTNER_ID },
+      partnerAuthorizationVersion: 2,
+      partnerMembershipAuthorizationVersion: 6,
     },
   };
 }
@@ -128,6 +142,68 @@ test("validates the opaque token against stored snapshots while confirming the u
     sessionState: "active",
     authorizationVersion: 4,
     membershipAuthorizationVersion: 3,
+    tokenDisposition: "active",
+    rotationRequired: false,
+  });
+});
+
+test("revalidates a server-discovered Partner session against its stored exact scope", async () => {
+  const harness = createHarness();
+  const stored = storedPartnerSession(harness.token);
+  const lookups: unknown[] = [];
+  const repository = {
+    async findBySelector(input: unknown) {
+      lookups.push(input);
+      return stored;
+    },
+  } as unknown as SessionRepositoryPort;
+  const validations: unknown[] = [];
+  const validator = {
+    async execute(input: unknown) {
+      validations.push(input);
+      return {
+        session: stored.session,
+        tokenDisposition: "active" as const,
+        rotationRequired: false,
+      };
+    },
+  };
+  const useCase = new GetCurrentSessionUseCase(repository, harness.subjects, validator);
+
+  const result = await useCase.execute({
+    token: harness.token,
+    hostname: "alpha.example.com",
+    scope: { type: "tenant", tenantId: TENANT_ID },
+    requestId: "request-partner-parent",
+  });
+
+  const parsed = parseSessionToken(harness.token);
+  assert.ok(parsed);
+  assert.deepEqual(lookups, [
+    {
+      selector: parsed.selector,
+      hostname: "alpha.example.com",
+      scope: { type: "tenant", tenantId: TENANT_ID },
+    },
+  ]);
+  assert.deepEqual(validations, [
+    {
+      token: harness.token,
+      hostname: "alpha.example.com",
+      scope: { type: "partner", tenantId: TENANT_ID, partnerId: PARTNER_ID },
+      authorizationVersion: 4,
+      requestId: "request-partner-parent",
+    },
+  ]);
+  assert.deepEqual(result, {
+    actorId: USER_ID,
+    sessionId: SESSION_ID,
+    authScope: { type: "partner", tenantId: TENANT_ID, partnerId: PARTNER_ID },
+    sessionState: "active",
+    authorizationVersion: 4,
+    membershipAuthorizationVersion: 3,
+    partnerAuthorizationVersion: 2,
+    partnerMembershipAuthorizationVersion: 6,
     tokenDisposition: "active",
     rotationRequired: false,
   });

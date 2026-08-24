@@ -5,9 +5,13 @@ import type {
 
 import type { TenantRbacDataSession } from "../../../authorization/application/ports/tenant-rbac-data-session.js";
 import type { MembershipDataSession } from "../../../memberships/application/ports/membership-data-session.js";
+import type { PartnerDataSession } from "../../../partners/application/ports/partner-data-session.js";
 import type { TenantProbeRepositoryPort } from "./tenant-probe-repository.port.js";
 
-export interface TenantDataSession extends MembershipDataSession, TenantRbacDataSession {
+export interface TenantDataSession
+  extends MembershipDataSession,
+    TenantRbacDataSession,
+    PartnerDataSession {
   readonly tenantProbes: TenantProbeRepositoryPort;
 }
 

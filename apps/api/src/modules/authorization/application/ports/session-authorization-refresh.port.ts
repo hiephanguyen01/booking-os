@@ -1,6 +1,7 @@
 export type SessionAuthorizationScope =
   | { readonly type: "platform" }
-  | { readonly type: "tenant"; readonly tenantId: string };
+  | { readonly type: "tenant"; readonly tenantId: string }
+  | { readonly type: "partner"; readonly tenantId: string; readonly partnerId: string };
 
 export interface RefreshSessionAuthorizationInput {
   readonly sessionId: string;
@@ -8,6 +9,8 @@ export interface RefreshSessionAuthorizationInput {
   readonly scope: SessionAuthorizationScope;
   readonly userAuthorizationVersion: number;
   readonly membershipAuthorizationVersion?: number;
+  readonly partnerAuthorizationVersion?: number;
+  readonly partnerMembershipAuthorizationVersion?: number;
   readonly presentedToken: string;
   readonly requestId: string;
   readonly reason: "authorization_version_changed";

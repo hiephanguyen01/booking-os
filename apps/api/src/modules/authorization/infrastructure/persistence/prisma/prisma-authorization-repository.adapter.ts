@@ -27,7 +27,8 @@ export class PrismaAuthorizationRepositoryAdapter implements AuthorizationReposi
   async loadCurrentScope(
     input: LoadCurrentScopeAuthorityInput,
   ): Promise<CurrentScopeAuthority | null> {
-    if (input.scope.type === "platform") {
+    const scope = input.scope;
+    if (scope.type === "platform") {
       return this.loadPlatform(input.userId);
     }
 
@@ -37,25 +38,53 @@ export class PrismaAuthorizationRepositoryAdapter implements AuthorizationReposi
     });
     if (!user) return null;
 
-    const tenant = await this.tenantTransactions.run(
-      { ...input.execution, tenantId: input.scope.tenantId },
-      (session) => session.authorization.loadActiveTenantAuthorization(input.userId),
-    );
-    if (!tenant) return null;
+    return this.tenantTransactions.run(
+      { ...input.execution, tenantId: scope.tenantId },
+      async (session) => {
+        const tenant = await session.authorization.loadActiveTenantAuthorization(input.userId);
+        if (!tenant) return null;
 
-    return Object.freeze({
-      scope: Object.freeze({
-        type: "tenant" as const,
-        tenantId: input.scope.tenantId,
-        tenantSlug: tenant.tenantSlug,
-      }),
-      userAuthorizationVersion: user.authorizationVersion,
-      membershipId: tenant.membershipId,
-      membershipStatus: tenant.membershipStatus,
-      membershipAuthorizationVersion: tenant.membershipAuthorizationVersion,
-      roleKeys: tenant.roleKeys,
-      permissionKeys: tenant.permissionKeys,
-    });
+        if (scope.type === "tenant") {
+          return Object.freeze({
+            scope: Object.freeze({
+              type: "tenant" as const,
+              tenantId: scope.tenantId,
+              tenantSlug: tenant.tenantSlug,
+            }),
+            userAuthorizationVersion: user.authorizationVersion,
+            membershipId: tenant.membershipId,
+            membershipStatus: tenant.membershipStatus,
+            membershipAuthorizationVersion: tenant.membershipAuthorizationVersion,
+            roleKeys: tenant.roleKeys,
+            permissionKeys: tenant.permissionKeys,
+          });
+        }
+
+        const partner = await session.partnerAuthorization.loadForUser(
+          scope.partnerId,
+          input.userId,
+        );
+        if (!partner) return null;
+
+        return Object.freeze({
+          scope: Object.freeze({
+            type: "partner" as const,
+            tenantId: scope.tenantId,
+            tenantSlug: tenant.tenantSlug,
+            partnerId: partner.partnerId,
+          }),
+          userAuthorizationVersion: user.authorizationVersion,
+          membershipId: tenant.membershipId,
+          membershipStatus: tenant.membershipStatus,
+          membershipAuthorizationVersion: tenant.membershipAuthorizationVersion,
+          partnerMembershipId: partner.partnerMembershipId,
+          partnerAuthorizationVersion: partner.partnerAuthorizationVersion,
+          partnerMembershipAuthorizationVersion: partner.partnerMembershipAuthorizationVersion,
+          roleKeys: partner.roleKeys,
+          permissionKeys: partner.permissions,
+        });
+      },
+    );
   }
 
   private async loadPlatform(userId: string): Promise<CurrentScopeAuthority | null> {

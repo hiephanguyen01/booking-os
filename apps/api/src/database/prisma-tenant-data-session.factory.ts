@@ -7,6 +7,10 @@ import { EnvironmentService } from "../config/environment.service.js";
 import { PrismaTenantCustomRoleAssignmentRepositoryAdapter } from "../modules/authorization/infrastructure/persistence/prisma/prisma-tenant-custom-role-assignment-repository.adapter.js";
 import { PrismaTenantCustomRoleRepositoryAdapter } from "../modules/authorization/infrastructure/persistence/prisma/prisma-tenant-custom-role-repository.adapter.js";
 import { PrismaTenantRbacPermissionRepositoryAdapter } from "../modules/authorization/infrastructure/persistence/prisma/prisma-tenant-rbac-permission-repository.adapter.js";
+import type { SensitiveEnvelopePort } from "../modules/identity/application/ports/sensitive-envelope.port.js";
+import { AesSensitiveEnvelopeAdapter } from "../modules/identity/infrastructure/crypto/aes-sensitive-envelope.adapter.js";
+import { PrismaPartnerRegistrationIdentityParticipantAdapter } from "../modules/identity/infrastructure/persistence/prisma/prisma-partner-registration-identity-participant.adapter.js";
+import { PrismaPartnerRegistrationStartEligibilityAdapter } from "../modules/identity/infrastructure/persistence/prisma/prisma-partner-registration-start-eligibility.adapter.js";
 import { PrismaInvitationRepositoryAdapter } from "../modules/memberships/infrastructure/persistence/prisma/prisma-invitation-repository.adapter.js";
 import {
   PrismaInvitationSessionElevationAdapter,
@@ -17,6 +21,12 @@ import { PrismaTenantAuthorizationQueryAdapter } from "../modules/memberships/in
 import { PrismaTenantProvisioningRepositoryAdapter } from "../modules/memberships/infrastructure/persistence/prisma/prisma-tenant-provisioning-repository.adapter.js";
 import { PrismaTenantRoleAssignmentRepositoryAdapter } from "../modules/memberships/infrastructure/persistence/prisma/prisma-tenant-role-assignment-repository.adapter.js";
 import { PrismaTenantSecurityAuditAdapter } from "../modules/memberships/infrastructure/persistence/prisma/prisma-tenant-security-audit.adapter.js";
+import { PrismaPartnerAuthorizationQueryAdapter } from "../modules/partners/infrastructure/persistence/prisma/prisma-partner-authorization-query.adapter.js";
+import { PrismaPartnerRegistrationChallengeRepositoryAdapter } from "../modules/partners/infrastructure/persistence/prisma/prisma-partner-registration-challenge-repository.adapter.js";
+import { PrismaPartnerRegistrationEstablishmentAdapter } from "../modules/partners/infrastructure/persistence/prisma/prisma-partner-registration-establishment.adapter.js";
+import { PrismaPartnerRegistrationNotifierAdapter } from "../modules/partners/infrastructure/persistence/prisma/prisma-partner-registration-notifier.adapter.js";
+import { PrismaPartnerRepositoryAdapter } from "../modules/partners/infrastructure/persistence/prisma/prisma-partner-repository.adapter.js";
+import { PrismaPartnerSecurityAuditAdapter } from "../modules/partners/infrastructure/persistence/prisma/prisma-partner-security-audit.adapter.js";
 import type { TenantDataSession } from "../modules/tenancy/application/ports/tenant-transaction.port.js";
 import { PrismaTenantProbeRepositoryAdapter } from "../modules/tenancy/infrastructure/persistence/prisma/prisma-tenant-probe-repository.adapter.js";
 
@@ -36,16 +46,38 @@ function isFactoryOptions(
 @Injectable()
 export class PrismaTenantDataSessionFactory {
   private readonly sessionElevationOptions: PrismaInvitationSessionElevationOptions | undefined;
+  private readonly resolvePartnerRegistrationEnvelope:
+    | (() => SensitiveEnvelopePort | undefined)
+    | undefined;
 
   constructor(
     @Inject(EnvironmentService)
     source?: EnvironmentService | PrismaInvitationSessionElevationOptions,
   ) {
-    this.sessionElevationOptions = source
-      ? isFactoryOptions(source)
-        ? source
-        : { digestKey: deriveSessionDigestKey(source.sessionSecret) }
-      : undefined;
+    if (!source) {
+      this.sessionElevationOptions = undefined;
+      this.resolvePartnerRegistrationEnvelope = undefined;
+      return;
+    }
+
+    if (isFactoryOptions(source)) {
+      this.sessionElevationOptions = source;
+      this.resolvePartnerRegistrationEnvelope = undefined;
+      return;
+    }
+
+    this.sessionElevationOptions = { digestKey: deriveSessionDigestKey(source.sessionSecret) };
+    let envelope: SensitiveEnvelopePort | undefined;
+    this.resolvePartnerRegistrationEnvelope = () => {
+      if (!envelope) {
+        const security = source.identitySecurity;
+        envelope = new AesSensitiveEnvelopeAdapter(
+          security.activeEnvelopeKeyId,
+          security.envelopeKeys,
+        );
+      }
+      return envelope;
+    };
   }
 
   create(transaction: Prisma.TransactionClient, tenantId: string): TenantDataSession {
@@ -68,6 +100,30 @@ export class PrismaTenantDataSessionFactory {
         tenantId,
       ),
       rbacPermissions: new PrismaTenantRbacPermissionRepositoryAdapter(transaction),
+      partners: new PrismaPartnerRepositoryAdapter(transaction, tenantId),
+      partnerAuthorization: new PrismaPartnerAuthorizationQueryAdapter(transaction, tenantId),
+      partnerRegistrationChallenges: new PrismaPartnerRegistrationChallengeRepositoryAdapter(
+        transaction,
+        tenantId,
+      ),
+      partnerRegistrationNotifier: new PrismaPartnerRegistrationNotifierAdapter(
+        transaction,
+        tenantId,
+        this.resolvePartnerRegistrationEnvelope,
+      ),
+      partnerRegistrationStartEligibility: new PrismaPartnerRegistrationStartEligibilityAdapter(
+        transaction,
+        tenantId,
+      ),
+      partnerRegistrationIdentity: new PrismaPartnerRegistrationIdentityParticipantAdapter(
+        transaction,
+        tenantId,
+      ),
+      partnerRegistrationEstablishment: new PrismaPartnerRegistrationEstablishmentAdapter(
+        transaction,
+        tenantId,
+      ),
+      partnerSecurityAudit: new PrismaPartnerSecurityAuditAdapter(transaction, tenantId),
     });
   }
 }

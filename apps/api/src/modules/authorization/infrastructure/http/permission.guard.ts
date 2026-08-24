@@ -60,11 +60,38 @@ function sameScope(
   authenticated: AuthenticatedRequestContext,
   authorization: AuthorizationContext,
 ): boolean {
+  if (authenticated.authScope.type !== authorization.scope.type) return false;
+  if (authenticated.authScope.type === "platform") return authorization.scope.type === "platform";
+  if (authenticated.authScope.type === "tenant") {
+    return (
+      authorization.scope.type === "tenant" &&
+      authenticated.authScope.tenantId === authorization.scope.tenantId
+    );
+  }
   return (
-    authenticated.authScope.type === authorization.scope.type &&
-    (authenticated.authScope.type === "platform" ||
-      (authorization.scope.type === "tenant" &&
-        authenticated.authScope.tenantId === authorization.scope.tenantId))
+    authorization.scope.type === "partner" &&
+    authenticated.authScope.tenantId === authorization.scope.tenantId &&
+    authenticated.authScope.partnerId === authorization.scope.partnerId
+  );
+}
+
+function snapshotsMatch(
+  authenticated: AuthenticatedRequestContext,
+  authorization: AuthorizationContext,
+): boolean {
+  if (authorization.userAuthorizationVersion !== authenticated.authorizationVersion) return false;
+  if (authorization.scope.type === "platform") return authenticated.authScope.type === "platform";
+  if (
+    authorization.membershipAuthorizationVersion !== authenticated.membershipAuthorizationVersion
+  ) {
+    return false;
+  }
+  if (authorization.scope.type === "tenant") return authenticated.authScope.type === "tenant";
+  return (
+    authenticated.authScope.type === "partner" &&
+    authorization.partnerAuthorizationVersion === authenticated.partnerAuthorizationVersion &&
+    authorization.partnerMembershipAuthorizationVersion ===
+      authenticated.partnerMembershipAuthorizationVersion
   );
 }
 
@@ -77,14 +104,11 @@ function isAllowed(
   return (
     authorization.userId === authenticated.actorId &&
     authorization.sessionId === authenticated.sessionId &&
-    (reconciled ||
-      (authorization.userAuthorizationVersion === authenticated.authorizationVersion &&
-        (authorization.scope.type === "platform" ||
-          authorization.membershipAuthorizationVersion ===
-            authenticated.membershipAuthorizationVersion))) &&
     sameScope(authenticated, authorization) &&
+    (reconciled || snapshotsMatch(authenticated, authorization)) &&
     (authorization.scope.type === "platform" ||
       (authorization.membershipStatus === "active" && Boolean(authorization.membershipId))) &&
+    (authorization.scope.type !== "partner" || Boolean(authorization.partnerMembershipId)) &&
     permissions.some((permission) => authorization.permissionKeys.includes(permission))
   );
 }
@@ -128,7 +152,8 @@ export class PermissionGuard implements CanActivate {
       requestId: authenticated.requestId,
       permission,
       scopeType: authenticated.authScope.type,
-      tenantId: authenticated.authScope.type === "tenant" ? authenticated.authScope.tenantId : null,
+      tenantId:
+        authenticated.authScope.type === "platform" ? null : authenticated.authScope.tenantId,
       reason,
       occurredAt: new Date(),
     });
